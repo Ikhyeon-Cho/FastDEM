@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "height_mapping_core/estimators/HeightEstimatorBase.h"
+#include "height_mapping_core/estimators/height_estimator_base.h"
 
 namespace height_mapping {
 class StatMeanEstimator : public HeightEstimatorBase {

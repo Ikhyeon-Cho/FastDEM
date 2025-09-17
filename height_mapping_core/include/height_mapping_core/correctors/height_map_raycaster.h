@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "height_map_core/HeightMap.h"
+#include "height_map_core/data/height_map.h"
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 

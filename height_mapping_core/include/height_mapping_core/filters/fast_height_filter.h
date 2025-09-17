@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "height_map_core/cloud_types.h"
+#include "height_map_core/data/cloud_types.h"
 #include <pcl/point_cloud.h>
 
 namespace height_mapping {

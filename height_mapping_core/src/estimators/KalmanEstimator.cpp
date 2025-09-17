@@ -7,7 +7,7 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/estimators/KalmanEstimator.h"
+#include "height_mapping_core/estimators/kalman_estimator.h"
 
 namespace height_mapping {
 

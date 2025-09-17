@@ -10,9 +10,9 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
-#include "height_mapping/ros/ros_common.h"
-#include "height_mapping_core/HeightMapper.h"
-#include "height_mapping_core/GlobalMapper.h"
+#include "height_mapping/utils/ros_common.h"
+#include "height_mapping_core/mappers/height_mapper.h"
+#include "height_mapping_core/mappers/global_mapper.h"
 
 namespace height_mapping_ros {
 

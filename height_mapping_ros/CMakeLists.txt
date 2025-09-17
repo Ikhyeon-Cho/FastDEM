@@ -58,7 +58,7 @@ include_directories(
 # ROS Nodes
 # Node: Height mapping
 add_executable(height_mapping_node
-  src/ros/height_mapping_node.cpp
+  src/height_mapping_node.cpp
 )
 
 target_link_libraries(height_mapping_node
@@ -70,7 +70,7 @@ add_dependencies(height_mapping_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catki
 
 # Node: Global mapping
 add_executable(global_mapping_node
-  src/ros/global_mapping_node.cpp
+  src/global_mapping_node.cpp
 )
 
 target_link_libraries(global_mapping_node
@@ -82,7 +82,7 @@ add_dependencies(global_mapping_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catki
 
 # Node: Sensor processor
 add_executable(sensor_processor_node
-  src/ros/sensor_processor_node.cpp
+  src/sensor_processor_node.cpp
 )
 
 target_link_libraries(sensor_processor_node

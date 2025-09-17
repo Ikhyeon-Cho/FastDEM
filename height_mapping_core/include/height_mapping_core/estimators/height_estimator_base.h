@@ -9,9 +9,9 @@
 
 #pragma once
 
-#include "height_mapping_core/interfaces/IHeightEstimator.h"
-#include "height_mapping_core/helper_functions.h"
-#include "height_map_core/HeightMap.h"
+#include "height_mapping_core/interfaces/height_estimator_interface.h"
+#include "height_mapping_core/utils/helper_functions.h"
+#include "height_map_core/data/height_map.h"
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 

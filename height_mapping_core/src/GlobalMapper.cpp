@@ -7,7 +7,7 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/GlobalMapper.h"
+#include "height_mapping_core/mappers/global_mapper.h"
 
 namespace height_mapping {
 

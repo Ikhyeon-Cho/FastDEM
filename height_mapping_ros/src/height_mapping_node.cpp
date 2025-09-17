@@ -7,8 +7,8 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping/ros/nodes/height_mapping_node.h"
-#include "height_mapping/ros/nodes/config.h"
+#include "height_mapping/height_mapping_node.h"
+#include "height_mapping/utils/config.h"
 
 #include <grid_map_ros/GridMapRosConverter.hpp>
 #include <pcl_conversions/pcl_conversions.h>

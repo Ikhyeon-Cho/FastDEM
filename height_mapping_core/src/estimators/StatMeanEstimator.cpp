@@ -7,7 +7,7 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/estimators/StatMeanEstimator.h"
+#include "height_mapping_core/estimators/stat_mean_estimator.h"
 
 /*
 StatMeanEstimator tracks:

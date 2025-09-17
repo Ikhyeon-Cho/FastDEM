@@ -10,15 +10,15 @@
 #pragma once
 
 // Height Map Core
-#include "height_map_core/HeightMap.h"
-#include "height_map_core/cloud_types.h"
+#include "height_map_core/data/height_map.h"
+#include "height_map_core/data/cloud_types.h"
 
 // Height Mapping Algorithms
-#include "height_mapping_core/estimators/StatMeanEstimator.h"
-#include "height_mapping_core/estimators/KalmanEstimator.h"
-#include "height_mapping_core/estimators/MovingAverageEstimator.h"
-#include "height_mapping_core/filters/FastHeightFilter.h"
-#include "height_mapping_core/correctors/HeightMapRaycaster.h"
+#include "height_mapping_core/estimators/stat_mean_estimator.h"
+#include "height_mapping_core/estimators/kalman_estimator.h"
+#include "height_mapping_core/estimators/moving_average_estimator.h"
+#include "height_mapping_core/filters/fast_height_filter.h"
+#include "height_mapping_core/correctors/height_map_raycaster.h"
 
 namespace height_mapping {
 

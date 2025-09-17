@@ -12,7 +12,7 @@
 
 #include <string>
 #include <grid_map_core/grid_map_core.hpp>
-#include "height_map_core/layer_definitions.h"
+#include "height_map_core/data/layer_definitions.h"
 
 namespace height_mapping {
 

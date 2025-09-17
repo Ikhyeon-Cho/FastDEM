@@ -1,4 +1,4 @@
-#include "height_mapping_core/filters/FastHeightFilter.h"
+#include "height_mapping_core/filters/fast_height_filter.h"
 
 namespace height_mapping {
 

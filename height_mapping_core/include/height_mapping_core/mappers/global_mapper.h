@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "height_mapping_core/HeightMapper.h"
+#include "height_mapping_core/mappers/height_mapper.h"
 #include <unordered_set>
 
 // this is for the use of unordered_set with grid_map::Index

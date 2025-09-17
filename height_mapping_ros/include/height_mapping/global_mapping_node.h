@@ -12,9 +12,9 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <visualization_msgs/Marker.h>
 
-#include "height_mapping/ros/ros_common.h"
-#include "height_mapping_core/HeightMapper.h"
-#include "height_mapping_core/GlobalMapper.h"
+#include "height_mapping/utils/ros_common.h"
+#include "height_mapping_core/mappers/height_mapper.h"
+#include "height_mapping_core/mappers/global_mapper.h"
 #include "height_mapping/save_map.h" // custom service
 #include "height_mapping/types/elevation_point.h"
 

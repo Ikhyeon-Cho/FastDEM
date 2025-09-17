@@ -7,7 +7,7 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/estimators/MovingAverageEstimator.h"
+#include "height_mapping_core/estimators/moving_average_estimator.h"
 
 namespace height_mapping {
 void MovingAverageEstimator::estimate(HeightMap &map,
