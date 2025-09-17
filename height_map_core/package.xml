@@ -3,12 +3,9 @@
   <name>height_map_core</name>
   <version>0.0.1</version>
   <description>Core height map data structures and utilities</description>
-
-  <maintainer email="your_email@example.com">Your Name</maintainer>
-  <license>MIT</license>
+  <maintainer email="tre0430@korea.ac.kr">Ikhyeon Cho</maintainer>
 
   <buildtool_depend>catkin</buildtool_depend>
-
   <depend>grid_map_core</depend>
 
   <export>

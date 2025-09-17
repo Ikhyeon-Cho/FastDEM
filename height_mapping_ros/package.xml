@@ -3,12 +3,9 @@
   <name>height_mapping</name>
   <version>0.0.1</version>
   <description>Height mapping algorithms with ROS wrapper for 2.5D terrain mapping</description>
-
-  <maintainer email="your_email@example.com">Your Name</maintainer>
-  <license>MIT</license>
+  <maintainer email="tre0430@korea.ac.kr">Ikhyeon Cho</maintainer>
 
   <buildtool_depend>catkin</buildtool_depend>
-
   <depend>roscpp</depend>
   <depend>tf2_ros</depend>
   <depend>grid_map_ros</depend>
