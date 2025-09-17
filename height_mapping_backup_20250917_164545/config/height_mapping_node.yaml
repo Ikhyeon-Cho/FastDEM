@@ -1,0 +1,20 @@
+node:
+  lidar_topic: "/velodyne/points"
+  rgbd_topic: "/sensor_processor/points"
+  pose_update_rate: 15.0
+  map_publish_rate: 15.0
+  remove_backward_points: true
+  debug_mode: false
+
+frame_id:
+  robot: "base_link"
+  map: &map_frame "map"
+
+height_mapper:
+  height_estimator: "StatMean" # "StatMean", "KalmanFilter", "MovingAverage"
+  frame_id: *map_frame
+  map_length_x: 10.0
+  map_length_y: 10.0
+  grid_resolution: 0.1 # rgb-d: 0.04, lidar: 0.05 ~ 0.1 [m/grid]
+  min_height_threshold: -0.2 # indoor: -0.05, outdoor: -0.2 [meter]
+  max_height_threshold: 2.0

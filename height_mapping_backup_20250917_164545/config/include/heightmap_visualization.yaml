@@ -1,0 +1,12 @@
+grid_map_topic: "/height_mapping/local/map"
+grid_map_visualizations:
+  - name: "/height_mapping/local/map_cloud"
+    type: point_cloud
+    params:
+      layer: elevation
+  - name: "/height_mapping/local/mapping_region"
+    type: map_region
+    params:
+      # white
+      color: 0xFFFFFF
+      line_width: 0.01

@@ -1,0 +1,21 @@
+node:
+  lidar_topic: "/velodyne/points"
+  rgbd_topic: "/sensor_processor/points"
+  map_publish_rate: 2.0
+  remove_backward_points: true
+  debug_mode: false
+  map_save_format: "bag"      # ["pcd", "bag"]
+
+frame_id:
+  robot: "base_link"
+  map: &map_frame "map"
+
+global_mapper:
+  estimator_type: "StatMean"  # ["StatMean", "KalmanFilter", "MovingAverage"]
+  frame_id: *map_frame
+  map_length_x: 200.0
+  map_length_y: 200.0
+  grid_resolution: 0.1
+  min_height_threshold: -0.2
+  max_height_threshold: 1.5
+  map_save_dir: "$(find height_mapping)/../maps/"

@@ -1,0 +1,14 @@
+node:
+  input_cloud_topics:
+    - "/camera_front/pointcloud/points"
+    - "/camera_left/pointcloud/points"
+    - "/camera_right/pointcloud/points"
+  outputcloud_topic: "/height_mapping/sensor_processor/points"
+  cloud_publish_rate: 10.0
+  downsample_resolution: 0.02 # [m/voxel]
+  min_range_threshold: 0.3 # [m]
+  max_range_threshold: 15.0 # [m]
+
+frame_id:
+  robot: "base_link"
+  map: &map_frame "map"
