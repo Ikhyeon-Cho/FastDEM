@@ -27,8 +27,6 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS
     include
-  LIBRARIES
-    ${PROJECT_NAME}_lib
   CATKIN_DEPENDS
     roscpp
     tf2_ros
@@ -42,7 +40,11 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-set(CMAKE_BUILD_TYPE Release)
+# Allow choosing build type via environment variable
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+  message(STATUS "Setting build type to '${CMAKE_BUILD_TYPE}' as none was specified.")
+endif()
 
 include_directories(
   include
@@ -50,20 +52,8 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-# Library: Height mapping algorithms (non-ROS)
-add_library(${PROJECT_NAME}_lib
-  src/algorithms/HeightMapper.cpp
-  src/algorithms/GlobalMapper.cpp
-  src/algorithms/estimators/StatMeanEstimator.cpp
-  src/algorithms/estimators/KalmanEstimator.cpp
-  src/algorithms/estimators/MovingAverageEstimator.cpp
-  src/algorithms/filters/FastHeightFilter.cpp
-)
-
-target_link_libraries(${PROJECT_NAME}_lib
-  ${PCL_LIBRARIES}
-  ${catkin_LIBRARIES}
-)
+# Algorithm library now comes from height_mapping_core package
+# No need to build local library
 
 # ROS Nodes
 # Node: Height mapping
@@ -72,9 +62,8 @@ add_executable(height_mapping_node
 )
 
 target_link_libraries(height_mapping_node
-  ${PROJECT_NAME}_lib
-  ${PCL_LIBRARIES}
   ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
 )
 
 add_dependencies(height_mapping_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -85,9 +74,8 @@ add_executable(global_mapping_node
 )
 
 target_link_libraries(global_mapping_node
-  ${PROJECT_NAME}_lib
-  ${PCL_LIBRARIES}
   ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
 )
 
 add_dependencies(global_mapping_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

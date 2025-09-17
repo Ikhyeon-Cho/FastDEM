@@ -19,7 +19,11 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-set(CMAKE_BUILD_TYPE Release)
+# Allow choosing build type via environment variable
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+  message(STATUS "Setting build type to '${CMAKE_BUILD_TYPE}' as none was specified.")
+endif()
 
 include_directories(
   include
