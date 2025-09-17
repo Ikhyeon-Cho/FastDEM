@@ -30,6 +30,8 @@ public:
   void estimate(HeightMap &map, const pcl::PointCloud<pcl::PointXYZI> &cloud) override;
   void estimate(HeightMap &map, const pcl::PointCloud<pcl::PointXYZRGB> &cloud) override;
 
+  std::string getType() const override { return "MovingAverage"; }
+
   static void movingAveageUpdate(float &current, float new_value, float alpha) {
     alpha = clamp(alpha, 0.1f, 0.9f);
     current = ((1.0f - alpha) * current) + (alpha * new_value);

@@ -21,6 +21,8 @@ public:
   void estimate(HeightMap &map, const pcl::PointCloud<pcl::PointXYZI> &cloud) override;
   void estimate(HeightMap &map, const pcl::PointCloud<pcl::PointXYZRGB> &cloud) override;
 
+  std::string getType() const override { return "StatMean"; }
+
 private:
   /**
    * Updates running statistics (mean, variance) using Welford's online
