@@ -11,8 +11,8 @@
 #include <sensor_msgs/PointCloud2.h>
 
 #include "height_mapping/ros/ros_common.h"
-#include "height_mapping/algorithms/HeightMapper.h"
-#include "height_mapping/algorithms/GlobalMapper.h"
+#include "height_mapping_core/HeightMapper.h"
+#include "height_mapping_core/GlobalMapper.h"
 
 namespace height_mapping_ros {
 

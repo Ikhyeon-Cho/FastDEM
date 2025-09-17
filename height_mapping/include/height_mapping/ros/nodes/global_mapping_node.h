@@ -13,8 +13,8 @@
 #include <visualization_msgs/Marker.h>
 
 #include "height_mapping/ros/ros_common.h"
-#include "height_mapping/algorithms/HeightMapper.h"
-#include "height_mapping/algorithms/GlobalMapper.h"
+#include "height_mapping_core/HeightMapper.h"
+#include "height_mapping_core/GlobalMapper.h"
 #include "height_mapping/save_map.h" // custom service
 #include "height_mapping/types/elevation_point.h"
 

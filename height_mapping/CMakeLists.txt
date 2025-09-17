@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
     grid_map_ros
     pcl_conversions
     height_map_core
+    height_mapping_core
     message_generation
 )
 
@@ -34,6 +35,7 @@ catkin_package(
     grid_map_ros
     pcl_conversions
     height_map_core
+    height_mapping_core
     message_runtime
 )
 
