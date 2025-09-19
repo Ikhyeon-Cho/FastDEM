@@ -34,7 +34,7 @@ include_directories(
 link_directories(${PCL_LIBRARY_DIRS})
 
 add_library(${PROJECT_NAME}
-  src/HeightMap.cpp
+  src/height_map.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

@@ -1,0 +1,1613 @@
+╭──────────────────────────────────────────────────────────╮
+│ ✻ Welcome to Claude Code!                                │
+│                                                          │
+│   /help for help, /status for your current setup         │
+│                                                          │
+│   cwd: /home/ikhyeon/ros/research_ws/src/height_mapping  │
+╰──────────────────────────────────────────────────────────╯
+
+> /clear 
+  ⎿  (no content)
+
+> Ultrathink: Identify the current codebase structure. List up the limitations. Suggest a better one.
+
+✻ Thinking…
+
+  The user wants me to:
+  1. Identify the current codebase structure
+  2. List its limitations
+  3. Suggest a better structure
+
+  Let me start by exploring the codebase to understand its current structure. I'll look at the directory layout, key files, and how the code is 
+  organized.
+
+● I'll analyze the current codebase structure, identify limitations, and suggest improvements.
+
+● Bash(find . -type f -name "*.h" -o -name "*.cpp" -o -name "*.yaml" -o -name "*.launch" -o -name "*.txt" | head -30)
+  ⎿  ./height_map_core/CMakeLists.txt                            
+     ./height_map_core/include/height_map_core/data/cloud_types.h
+     ./height_map_core/include/height_map_core/data/height_map.h
+     … +27 lines (ctrl+o to expand)
+
+✻ Thinking…
+
+  Let me get a better view of the directory structure and examine some key files.
+
+● Bash(tree -L 3 -d -I 'build|devel|logs|.git')
+  ⎿  .                             
+     ├── assets
+     ├── height_map_core
+     … +26 lines (ctrl+o to expand)
+
+✻ Thinking…
+
+  Let me check the contents of key directories and files to understand the architecture better.
+
+● Read(height_mapping_core/include/height_mapping_core)
+  ⎿  Error: EISDIR: illegal operation on a directory, read
+
+✻ Thinking…
+
+  Let me list the files in this directory to understand the organization.
+
+● Bash(ls -la height_mapping_core/include/height_mapping_core/)
+  ⎿  total 84                                           
+     drwxrwxr-x 13 ikhyeon ikhyeon 4096  9월 17 20:43 .
+     drwxrwxr-x  3 ikhyeon ikhyeon 4096  9월 17 16:47 ..
+     … +14 lines (ctrl+o to expand)
+
+✻ Thinking…
+
+  Let me check the ROS package structure as well and look at some key files to understand the architecture.
+
+● Bash(ls -la height_mapping_ros/include/height_mapping/)
+  ⎿  total 44                                          
+     drwxrwxr-x 4 ikhyeon ikhyeon 4096  9월 17 20:46 .
+     drwxrwxr-x 3 ikhyeon ikhyeon 4096  9월 17 16:10 ..
+     … +7 lines (ctrl+o to expand)
+
+✻ Thinking…
+
+  Let me also check what files are in the test refactoring plan documents to understand what's already been analyzed.
+
+● Read(REFACTORING_PLAN.md)
+  ⎿  Read 50 lines (ctrl+o to expand)
+
+✻ Thinking…
+
+  Let me also check the directory structure of the entire project to get a complete picture.
+
+● Bash(find . -type f \( -name "*.h" -o -name "*.cpp" \) | wc -l)
+  ⎿  60
+
+✻ Thinking…
+
+  Let me check some key files to understand the current architecture better.
+
+● Read(height_mapping_core/include/height_mapping_core/height_mapping_system.h)
+  ⎿  Read 40 lines (ctrl+o to expand)
+
+✻ Thinking…
+
+  Now let me check package.xml files to understand dependencies.
+
+● Bash(find . -name "package.xml" -exec echo "=== {} ===" \; -exec head -20 {} \;)
+  ⎿  === ./height_map_core/package.xml ===
+     <?xml version="1.0"?>
+     <package format="2">
+     … +47 lines (ctrl+o to expand)
+
+✻ Thinking…
+
+  Now let me look at the overall architecture and see what components exist in the codebase.
+
+● Bash(ls -la height_mapping_ros/src/)
+  ⎿  total 52                                           
+     drwxrwxr-x 2 ikhyeon ikhyeon  4096  9월 17 20:44 .
+     drwxrwxr-x 7 ikhyeon ikhyeon  4096  9월 17 20:45 ..
+     … +4 lines (ctrl+o to expand)
+
+✻ Thinking…
+
+  Now let me check the build and test status to understand the current state better.
+
+● Read(build_status.log)
+  ⎿  Read 2 lines (ctrl+o to expand)
+
+✻ Thinking…
+
+  Now I have a good understanding of the codebase structure. Let me create a comprehensive analysis and suggest improvements. I should use the TodoWrite
+   tool to organize my analysis.
+
+✻ Thinking…
+
+  Now let me compile my analysis based on all the information gathered.
+
+● Current Codebase Structure
+
+  Package Organization
+
+  - height_map_core: Core data structures (grid_map wrapper)
+  - height_mapping_core: Processing algorithms (partially ROS-independent)
+  - height_mapping_ros: ROS integration layer with 3 node types:
+    - HeightMappingNode (main processing)
+    - GlobalMappingNode (global map management)
+    - SensorProcessorNode (multi-sensor fusion)
+
+  Directory Layout
+
+  ├── height_mapping_core/
+  │   ├── estimators/     # Height estimation algorithms
+  │   ├── filters/        # Point cloud filters
+  │   ├── mappers/        # Mapping implementations
+  │   ├── managers/       # Resource managers
+  │   ├── sensors/        # Sensor handling
+  │   ├── processors/     # Data processors
+  │   ├── interfaces/     # Abstract interfaces
+  │   ├── factory/        # Object factories
+  │   └── memory/         # Memory management
+  └── height_mapping_ros/
+      ├── nodes/          # ROS node implementations
+      └── utils/          # ROS utilities
+
+  Key Limitations
+
+  1. Incomplete Separation of Concerns
+
+  - Core algorithms still have ROS dependencies (e.g., sensor_msgs in processors)
+  - Mixing business logic with infrastructure code
+  - No clear boundary between core and ROS layers
+
+  2. Multiple Architecture Attempts
+
+  - 3 different system implementations (simple, optimized, DI-based)
+  - Inconsistent patterns across modules
+  - Dead code from previous refactoring attempts
+
+  3. Over-Engineering
+
+  - Complex factory patterns and dependency injection for simple use cases
+  - Multiple abstraction layers without clear benefits
+  - Template-heavy design causing compilation overhead
+
+  4. Poor Testability
+
+  - Tight coupling prevents unit testing
+  - No clear mock points for dependencies
+  - Test directory exists but underutilized
+
+  5. Scalability Issues
+
+  - Hard-coded sensor types (2-3 sensors max)
+  - Static configuration management
+  - No runtime plugin system
+
+  6. Memory Inefficiency
+
+  - PointCloudPool exists but not consistently used
+  - Multiple data copies during processing
+  - No clear ownership model
+
+✻ Thinking…
+
+  Now let me propose a better architecture that addresses these issues.
+
+● Proposed Architecture
+
+  1. Clean Layered Architecture
+
+  height_mapping/
+  ├── core/                    # Pure C++ algorithms (NO ROS)
+  │   ├── algorithms/         # Core processing algorithms
+  │   │   ├── estimators/     # Height estimation
+  │   │   ├── filters/        # Filtering algorithms
+  │   │   └── mappers/        # Mapping algorithms
+  │   ├── data/              # Data structures
+  │   │   ├── point_cloud.h
+  │   │   ├── height_map.h
+  │   │   └── sensor_data.h
+  │   └── pipeline/          # Processing pipeline
+  │       ├── processor.h    # Pipeline executor
+  │       └── stages/        # Pipeline stages
+  ├── ros/                   # ROS integration layer
+  │   ├── nodes/            # ROS node implementations
+  │   ├── adapters/         # ROS-to-Core adapters
+  │   └── publishers/       # ROS publishers
+  └── plugins/              # Optional plugin system
+      └── sensors/          # Sensor-specific plugins
+
+  2. Key Design Principles
+
+  Dependency Inversion
+  // Core defines interfaces
+  class IPointCloudSource {
+      virtual CloudPtr getCloud() = 0;
+  };
+
+  // ROS implements them
+  class ROSPointCloudAdapter : public IPointCloudSource {
+      CloudPtr getCloud() override { /* ROS conversion */ }
+  };
+
+  Pipeline Architecture
+  class ProcessingPipeline {
+      void addStage(unique_ptr<IProcessingStage> stage);
+      void process(SensorData& data);
+  };
+
+  Plugin System
+  class SensorPlugin {
+      virtual void process(const SensorData&) = 0;
+  };
+  // Load plugins dynamically at runtime
+
+  3. Simplified Component Model
+
+  Single Node Design
+  class HeightMappingNode {
+      ProcessingPipeline pipeline;
+      vector<SensorAdapter> sensors;
+      MapPublisher publisher;
+
+      void run() {
+          for(auto& sensor : sensors)
+              pipeline.process(sensor.getData());
+          publisher.publish(pipeline.getMap());
+      }
+  };
+
+  4. Benefits
+
+  - Testability: Core logic testable without ROS
+  - Scalability: Plugin system for new sensors
+  - Performance: Zero-copy pipeline design
+  - Maintainability: Clear separation of concerns
+  - Simplicity: Remove unnecessary abstractions
+
+  5. Migration Path
+
+  1. Extract pure algorithms to core/
+  2. Create adapter layer for ROS
+  3. Consolidate multiple node implementations
+  4. Add plugin system for extensibility
+  5. Implement comprehensive testing
+
+✻ Thinking…
+
+  I've completed the analysis. Let me provide a concise summary of the findings.
+
+● Summary
+
+  The current codebase suffers from incomplete separation between core algorithms and ROS, multiple conflicting architecture patterns, and
+  over-engineering with complex abstractions that don't provide clear benefits.
+
+  The proposed architecture focuses on:
+  - Clean separation: Pure C++ core with ROS adapter layer
+  - Pipeline pattern: Composable processing stages
+  - Plugin system: Runtime extensibility for sensors
+  - Simplified design: Single node with clear responsibilities
+
+  This will improve testability, performance, and maintainability while reducing complexity.
+
+> I agree. Explain your proposed architecture and design principles more. With some use case examples.
+
+● Detailed Architecture Design
+
+  1. Clean Layered Architecture
+
+  ┌─────────────────────────────────────────────────┐
+  │                   Application Layer              │
+  │         (ROS Nodes, CLI tools, Test apps)        │
+  ├─────────────────────────────────────────────────┤
+  │                   Adapter Layer                  │
+  │    (ROS↔Core converters, Config loaders)         │
+  ├─────────────────────────────────────────────────┤
+  │                    Core Layer                    │
+  │    (Pure algorithms, Data structures)            │
+  └─────────────────────────────────────────────────┘
+
+  Core Layer Structure:
+  // core/data/sensor_data.h
+  namespace height_mapping::core {
+
+  struct PointCloud {
+      std::vector<Point3D> points;
+      TimeStamp timestamp;
+      std::string frame_id;
+
+      // Zero-copy move semantics
+      PointCloud(PointCloud&&) = default;
+      PointCloud& operator=(PointCloud&&) = default;
+  };
+
+  struct HeightMap {
+      Grid2D<float> heights;
+      Grid2D<float> variances;
+      Bounds2D bounds;
+      float resolution;
+
+      // Efficient cell access
+      float& at(float x, float y);
+      const float& at(float x, float y) const;
+  };
+
+  } // namespace
+
+● 2. Dependency Inversion Principle
+
+  Core defines interfaces, external layers implement them:
+
+  // core/interfaces/data_source.h
+  namespace height_mapping::core {
+
+  class IDataSource {
+  public:
+      virtual ~IDataSource() = default;
+
+      // Core doesn't know about ROS messages
+      virtual std::optional<PointCloud> getNextCloud() = 0;
+      virtual bool hasData() const = 0;
+      virtual void reset() = 0;
+  };
+
+  class ITransformProvider {
+  public:
+      virtual ~ITransformProvider() = default;
+
+      // Core doesn't know about TF2
+      virtual std::optional<Transform3D> lookupTransform(
+          const std::string& target_frame,
+          const std::string& source_frame,
+          const TimeStamp& time) = 0;
+  };
+
+  class IMapPublisher {
+  public:
+      virtual ~IMapPublisher() = default;
+
+      // Core doesn't know about grid_map_msgs
+      virtual void publish(const HeightMap& map) = 0;
+  };
+
+  } // namespace
+
+  ROS layer implements interfaces:
+
+  // ros/adapters/ros_data_source.h
+  namespace height_mapping::ros {
+
+  class ROSDataSource : public core::IDataSource {
+  private:
+      ros::Subscriber subscriber_;
+      std::queue<sensor_msgs::PointCloud2::ConstPtr> queue_;
+
+  public:
+      std::optional<core::PointCloud> getNextCloud() override {
+          if (queue_.empty()) return std::nullopt;
+
+          auto msg = queue_.front();
+          queue_.pop();
+
+          // Convert ROS message to core data structure
+          core::PointCloud cloud;
+          cloud.timestamp = msg->header.stamp.toNSec();
+          cloud.frame_id = msg->header.frame_id;
+
+          // Efficient conversion without copy
+          pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
+          pcl::fromROSMsg(*msg, pcl_cloud);
+
+          cloud.points.reserve(pcl_cloud.size());
+          for (const auto& p : pcl_cloud) {
+              cloud.points.emplace_back(p.x, p.y, p.z);
+          }
+
+          return cloud;
+      }
+
+      bool hasData() const override {
+          return !queue_.empty();
+      }
+  };
+
+  class TF2TransformProvider : public core::ITransformProvider {
+  private:
+      tf2_ros::Buffer& tf_buffer_;
+
+  public:
+      std::optional<core::Transform3D> lookupTransform(
+          const std::string& target,
+          const std::string& source,
+          const core::TimeStamp& time) override {
+
+          try {
+              auto tf = tf_buffer_.lookupTransform(
+                  target, source,
+                  ros::Time().fromNSec(time));
+
+              return convertToCore(tf);
+          } catch (...) {
+              return std::nullopt;
+          }
+      }
+  };
+
+  } // namespace
+
+● 3. Pipeline Architecture
+
+  Composable processing stages with zero-copy data flow:
+
+  // core/pipeline/pipeline.h
+  namespace height_mapping::core {
+
+  class IPipelineStage {
+  public:
+      virtual ~IPipelineStage() = default;
+
+      // Process data in-place for efficiency
+      virtual void process(PipelineContext& ctx) = 0;
+      virtual std::string getName() const = 0;
+      virtual bool canProcess(const PipelineContext& ctx) const { return true; }
+  };
+
+  struct PipelineContext {
+      // Shared data between stages
+      PointCloud cloud;
+      HeightMap map;
+      Transform3D sensor_to_map;
+
+      // Metadata
+      std::unordered_map<std::string, std::any> metadata;
+
+      // Stage-specific data storage
+      template<typename T>
+      void store(const std::string& key, T&& value) {
+          metadata[key] = std::forward<T>(value);
+      }
+
+      template<typename T>
+      std::optional<T> retrieve(const std::string& key) const {
+          auto it = metadata.find(key);
+          if (it != metadata.end()) {
+              return std::any_cast<T>(it->second);
+          }
+          return std::nullopt;
+      }
+  };
+
+  class ProcessingPipeline {
+  private:
+      std::vector<std::unique_ptr<IPipelineStage>> stages_;
+      bool enable_profiling_ = false;
+
+  public:
+      // Builder pattern for configuration
+      ProcessingPipeline& addStage(std::unique_ptr<IPipelineStage> stage) {
+          stages_.push_back(std::move(stage));
+          return *this;
+      }
+
+      void process(PipelineContext& ctx) {
+          for (auto& stage : stages_) {
+              if (!stage->canProcess(ctx)) continue;
+
+              auto start = std::chrono::high_resolution_clock::now();
+              stage->process(ctx);
+
+              if (enable_profiling_) {
+                  auto duration = std::chrono::high_resolution_clock::now() - start;
+                  logProfile(stage->getName(), duration);
+              }
+          }
+      }
+
+      // Dynamic stage management
+      void insertStage(size_t index, std::unique_ptr<IPipelineStage> stage) {
+          stages_.insert(stages_.begin() + index, std::move(stage));
+      }
+
+      void removeStage(const std::string& name) {
+          stages_.erase(
+              std::remove_if(stages_.begin(), stages_.end(),
+                  [&name](const auto& s) { return s->getName() == name; }),
+              stages_.end());
+      }
+  };
+
+  } // namespace
+
+  Example Pipeline Stages:
+
+  // core/pipeline/stages/transform_stage.h
+  class TransformStage : public IPipelineStage {
+  private:
+      ITransformProvider* tf_provider_;
+      std::string target_frame_;
+
+  public:
+      void process(PipelineContext& ctx) override {
+          auto transform = tf_provider_->lookupTransform(
+              target_frame_, ctx.cloud.frame_id, ctx.cloud.timestamp);
+
+          if (transform) {
+              // In-place transformation
+              for (auto& point : ctx.cloud.points) {
+                  point = transform->apply(point);
+              }
+              ctx.sensor_to_map = *transform;
+              ctx.cloud.frame_id = target_frame_;
+          }
+      }
+
+      std::string getName() const override { return "Transform"; }
+  };
+
+  // core/pipeline/stages/filter_stage.h
+  class VoxelFilterStage : public IPipelineStage {
+  private:
+      float voxel_size_;
+
+  public:
+      void process(PipelineContext& ctx) override {
+          // Efficient in-place voxel filtering
+          std::unordered_map<VoxelKey, Point3D> voxel_map;
+
+          for (const auto& point : ctx.cloud.points) {
+              VoxelKey key = getVoxelKey(point, voxel_size_);
+              voxel_map[key] = point; // Keep last point in voxel
+          }
+
+          // Move filtered points back
+          ctx.cloud.points.clear();
+          ctx.cloud.points.reserve(voxel_map.size());
+          for (auto& [key, point] : voxel_map) {
+              ctx.cloud.points.push_back(std::move(point));
+          }
+      }
+
+      std::string getName() const override { return "VoxelFilter"; }
+  };
+
+  // core/pipeline/stages/height_estimation_stage.h
+  class HeightEstimationStage : public IPipelineStage {
+  private:
+      std::unique_ptr<IHeightEstimator> estimator_;
+
+  public:
+      void process(PipelineContext& ctx) override {
+          for (const auto& point : ctx.cloud.points) {
+              float x = point.x;
+              float y = point.y;
+              float z = point.z;
+
+              // Update height map cell
+              if (ctx.map.isInBounds(x, y)) {
+                  auto& height = ctx.map.at(x, y);
+                  auto& variance = ctx.map.variances.at(x, y);
+
+                  estimator_->update(height, variance, z);
+              }
+          }
+      }
+
+      std::string getName() const override { return "HeightEstimation"; }
+  };
+
+● 4. Plugin System Design
+
+  Dynamic loading of sensor-specific processors:
+
+  // core/plugin/plugin_interface.h
+  namespace height_mapping::core {
+
+  class ISensorPlugin {
+  public:
+      virtual ~ISensorPlugin() = default;
+
+      // Plugin metadata
+      virtual std::string getName() const = 0;
+      virtual std::string getVersion() const = 0;
+      virtual std::vector<std::string> getSupportedSensorTypes() const = 0;
+
+      // Processing interface
+      virtual void initialize(const PluginConfig& config) = 0;
+      virtual void process(const SensorData& input, PointCloud& output) = 0;
+      virtual bool canProcess(const SensorData& data) const = 0;
+  };
+
+  // Plugin factory function type
+  using PluginFactory = std::unique_ptr<ISensorPlugin>(*)();
+
+  // Macro for plugin registration
+  #define REGISTER_PLUGIN(PluginClass) \
+      extern "C" std::unique_ptr<ISensorPlugin> createPlugin() { \
+          return std::make_unique<PluginClass>(); \
+      }
+
+  } // namespace
+
+  Plugin Manager:
+
+  // core/plugin/plugin_manager.h
+  class PluginManager {
+  private:
+      std::vector<std::unique_ptr<ISensorPlugin>> plugins_;
+      std::unordered_map<std::string, void*> handles_; // dlopen handles
+
+  public:
+      void loadPlugin(const std::filesystem::path& plugin_path) {
+          // Dynamic loading
+          void* handle = dlopen(plugin_path.c_str(), RTLD_LAZY);
+          if (!handle) {
+              throw std::runtime_error("Cannot load plugin: " + std::string(dlerror()));
+          }
+
+          // Get factory function
+          auto factory = (PluginFactory) dlsym(handle, "createPlugin");
+          if (!factory) {
+              dlclose(handle);
+              throw std::runtime_error("Invalid plugin: no createPlugin function");
+          }
+
+          // Create and register plugin
+          auto plugin = factory();
+          std::string name = plugin->getName();
+          plugins_.push_back(std::move(plugin));
+          handles_[name] = handle;
+      }
+
+      void loadPluginsFromDirectory(const std::filesystem::path& dir) {
+          for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+              if (entry.path().extension() == ".so") {
+                  try {
+                      loadPlugin(entry.path());
+                  } catch (const std::exception& e) {
+                      // Log and continue
+                  }
+              }
+          }
+      }
+
+      ISensorPlugin* findPlugin(const std::string& sensor_type) {
+          for (auto& plugin : plugins_) {
+              auto supported = plugin->getSupportedSensorTypes();
+              if (std::find(supported.begin(), supported.end(), sensor_type) != supported.end()) {
+                  return plugin.get();
+              }
+          }
+          return nullptr;
+      }
+  };
+
+  Example Plugin Implementation:
+
+  // plugins/velodyne_plugin.cpp
+  class VelodynePlugin : public ISensorPlugin {
+  private:
+      struct Config {
+          int num_rings = 16;
+          float min_range = 0.5;
+          float max_range = 100.0;
+      } config_;
+
+  public:
+      std::string getName() const override {
+          return "Velodyne LiDAR Plugin";
+      }
+
+      std::vector<std::string> getSupportedSensorTypes() const override {
+          return {"velodyne_vlp16", "velodyne_hdl32", "velodyne_hdl64"};
+      }
+
+      void initialize(const PluginConfig& config) override {
+          config_.num_rings = config.get<int>("num_rings", 16);
+          config_.min_range = config.get<float>("min_range", 0.5);
+          config_.max_range = config.get<float>("max_range", 100.0);
+      }
+
+      void process(const SensorData& input, PointCloud& output) override {
+          output.points.clear();
+          output.points.reserve(input.raw_data.size() / 16); // Estimate
+
+          // Velodyne-specific processing
+          for (size_t i = 0; i < input.raw_data.size(); i += 16) {
+              float range = extractRange(input.raw_data, i);
+              if (range < config_.min_range || range > config_.max_range)
+                  continue;
+
+              float azimuth = extractAzimuth(input.raw_data, i);
+              int ring = extractRing(input.raw_data, i);
+              float elevation = getRingElevation(ring);
+
+              // Convert spherical to Cartesian
+              Point3D point;
+              point.x = range * cos(elevation) * cos(azimuth);
+              point.y = range * cos(elevation) * sin(azimuth);
+              point.z = range * sin(elevation);
+
+              output.points.push_back(point);
+          }
+      }
+  };
+
+  REGISTER_PLUGIN(VelodynePlugin)
+
+● 5. Real-World Use Cases
+
+  Use Case 1: Multi-Sensor Robot Navigation
+
+  // Application: Robot with LiDAR + Stereo Camera + IMU
+  class MultiSensorRobot {
+  private:
+      ProcessingPipeline pipeline_;
+      PluginManager plugin_manager_;
+      HeightMap global_map_;
+
+  public:
+      void initialize() {
+          // Load sensor plugins
+          plugin_manager_.loadPluginsFromDirectory("./plugins");
+
+          // Configure pipeline for multi-sensor fusion
+          pipeline_
+              // Stage 1: Sensor-specific preprocessing via plugins
+              .addStage(std::make_unique<PluginProcessorStage>(&plugin_manager_))
+
+              // Stage 2: Transform to robot frame
+              .addStage(std::make_unique<TransformStage>(tf_provider_, "base_link"))
+
+              // Stage 3: Motion compensation using IMU
+              .addStage(std::make_unique<MotionCompensationStage>(imu_provider_))
+
+              // Stage 4: Adaptive filtering based on sensor type
+              .addStage(std::make_unique<AdaptiveFilterStage>())
+
+              // Stage 5: Multi-sensor fusion
+              .addStage(std::make_unique<SensorFusionStage>())
+
+              // Stage 6: Height estimation with uncertainty
+              .addStage(std::make_unique<KalmanHeightEstimationStage>())
+
+              // Stage 7: Traversability analysis
+              .addStage(std::make_unique<TraversabilityStage>());
+      }
+
+      void processLidar(const sensor_msgs::PointCloud2& msg) {
+          PipelineContext ctx;
+          ctx.metadata["sensor_type"] = "velodyne_vlp16";
+          ctx.cloud = convertToCore(msg);
+
+          pipeline_.process(ctx);
+          updateGlobalMap(ctx.map);
+      }
+
+      void processStereo(const sensor_msgs::PointCloud2& msg) {
+          PipelineContext ctx;
+          ctx.metadata["sensor_type"] = "stereo_camera";
+          ctx.metadata["confidence_threshold"] = 0.8f;
+          ctx.cloud = convertToCore(msg);
+
+          pipeline_.process(ctx);
+          updateGlobalMap(ctx.map);
+      }
+  };
+
+  Use Case 2: Drone Terrain Mapping
+
+  // Application: UAV mapping with downward-facing LiDAR
+  class DroneMappingSystem {
+  private:
+      ProcessingPipeline pipeline_;
+      std::unique_ptr<IMapStorage> map_storage_;
+
+  public:
+      void initialize() {
+          // Optimized pipeline for aerial mapping
+          pipeline_
+              // Altitude-based filtering
+              .addStage(std::make_unique<AltitudeFilterStage>(min_altitude_, max_altitude_))
+
+              // GPS-IMU fusion for georeferencing
+              .addStage(std::make_unique<GeoreferencingStage>(gps_provider_, imu_provider_))
+
+              // Adaptive resolution based on altitude
+              .addStage(std::make_unique<AdaptiveResolutionStage>())
+
+              // Vegetation filtering
+              .addStage(std::make_unique<VegetationFilterStage>())
+
+              // Multi-resolution mapping
+              .addStage(std::make_unique<MultiResolutionMappingStage>())
+
+              // Tile-based map storage
+              .addStage(std::make_unique<TiledStorageStage>(map_storage_.get()));
+      }
+
+      void processHighAltitude() {
+          // Dynamically adjust pipeline for high altitude
+          pipeline_.removeStage("VegetationFilter");
+          pipeline_.insertStage(2, std::make_unique<StatisticalOutlierFilter>());
+      }
+
+      void processLowAltitude() {
+          // Fine detail processing
+          pipeline_.insertStage(3, std::make_unique<EdgePreservingFilter>());
+      }
+  };
+
+  Use Case 3: Real-time vs Offline Processing
+
+  // Application: Switchable processing modes
+  class AdaptiveProcessor {
+  private:
+      ProcessingPipeline realtime_pipeline_;
+      ProcessingPipeline offline_pipeline_;
+
+  public:
+      void configureRealtimePipeline() {
+          realtime_pipeline_
+              .addStage(std::make_unique<FastVoxelFilter>(0.1f))  // Coarse filtering
+              .addStage(std::make_unique<SimpleHeightEstimator>()) // Fast estimation
+              .addStage(std::make_unique<KeyframeSelector>());     // Reduce data rate
+      }
+
+      void configureOfflinePipeline() {
+          offline_pipeline_
+              .addStage(std::make_unique<StatisticalOutlierFilter>())
+              .addStage(std::make_unique<BilateralFilter>())
+              .addStage(std::make_unique<KalmanHeightEstimator>())
+              .addStage(std::make_unique<LoopClosureDetection>())
+              .addStage(std::make_unique<GlobalOptimization>())
+              .addStage(std::make_unique<MeshGeneration>());
+      }
+
+      void process(PipelineContext& ctx, ProcessingMode mode) {
+          if (mode == ProcessingMode::REALTIME) {
+              realtime_pipeline_.process(ctx);
+          } else {
+              offline_pipeline_.process(ctx);
+          }
+      }
+  };
+
+  Use Case 4: Testing and Simulation
+
+  // Test without ROS dependency
+  class HeightMappingTest : public ::testing::Test {
+  protected:
+      ProcessingPipeline pipeline_;
+      MockTransformProvider mock_tf_;
+      MockDataSource mock_source_;
+
+      void SetUp() override {
+          // Configure test pipeline
+          pipeline_
+              .addStage(std::make_unique<TransformStage>(&mock_tf_, "map"))
+              .addStage(std::make_unique<VoxelFilterStage>(0.05f))
+              .addStage(std::make_unique<HeightEstimationStage>());
+      }
+
+      void TestSingleSensorProcessing() {
+          // Generate synthetic data
+          PipelineContext ctx;
+          ctx.cloud = generateTestCloud(1000);
+          ctx.cloud.frame_id = "sensor";
+
+          // Setup mock expectations
+          EXPECT_CALL(mock_tf_, lookupTransform("map", "sensor", _))
+              .WillOnce(Return(Transform3D::identity()));
+
+          // Process
+          pipeline_.process(ctx);
+
+          // Verify
+          ASSERT_FALSE(ctx.map.heights.empty());
+          EXPECT_NEAR(ctx.map.at(0, 0), expected_height_, 0.01);
+      }
+  };
+
+  // Simulation environment
+  class SimulationEnvironment {
+  public:
+      void runSimulation() {
+          // Load plugins for simulated sensors
+          plugin_manager_.loadPlugin("./plugins/simulated_lidar.so");
+
+          // Create synthetic terrain
+          TerrainGenerator terrain;
+          auto ground_truth = terrain.generateHills(100, 100, 0.1);
+
+          // Simulate sensor data
+          for (float t = 0; t < 10.0; t += 0.1) {
+              PipelineContext ctx;
+              ctx.cloud = simulateLidarScan(ground_truth, t);
+              ctx.metadata["timestamp"] = t;
+
+              pipeline_.process(ctx);
+
+              // Compare with ground truth
+              float error = computeRMSE(ctx.map, ground_truth);
+              EXPECT_LT(error, 0.05);
+          }
+      }
+  };
+
+  6. Configuration System
+
+  # config/height_mapping.yaml
+  pipeline:
+    stages:
+      - name: Transform
+        params:
+          target_frame: map
+          timeout: 0.1
+
+      - name: VoxelFilter
+        params:
+          leaf_size: 0.05
+
+      - name: HeightEstimation
+        params:
+          estimator_type: kalman
+          initial_variance: 1.0
+          process_noise: 0.01
+          measurement_noise: 0.1
+
+  plugins:
+    directory: ./plugins
+    auto_load:
+      - velodyne_plugin.so
+      - realsense_plugin.so
+
+    config:
+      velodyne:
+        min_range: 0.5
+        max_range: 100.0
+
+  // Configuration loader
+  class PipelineFactory {
+  public:
+      static ProcessingPipeline fromConfig(const std::string& config_file) {
+          YAML::Node config = YAML::LoadFile(config_file);
+          ProcessingPipeline pipeline;
+
+          for (const auto& stage_config : config["pipeline"]["stages"]) {
+              auto stage = createStage(
+                  stage_config["name"].as<std::string>(),
+                  stage_config["params"]
+              );
+              pipeline.addStage(std::move(stage));
+          }
+
+          return pipeline;
+      }
+  };
+
+● Summary of Key Benefits
+
+  1. Testability
+
+  - Core algorithms testable without ROS
+  - Mock interfaces for unit testing
+  - Simulation environment for integration testing
+
+  2. Flexibility
+
+  - Runtime pipeline reconfiguration
+  - Plugin system for new sensors
+  - Multiple processing modes (real-time/offline)
+
+  3. Performance
+
+  - Zero-copy data flow between stages
+  - In-place processing where possible
+  - Parallel stage execution capability
+
+  4. Maintainability
+
+  - Clear separation of concerns
+  - Single responsibility per component
+  - Configuration-driven behavior
+
+  5. Scalability
+
+  - Easy to add new sensors via plugins
+  - Pipeline stages can be distributed
+  - Supports both edge and cloud processing
+
+  This architecture provides a clean, efficient, and extensible foundation for height mapping applications across various robotics platforms and use
+   cases.
+
+> Seems highly structured. But I want to know more about, how the node works. mostly node will receive ros topic and run the callback, but I cannot 
+  see this kind of data flow in your explanation. Can you explain more?
+
+● ROS Node Implementation & Data Flow
+
+  You're absolutely right! Let me show how ROS callbacks connect to the core architecture:
+
+  1. Complete Node Structure
+
+  // ros/nodes/height_mapping_node.h
+  namespace height_mapping::ros {
+
+  class HeightMappingNode {
+  private:
+      // ROS Communication
+      ::ros::NodeHandle nh_;
+      ::ros::NodeHandle pnh_;
+
+      // Subscribers with callbacks
+      ::ros::Subscriber lidar_sub_;
+      ::ros::Subscriber camera_sub_;
+      ::ros::Subscriber imu_sub_;
+      message_filters::Synchronizer<SyncPolicy> sync_;
+
+      // Publishers
+      ::ros::Publisher map_pub_;
+      ::ros::Publisher cloud_pub_;
+      ::ros::Timer publish_timer_;
+
+      // Core processing pipeline
+      std::unique_ptr<core::ProcessingPipeline> pipeline_;
+
+      // Thread-safe queues for async processing
+      std::queue<sensor_msgs::PointCloud2::ConstPtr> lidar_queue_;
+      std::mutex lidar_mutex_;
+      std::condition_variable lidar_cv_;
+
+      // Processing thread
+      std::thread processing_thread_;
+      std::atomic<bool> should_stop_{false};
+
+      // Adapters (ROS-to-Core bridges)
+      std::unique_ptr<TF2TransformProvider> tf_provider_;
+      std::unique_ptr<ROSMapPublisher> map_publisher_;
+
+  public:
+      HeightMappingNode() : pnh_("~") {
+          initialize();
+          setupSubscribers();
+          setupPublishers();
+          startProcessingThread();
+      }
+
+      ~HeightMappingNode() {
+          should_stop_ = true;
+          lidar_cv_.notify_all();
+          if (processing_thread_.joinable()) {
+              processing_thread_.join();
+          }
+      }
+
+  private:
+      void initialize() {
+          // Setup TF provider
+          static tf2_ros::Buffer tf_buffer;
+          static tf2_ros::TransformListener tf_listener(tf_buffer);
+          tf_provider_ = std::make_unique<TF2TransformProvider>(tf_buffer);
+
+          // Load and configure pipeline
+          std::string config_file = pnh_.param<std::string>("config", "");
+          pipeline_ = createPipeline(config_file);
+      }
+
+      void setupSubscribers() {
+          // Single sensor subscriber with callback
+          lidar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>(
+              "/velodyne_points", 10,
+              boost::bind(&HeightMappingNode::lidarCallback, this, _1));
+
+          // Multiple synchronized sensors
+          message_filters::Subscriber<sensor_msgs::PointCloud2> cloud_sub(nh_, "/points", 1);
+          message_filters::Subscriber<sensor_msgs::Imu> imu_sub(nh_, "/imu", 1);
+
+          sync_.reset(new message_filters::Synchronizer<SyncPolicy>(
+              SyncPolicy(10), cloud_sub, imu_sub));
+          sync_->registerCallback(
+              boost::bind(&HeightMappingNode::syncCallback, this, _1, _2));
+      }
+
+      void setupPublishers() {
+          map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("height_map", 1);
+          cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("processed_cloud", 1);
+
+          // Timer for periodic map publishing
+          publish_timer_ = nh_.createTimer(
+              ::ros::Duration(0.1),
+              &HeightMappingNode::publishTimerCallback, this);
+      }
+
+● 2. ROS Callbacks → Core Pipeline Flow
+
+      // ===== CALLBACK METHODS (ROS Thread) =====
+
+      void lidarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+          // Option 1: Direct processing (blocking)
+          if (pnh_.param("direct_processing", false)) {
+              processPointCloud(msg);
+              return;
+          }
+
+          // Option 2: Queue for async processing (non-blocking)
+          {
+              std::lock_guard<std::mutex> lock(lidar_mutex_);
+
+              // Limit queue size to prevent memory issues
+              if (lidar_queue_.size() > max_queue_size_) {
+                  ROS_WARN_THROTTLE(1.0, "Dropping old point cloud, queue full");
+                  lidar_queue_.pop();
+              }
+
+              lidar_queue_.push(msg);
+          }
+          lidar_cv_.notify_one();
+      }
+
+      void syncCallback(const sensor_msgs::PointCloud2::ConstPtr& cloud_msg,
+                        const sensor_msgs::Imu::ConstPtr& imu_msg) {
+          // Synchronized multi-sensor processing
+          core::PipelineContext ctx;
+
+          // Convert ROS messages to core types
+          ctx.cloud = convertPointCloud(cloud_msg);
+          ctx.metadata["imu_data"] = convertImu(imu_msg);
+          ctx.metadata["sensor_type"] = "lidar_imu_fusion";
+
+          // Process through pipeline
+          pipeline_->process(ctx);
+
+          // Publish results
+          publishResults(ctx);
+      }
+
+      void publishTimerCallback(const ::ros::TimerEvent& event) {
+          // Periodic map publishing
+          if (current_map_ && current_map_->hasUpdates()) {
+              auto msg = convertToROSMessage(*current_map_);
+              map_pub_.publish(msg);
+              current_map_->clearUpdateFlag();
+          }
+      }
+
+      // ===== PROCESSING METHODS =====
+
+      void processPointCloud(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+          try {
+              // Step 1: Convert ROS message to core data structure
+              core::PipelineContext ctx;
+              ctx.cloud = convertPointCloud(msg);
+
+              // Step 2: Add metadata for pipeline stages
+              ctx.metadata["frame_id"] = msg->header.frame_id;
+              ctx.metadata["timestamp"] = msg->header.stamp.toNSec();
+              ctx.metadata["sensor_type"] = detectSensorType(msg);
+
+              // Step 3: Process through pipeline
+              auto start = ::ros::Time::now();
+              pipeline_->process(ctx);
+
+              ROS_DEBUG("Processing took %.3f ms",
+                       (::ros::Time::now() - start).toSec() * 1000);
+
+              // Step 4: Update internal map
+              {
+                  std::lock_guard<std::mutex> lock(map_mutex_);
+                  current_map_ = std::make_shared<core::HeightMap>(ctx.map);
+              }
+
+              // Step 5: Publish processed cloud (if configured)
+              if (cloud_pub_.getNumSubscribers() > 0) {
+                  auto processed_msg = convertToROSMessage(ctx.cloud);
+                  cloud_pub_.publish(processed_msg);
+              }
+
+          } catch (const std::exception& e) {
+              ROS_ERROR("Processing failed: %s", e.what());
+          }
+      }
+
+      // ===== CONVERSION METHODS (ROS ↔ Core) =====
+
+      core::PointCloud convertPointCloud(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+          core::PointCloud cloud;
+          cloud.timestamp = msg->header.stamp.toNSec();
+          cloud.frame_id = msg->header.frame_id;
+
+          // Efficient conversion without intermediate PCL
+          sensor_msgs::PointCloud2ConstIterator<float> iter_x(*msg, "x");
+          sensor_msgs::PointCloud2ConstIterator<float> iter_y(*msg, "y");
+          sensor_msgs::PointCloud2ConstIterator<float> iter_z(*msg, "z");
+
+          cloud.points.reserve(msg->width * msg->height);
+
+          for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
+              if (!std::isfinite(*iter_x) || !std::isfinite(*iter_y) || !std::isfinite(*iter_z))
+                  continue;
+
+              cloud.points.emplace_back(*iter_x, *iter_y, *iter_z);
+          }
+
+          return cloud;
+      }
+
+      grid_map_msgs::GridMap convertToROSMessage(const core::HeightMap& map) {
+          grid_map_msgs::GridMap msg;
+
+          // Convert core map to grid_map
+          grid_map::GridMap grid_map({"elevation", "variance"});
+          grid_map.setFrameId("map");
+          grid_map.setGeometry(grid_map::Length(map.bounds.width(), map.bounds.height()),
+                              map.resolution);
+
+          // Copy data
+          for (size_t i = 0; i < map.heights.size(); ++i) {
+              grid_map["elevation"].data()[i] = map.heights.data()[i];
+              grid_map["variance"].data()[i] = map.variances.data()[i];
+          }
+
+          grid_map::GridMapRosConverter::toMessage(grid_map, msg);
+          return msg;
+      }
+
+● 3. Advanced Callback Patterns
+
+      // ===== PROCESSING THREAD (Separate from ROS thread) =====
+
+      void startProcessingThread() {
+          processing_thread_ = std::thread([this]() {
+              while (!should_stop_) {
+                  sensor_msgs::PointCloud2::ConstPtr msg;
+
+                  // Wait for new data
+                  {
+                      std::unique_lock<std::mutex> lock(lidar_mutex_);
+                      lidar_cv_.wait(lock, [this] {
+                          return !lidar_queue_.empty() || should_stop_;
+                      });
+
+                      if (should_stop_) break;
+
+                      msg = lidar_queue_.front();
+                      lidar_queue_.pop();
+                  }
+
+                  // Process outside of lock
+                  processPointCloud(msg);
+              }
+          });
+      }
+
+      // ===== ADVANCED CALLBACK PATTERNS =====
+
+      // Pattern 1: Adaptive Processing Based on System Load
+      void adaptiveLidarCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+          static ::ros::Time last_process_time;
+          auto now = ::ros::Time::now();
+
+          // Check processing rate
+          double dt = (now - last_process_time).toSec();
+
+          if (dt < min_process_interval_) {
+              // Skip processing if too frequent
+              ROS_DEBUG_THROTTLE(1.0, "Skipping frame, dt=%.3f", dt);
+              return;
+          }
+
+          // Check CPU load
+          if (getCPULoad() > 0.8) {
+              // Switch to lightweight pipeline
+              useLightweightPipeline();
+          } else {
+              useFullPipeline();
+          }
+
+          processPointCloud(msg);
+          last_process_time = now;
+      }
+
+      // Pattern 2: Multi-rate Processing
+      void multiRateCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+          static int frame_counter = 0;
+          frame_counter++;
+
+          // Full processing every N frames
+          if (frame_counter % full_process_rate_ == 0) {
+              core::PipelineContext ctx;
+              ctx.cloud = convertPointCloud(msg);
+              ctx.metadata["processing_mode"] = "full";
+
+              full_pipeline_->process(ctx);
+              updateGlobalMap(ctx.map);
+          }
+          // Lightweight processing for other frames
+          else {
+              core::PipelineContext ctx;
+              ctx.cloud = convertPointCloud(msg);
+              ctx.metadata["processing_mode"] = "fast";
+
+              fast_pipeline_->process(ctx);
+              updateLocalMap(ctx.map);
+          }
+      }
+
+      // Pattern 3: Buffered Batch Processing
+      class BatchProcessor {
+      private:
+          std::vector<sensor_msgs::PointCloud2::ConstPtr> batch_;
+          std::mutex batch_mutex_;
+          ::ros::Timer batch_timer_;
+
+      public:
+          void batchCallback(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+              {
+                  std::lock_guard<std::mutex> lock(batch_mutex_);
+                  batch_.push_back(msg);
+
+                  // Process when batch is full
+                  if (batch_.size() >= batch_size_) {
+                      processBatch();
+                  }
+              }
+          }
+
+          void timerCallback(const ::ros::TimerEvent&) {
+              // Process partial batch on timeout
+              std::lock_guard<std::mutex> lock(batch_mutex_);
+              if (!batch_.empty()) {
+                  processBatch();
+              }
+          }
+
+          void processBatch() {
+              // Merge all clouds in batch
+              core::PointCloud merged;
+              for (const auto& msg : batch_) {
+                  auto cloud = convertPointCloud(msg);
+                  merged.points.insert(merged.points.end(),
+                                     cloud.points.begin(),
+                                     cloud.points.end());
+              }
+
+              // Process merged cloud
+              core::PipelineContext ctx;
+              ctx.cloud = std::move(merged);
+              pipeline_->process(ctx);
+
+              batch_.clear();
+          }
+      };
+
+● 4. Complete End-to-End Data Flow
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                         ROS TOPICS                               │
+  │  /velodyne_points    /camera/depth    /imu/data    /tf          │
+  └────────┬──────────────────┬──────────────┬──────────┬──────────┘
+           │                  │              │          │
+           ▼                  ▼              ▼          ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                    ROS CALLBACK THREAD                           │
+  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+  │  │lidarCallback │  │cameraCallback│  │ imuCallback  │         │
+  │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘         │
+  │         │                  │                  │                  │
+  │         ▼                  ▼                  ▼                  │
+  │  ┌───────────────────────────────────────────────────┐         │
+  │  │          Thread-Safe Queue/Buffer                 │         │
+  │  └───────────────────────┬───────────────────────────┘         │
+  └──────────────────────────┼───────────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                   PROCESSING THREAD                              │
+  │  ┌───────────────────────────────────────────────────┐         │
+  │  │            ROS → Core Conversion                   │         │
+  │  │  sensor_msgs::PointCloud2 → core::PointCloud      │         │
+  │  └───────────────────────┬───────────────────────────┘         │
+  │                          ▼                                      │
+  │  ┌───────────────────────────────────────────────────┐         │
+  │  │          Core Processing Pipeline                  │         │
+  │  │  Transform → Filter → Fuse → Estimate → Map       │         │
+  │  └───────────────────────┬───────────────────────────┘         │
+  │                          ▼                                      │
+  │  ┌───────────────────────────────────────────────────┐         │
+  │  │            Core → ROS Conversion                   │         │
+  │  │  core::HeightMap → grid_map_msgs::GridMap         │         │
+  │  └───────────────────────┬───────────────────────────┘         │
+  └──────────────────────────┼───────────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                      ROS PUBLISHERS                              │
+  │     /height_map        /processed_cloud       /traversability   │
+  └─────────────────────────────────────────────────────────────────┘
+
+  5. Complete Working Example
+
+  // ros/nodes/height_mapping_node_impl.cpp
+  class HeightMappingNodeImpl {
+  private:
+      // Node handles
+      ::ros::NodeHandle nh_;
+      ::ros::NodeHandle pnh_;
+
+      // Subscribers
+      ::ros::Subscriber lidar_sub_;
+      ::ros::Subscriber camera_depth_sub_;
+
+      // Publishers  
+      ::ros::Publisher map_pub_;
+      ::ros::Publisher marker_pub_;
+
+      // Core components
+      std::unique_ptr<core::ProcessingPipeline> pipeline_;
+      std::shared_ptr<core::HeightMap> current_map_;
+
+      // Thread management
+      std::thread processing_thread_;
+      ThreadSafeQueue<sensor_msgs::PointCloud2::ConstPtr> input_queue_;
+
+  public:
+      bool initialize() {
+          // Load parameters
+          std::string lidar_topic = pnh_.param<std::string>("lidar_topic", "/points");
+          std::string map_frame = pnh_.param<std::string>("map_frame", "map");
+          double voxel_size = pnh_.param<double>("voxel_size", 0.05);
+
+          // Initialize map
+          double map_width = pnh_.param<double>("map_width", 10.0);
+          double map_height = pnh_.param<double>("map_height", 10.0);
+          double resolution = pnh_.param<double>("resolution", 0.1);
+
+          current_map_ = std::make_shared<core::HeightMap>();
+          current_map_->initialize(map_width, map_height, resolution);
+
+          // Setup pipeline
+          pipeline_ = std::make_unique<core::ProcessingPipeline>();
+
+          // Add pipeline stages based on config
+          pipeline_->addStage(
+              std::make_unique<core::TransformStage>(tf_buffer_, map_frame));
+          pipeline_->addStage(
+              std::make_unique<core::VoxelFilterStage>(voxel_size));
+          pipeline_->addStage(
+              std::make_unique<core::HeightEstimationStage>(
+                  core::EstimatorType::KALMAN));
+
+          // Setup subscribers with callbacks
+          lidar_sub_ = nh_.subscribe<sensor_msgs::PointCloud2>(
+              lidar_topic, 10,
+              [this](const sensor_msgs::PointCloud2::ConstPtr& msg) {
+                  onLidarMessage(msg);
+              });
+
+          // Setup publishers
+          map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("height_map", 1, true);
+          marker_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("height_markers", 1);
+
+          // Start processing thread
+          processing_thread_ = std::thread([this]() { processingLoop(); });
+
+          ROS_INFO("Height mapping node initialized");
+          return true;
+      }
+
+      void onLidarMessage(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+          // Quick validation in callback
+          if (msg->width * msg->height == 0) {
+              ROS_WARN_THROTTLE(1.0, "Received empty cloud");
+              return;
+          }
+
+          // Add to queue (non-blocking)
+          if (!input_queue_.tryPush(msg, std::chrono::milliseconds(1))) {
+              ROS_WARN_THROTTLE(1.0, "Input queue full, dropping message");
+          }
+      }
+
+      void processingLoop() {
+          while (::ros::ok()) {
+              // Get next message (blocking with timeout)
+              sensor_msgs::PointCloud2::ConstPtr msg;
+              if (!input_queue_.waitAndPop(msg, std::chrono::milliseconds(100))) {
+                  continue;  // Timeout, check ros::ok() again
+              }
+
+              try {
+                  // Convert and process
+                  core::PipelineContext ctx;
+                  ctx.cloud = convertToCore(msg);
+                  ctx.map = *current_map_;
+
+                  // Run pipeline
+                  pipeline_->process(ctx);
+
+                  // Update map
+                  *current_map_ = ctx.map;
+
+                  // Publish results
+                  publishMap();
+
+              } catch (const std::exception& e) {
+                  ROS_ERROR("Processing error: %s", e.what());
+              }
+          }
+      }
+
+      void publishMap() {
+          if (map_pub_.getNumSubscribers() == 0) return;
+
+          // Convert and publish
+          auto msg = convertToGridMapMsg(*current_map_);
+          msg.header.stamp = ::ros::Time::now();
+          msg.header.frame_id = "map";
+          map_pub_.publish(msg);
+      }
+  };
+
+  // Main function
+  int main(int argc, char** argv) {
+      ::ros::init(argc, argv, "height_mapping_node");
+
+      HeightMappingNodeImpl node;
+      if (!node.initialize()) {
+          ROS_ERROR("Failed to initialize node");
+          return 1;
+      }
+
+      // Spin in main thread for ROS callbacks
+      ::ros::spin();
+
+      return 0;
+  }
+
+  6. Dynamic Reconfiguration
+
+  // Support for dynamic_reconfigure
+  class DynamicHeightMappingNode {
+  private:
+      dynamic_reconfigure::Server<HeightMappingConfig> config_server_;
+
+      void configCallback(HeightMappingConfig& config, uint32_t level) {
+          // Update pipeline stages dynamically
+          if (level & 0x1) {  // Filter parameters changed
+              pipeline_->updateStage("VoxelFilter",
+                  [&](auto* stage) {
+                      stage->setVoxelSize(config.voxel_size);
+                  });
+          }
+
+          if (level & 0x2) {  // Estimator parameters changed
+              pipeline_->updateStage("HeightEstimation",
+                  [&](auto* stage) {
+                      stage->setProcessNoise(config.process_noise);
+                      stage->setMeasurementNoise(config.measurement_noise);
+                  });
+          }
+
+          // Update processing mode
+          if (config.enable_gpu && !gpu_enabled_) {
+              switchToGPUPipeline();
+          }
+      }
+  };
+
+● Summary
+
+  The ROS node acts as a bridge between ROS topics and the core processing pipeline:
+
+  1. Callbacks receive ROS messages (sensor_msgs::PointCloud2, etc.)
+  2. Queues buffer messages for async processing (avoiding callback blocking)
+  3. Converters transform ROS messages ↔ Core data structures
+  4. Pipeline processes data using pure C++ algorithms
+  5. Publishers send results back to ROS ecosystem
+
+  This design ensures:
+  - Non-blocking callbacks (fast topic handling)
+  - Decoupled processing (core doesn't know about ROS)
+  - Flexible threading (can process in callback or separate thread)
+  - Testability (core pipeline works without ROS)
+
+  The key insight is that the ROS node is just a thin adapter layer - all the heavy processing happens in the ROS-independent core pipeline.
+

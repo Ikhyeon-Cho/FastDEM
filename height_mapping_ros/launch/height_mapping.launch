@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Height Mapping Node with Dual YAML Configuration -->
+    <!-- ROS parameters and Core configuration from separate YAML files -->
+
+    <!-- Arguments for config files (can be overridden) -->
+    <arg name="ros_config" default="$(find height_mapping)/config/ros_params.yaml" />
+    <arg name="engine_config" default="$(find height_mapping)/config/engine_config.yaml" />
+
+    <node name="height_mapping" pkg="height_mapping" type="height_mapping_node" output="screen">
+
+        <!-- Load ROS parameters from YAML file -->
+        <rosparam file="$(arg ros_config)" command="load" />
+
+        <!-- Override core config file path if provided -->
+        <param name="core_config_file" value="$(arg engine_config)" />
+
+    </node>
+
+</launch>

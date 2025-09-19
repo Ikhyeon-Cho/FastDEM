@@ -1,0 +1,28 @@
+# ROS-specific parameters for Height Mapping Node
+# This file contains ONLY ROS communication and behavior settings
+# Core processing settings are in engine_config.yaml
+
+# Path to Core engine configuration file
+# Can use package:// or absolute path
+core_config_file: "$(find height_mapping)/config/engine_config.yaml"
+
+# ROS Communication Topics
+topics:
+  point_cloud: "/velodyne_points"
+  height_map: "height_map"
+  processed_cloud: "processed_cloud"
+
+# ROS Publishing Settings
+publishing:
+  rate: 10.0                    # Publishing rate in Hz
+  processed_cloud: false        # Enable processed cloud publishing
+  markers: true                 # Enable visualization markers
+
+# ROS Processing Settings
+processing:
+  queue_size: 10                # Message queue size
+
+# TF Transform Settings
+transform:
+  lookup_timeout: 0.1           # TF lookup timeout in seconds
+  extrapolation_time: 0.05      # TF extrapolation time in seconds

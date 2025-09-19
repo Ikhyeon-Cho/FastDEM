@@ -1,0 +1,50 @@
+# Fast Processing Configuration
+# Optimized for speed over accuracy
+
+map:
+  width: 5.0         # Smaller map for faster processing
+  height: 5.0
+  resolution: 0.2    # Lower resolution
+  frame_id: "map"
+
+engine:
+  thread_safe: true
+  auto_reset_on_error: true  # Auto-recover from errors
+  max_queue_size: 5           # Smaller queue
+  enable_statistics: false    # Disable for speed
+
+pipeline:
+  stages:
+    transform: true
+    voxel_filter: true      # More aggressive filtering
+    passthrough_filter: false  # Skip for speed
+    height_estimation: true
+    map_update: true
+
+  filters:
+    voxel:
+      size: 0.1  # Larger voxel size for faster processing
+
+    passthrough:
+      x_min: -50.0
+      x_max: 50.0
+      y_min: -50.0
+      y_max: 50.0
+      z_min: -1.5
+      z_max: 3.0
+
+  transform:
+    target_frame: "map"
+
+  estimator:
+    type: "mean"  # Fastest estimator
+
+  map_update:
+    mode: "threshold"  # Update only when moved
+    threshold: 2.0     # Larger threshold
+    robot_frame: "base_link"
+    map_frame: "map"
+
+  behavior:
+    stop_on_error: false  # Continue on errors
+    enable_profiling: false

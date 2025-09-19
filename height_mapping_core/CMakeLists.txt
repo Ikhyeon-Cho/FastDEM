@@ -3,6 +3,7 @@ project(height_mapping_core)
 add_compile_options(-std=c++17)
 
 find_package(PCL REQUIRED)
+find_package(yaml-cpp REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
     height_map_core
 )
@@ -29,23 +30,27 @@ include_directories(
   include
   ${PCL_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDE_DIR}
 )
 
 link_directories(${PCL_LIBRARY_DIRS})
 
-# Library will be populated with algorithm sources
+# Core library with engine implementation
 add_library(${PROJECT_NAME}
-  src/HeightMapper.cpp
-  src/GlobalMapper.cpp
-  src/estimators/StatMeanEstimator.cpp
-  src/estimators/KalmanEstimator.cpp
-  src/estimators/MovingAverageEstimator.cpp
-  src/filters/FastHeightFilter.cpp
+  src/engine/height_mapping_engine.cpp
+  src/config/config_loader.cpp
+  src/pipeline/stage_factory.cpp
+)
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(${PROJECT_NAME}
   ${PCL_LIBRARIES}
   ${catkin_LIBRARIES}
+  ${YAML_CPP_LIBRARIES}
 )
 
 #############
@@ -61,3 +66,5 @@ install(TARGETS ${PROJECT_NAME}
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )
+
+# Testing section - tests will be added here

@@ -12,9 +12,11 @@
 #include <iostream>
 #include <pcl/point_cloud.h>
 
-template <typename PointT> bool hasEmptyCloud(const pcl::PointCloud<PointT> &cloud) {
+template <typename PointT>
+bool hasEmptyCloud(const pcl::PointCloud<PointT> &cloud) {
   if (cloud.empty()) {
-    std::cout << "\033[33m[HeightEstimator]: Input cloud is empty! \033[0m" << std::endl;
+    std::cout << "\033[33m[HeightEstimator]: Input cloud is empty! \033[0m"
+              << std::endl;
     return true;
   }
   return false;
