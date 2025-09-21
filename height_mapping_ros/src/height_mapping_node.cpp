@@ -5,22 +5,20 @@
  *      Author: Ikhyeon Cho
  *	Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
  *       Email: tre0430@korea.ac.kr
-*/
+ */
 
 #include <memory>
 #include <ros/package.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
-#include "height_mapping_core/config/config_loader.h" // For YAML-based Core config
-#include "height_mapping_core/engine/height_mapping_engine.h"
+#include "height_mapping_core/mapping_engine.h"
 #include "height_mapping_ros/adapters/gridmap_publisher.h"
 #include "height_mapping_ros/adapters/tf2_transform_provider.h"
 #include "height_mapping_ros/node_config.h"
 #include "height_mapping_ros/utils/pointcloud_converter.h"
 
-namespace height_mapping {
-namespace ros {
+namespace height_mapping::ros {
 
 class MappingNode {
 public:
@@ -32,7 +30,7 @@ private:
     ROS_INFO("Initializing Height Mapping Node...");
 
     // 1. Load ROS-specific configuration from parameter server
-    ros_config_ = MappingNodeConfig::loadFromROS(private_nh_);
+    ros_config_ = MappingNodeConfig::loadFromROSParameters(private_nh_);
     if (!ros_config_.validate()) {
       throw std::runtime_error("Invalid ROS configuration");
     }
@@ -124,7 +122,8 @@ private:
       core::PointCloudXYZ cloud;
       utils::PointCloudConverter::rosToCore(*msg, cloud);
 
-      // 2. Integrate cloud into the height map (move since cloud not used after)
+      // 2. Integrate cloud into the height map (move since cloud not used
+      // after)
       mapping_engine_->integrateCloud(std::move(cloud));
 
       // 3. Publish processed cloud if enabled and available
@@ -133,7 +132,7 @@ private:
         auto processed_cloud = mapping_engine_->getProcessedCloud();
         if (processed_cloud) {
           sensor_msgs::PointCloud2 cloud_msg =
-              utils::PointCloudConverter::coreToROS(*processed_cloud);
+              ros::utils::PointCloudConverter::coreToROS(*processed_cloud);
           cloud_msg.header.stamp = msg->header.stamp;
           cloud_msg.header.frame_id = processed_cloud->frame_id;
           processed_cloud_publisher_.publish(cloud_msg);
@@ -180,8 +179,7 @@ private:
   MappingNodeConfig ros_config_;
 };
 
-} // namespace ros
-} // namespace height_mapping
+} // namespace height_mapping::ros
 
 int main(int argc, char **argv) {
 

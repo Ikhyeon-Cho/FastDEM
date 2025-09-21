@@ -22,10 +22,13 @@
 #include <memory>
 #include <string>
 
-#include "height_map_core/height_map.h"
+#include "height_mapping_core/data/height_map.h"
 #include "height_mapping_core/data/point_cloud.h"
 
 namespace height_mapping::ros {
+
+// Import types from height_map namespace
+using PointCloudXYZ = height_map::PointCloudXYZ;
 
 class GridMapPublisher {
 public:
@@ -271,7 +274,7 @@ public:
                           const std::string &topic = "processed_cloud")
       : publisher_(nh.advertise<sensor_msgs::PointCloud2>(topic, 1)) {}
 
-  void publish(const core::PointCloudXYZ &cloud) {
+  void publish(const PointCloudXYZ &cloud) {
     if (publisher_.getNumSubscribers() == 0)
       return;
 

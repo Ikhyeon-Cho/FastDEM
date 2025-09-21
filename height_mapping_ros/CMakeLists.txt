@@ -14,7 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
     tf2_eigen
     grid_map_ros
     pcl_conversions
-    height_map_core
     height_mapping_core
     message_generation
 )
@@ -43,7 +42,6 @@ catkin_package(
     tf2_ros
     grid_map_ros
     pcl_conversions
-    height_map_core
     height_mapping_core
     message_runtime
 )

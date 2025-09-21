@@ -15,23 +15,25 @@
 #include <pcl/point_types.h>
 #include <sensor_msgs/PointCloud2.h>
 
-namespace height_mapping {
-namespace utils {
+namespace height_mapping::ros::utils {
+
+// Import types from height_map namespace
+using PointCloudXYZ = height_map::PointCloudXYZ;
 
 class PointCloudConverter {
 public:
   // Convert ROS message to core point cloud (optimized, no PCL intermediate)
   static void rosToCore(const sensor_msgs::PointCloud2 &ros_msg,
-                        core::PointCloudXYZ &core_cloud);
+                        PointCloudXYZ &core_cloud);
 
   // Convert core point cloud to ROS message
   static sensor_msgs::PointCloud2
-  coreToROS(const core::PointCloudXYZ &core_cloud);
+  coreToROS(const PointCloudXYZ &core_cloud);
 
   // Convert PCL to core point cloud
   template <typename PointT>
   static void pclToCore(const pcl::PointCloud<PointT> &pcl_cloud,
-                        core::PointCloudXYZ &core_cloud) {
+                        PointCloudXYZ &core_cloud) {
     core_cloud.timestamp = pcl_cloud.header.stamp * 1000; // Convert us to ns
     core_cloud.frame_id = pcl_cloud.header.frame_id;
     core_cloud.points.clear();
@@ -46,7 +48,7 @@ public:
 
   // Convert core to PCL point cloud
   template <typename PointT>
-  static void coreToPCL(const core::PointCloudXYZ &core_cloud,
+  static void coreToPCL(const PointCloudXYZ &core_cloud,
                         pcl::PointCloud<PointT> &pcl_cloud) {
     pcl_cloud.header.frame_id = core_cloud.frame_id;
     pcl_cloud.header.stamp = core_cloud.timestamp / 1000; // Convert ns to us
@@ -75,7 +77,6 @@ public:
   static bool validate(const sensor_msgs::PointCloud2 &msg);
 };
 
-} // namespace utils
-} // namespace height_mapping
+} // namespace height_mapping::ros::utils
 
 #endif // HEIGHT_MAPPING_POINTCLOUD_CONVERTER_H

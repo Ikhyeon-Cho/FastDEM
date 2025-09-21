@@ -16,6 +16,11 @@
 
 namespace height_mapping::core {
 
+// Import types from height_map namespace
+using Point3D = height_map::Point3D;
+using PointXYZI = height_map::PointXYZI;
+using PointXYZRGB = height_map::PointXYZRGB;
+
 // 3D rigid transformation (rotation + translation)
 class Transform3D {
 private:

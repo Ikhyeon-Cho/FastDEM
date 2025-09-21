@@ -14,9 +14,7 @@
   <depend>pcl_conversions</depend>
   <depend>message_generation</depend>
   <depend>message_runtime</depend>
-  <depend>height_map_core</depend>
   <depend>height_mapping_core</depend>
-  <depend>libpcl-all-dev</depend>
 
   <export>
   </export>

@@ -7,16 +7,7 @@
   <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>
-
-  <!-- Core dependencies -->
-  <depend>height_map_core</depend>
-  <depend>eigen</depend>
-
-  <!-- For filters and algorithms -->
-  <depend>libpcl-all-dev</depend>
-
-  <!-- For testing -->
-  <test_depend>gtest</test_depend>
+  <depend>grid_map_core</depend>
 
   <export>
   </export>

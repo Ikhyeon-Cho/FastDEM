@@ -11,11 +11,10 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <ros/ros.h>
 
-namespace height_mapping {
-namespace utils {
+namespace height_mapping::ros::utils {
 
 void PointCloudConverter::rosToCore(const sensor_msgs::PointCloud2 &ros_msg,
-                                    core::PointCloudXYZ &core_cloud) {
+                                    PointCloudXYZ &core_cloud) {
   // Set metadata
   core_cloud.timestamp = ros_msg.header.stamp.toNSec();
   core_cloud.frame_id = ros_msg.header.frame_id;
@@ -61,7 +60,7 @@ void PointCloudConverter::rosToCore(const sensor_msgs::PointCloud2 &ros_msg,
 }
 
 sensor_msgs::PointCloud2
-PointCloudConverter::coreToROS(const core::PointCloudXYZ &core_cloud) {
+PointCloudConverter::coreToROS(const PointCloudXYZ &core_cloud) {
   // Use PCL for convenience in creating the ROS message structure
   pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
   coreToPCL(core_cloud, pcl_cloud);
@@ -104,5 +103,4 @@ bool PointCloudConverter::validate(const sensor_msgs::PointCloud2 &msg) {
   return true;
 }
 
-} // namespace utils
-} // namespace height_mapping
+} // namespace height_mapping::ros::utils

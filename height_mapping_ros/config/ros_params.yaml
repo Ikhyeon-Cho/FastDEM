@@ -8,7 +8,7 @@ core_config_file: "$(find height_mapping)/config/engine_config.yaml"
 
 # ROS Communication Topics
 topics:
-  point_cloud: "/velodyne_points"
+  point_cloud: "/velodyne/tilted/velodyne_points"
   height_map: "height_map"
   processed_cloud: "processed_cloud"
 

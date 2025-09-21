@@ -13,8 +13,7 @@
 #include <ros/ros.h>
 #include <string>
 
-namespace height_mapping {
-namespace ros {
+namespace height_mapping::ros {
 
 struct MappingNodeConfig {
 
@@ -43,10 +42,10 @@ struct MappingNodeConfig {
   std::string core_config_file = "";
 
   // Load from ROS parameter server
-  static MappingNodeConfig loadFromROS(::ros::NodeHandle &pnh) {
+  static MappingNodeConfig loadFromROSParameters(::ros::NodeHandle &pnh) {
     MappingNodeConfig config;
 
-    // Load ROS communication topics
+    // Load ROS topics
     config.topics.point_cloud =
         pnh.param<std::string>("topics/point_cloud", config.topics.point_cloud);
     config.topics.height_map =
@@ -104,7 +103,6 @@ struct MappingNodeConfig {
   }
 };
 
-} // namespace ros
-} // namespace height_mapping
+} // namespace height_mapping::ros
 
 #endif // HEIGHT_MAPPING_ROS_NODE_CONFIG_H

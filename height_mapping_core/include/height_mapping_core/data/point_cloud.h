@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-namespace height_mapping::core {
+namespace height_map {
 
 // Basic 3D point
 struct Point3D {
@@ -125,12 +125,7 @@ public:
 
   explicit PointCloud(size_t reserve_size) { points.reserve(reserve_size); }
 
-  // Factory method
-  static Ptr create() { return std::make_shared<PointCloud>(); }
-
-  static Ptr create(size_t reserve_size) {
-    return std::make_shared<PointCloud>(reserve_size);
-  }
+  // Factory methods removed - use std::make_shared directly for consistency
 
   // Size and capacity
   size_t size() const { return points.size(); }
@@ -328,6 +323,6 @@ using PointCloudXYZ = PointCloud<Point3D>;
 using PointCloudXYZI = PointCloud<PointXYZI>;
 using PointCloudXYZRGB = PointCloud<PointXYZRGB>;
 
-} // namespace height_mapping::core
+} // namespace height_map
 
 #endif // HEIGHT_MAPPING_CORE_DATA_POINT_CLOUD_H

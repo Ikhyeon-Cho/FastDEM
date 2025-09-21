@@ -20,7 +20,7 @@
 #include <optional>
 
 #include "height_mapping_core/data/transform.h"
-#include "height_mapping_core/pipeline/stages/transform_stage.h" // Has ITransformProvider
+#include "height_mapping_core/interfaces/transform_provider.h"
 
 namespace height_mapping::ros {
 
