@@ -11,12 +11,12 @@
 #define HEIGHT_MAPPING_CORE_PIPELINE_MAPPING_CONTEXT_H
 
 #include "height_mapping_core/data/height_map.h"
-#include "height_mapping_core/data/point_cloud.h"
+#include "height_mapping_core/geometry/point_cloud.h"
 #include "pipeline_core/context.h"
 #include <memory>
 
 namespace height_mapping::core {
-using PointCloudXYZ = height_map::PointCloudXYZ;
+using PointCloud = geometry::PointCloud;
 using HeightMap = height_map::HeightMap;
 
 /**
@@ -28,29 +28,34 @@ using HeightMap = height_map::HeightMap;
  */
 class MappingContext : public pipeline::Context {
 public:
-  MappingContext()
-      : cloud_(std::make_shared<PointCloudXYZ>()),
-        map_(std::make_shared<HeightMap>()) {}
+  // Constructor requires both cloud and map - no default constructor
+  MappingContext(std::shared_ptr<PointCloud> cloud,
+                 std::shared_ptr<HeightMap> map)
+      : cloud_(cloud), map_(map) {
+    if (!cloud_) {
+      throw std::invalid_argument("MappingContext: cloud cannot be null");
+    }
+    if (!map_) {
+      throw std::invalid_argument("MappingContext: map cannot be null");
+    }
+  }
 
   // Simple, consistent names for common access
-  PointCloudXYZ &cloud() { return *cloud_; }
-  const PointCloudXYZ &cloud() const { return *cloud_; }
+  PointCloud &cloud() { return *cloud_; }
+  const PointCloud &cloud() const { return *cloud_; }
 
-  height_map::HeightMap &map() { return *map_; }
-  const height_map::HeightMap &map() const { return *map_; }
+  HeightMap &map() { return *map_; }
+  const HeightMap &map() const { return *map_; }
 
-  // Ownership management (less common operations)
-  void replaceCloud(PointCloudXYZ::Ptr ptr) { cloud_ = ptr; }
-  void replaceMap(std::shared_ptr<height_map::HeightMap> ptr) { map_ = ptr; }
-
-  PointCloudXYZ::Ptr cloudPtr() const { return cloud_; }
-  std::shared_ptr<height_map::HeightMap> mapPtr() const { return map_; }
+  // Direct pointer access when needed
+  std::shared_ptr<PointCloud> cloudPtr() const { return cloud_; }
+  std::shared_ptr<HeightMap> mapPtr() const { return map_; }
 
   // Reset for new processing (keeps map)
   void reset() { cloud_->clear(); }
 
 private:
-  PointCloudXYZ::Ptr cloud_;
+  PointCloud::Ptr cloud_;
   std::shared_ptr<height_map::HeightMap> map_;
 };
 

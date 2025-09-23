@@ -1,6 +1,27 @@
 /*
  * exceptions.h
  *
+ * INTERNAL API - Exception hierarchy for pipeline error handling.
+ *
+ * This header is primarily for internal use by the pipeline framework.
+ * Users typically don't need to include this directly unless they want
+ * to handle specific pipeline errors.
+ *
+ * Exception hierarchy:
+ *   StageError (base)
+ *   ├── CriticalError    - Unrecoverable errors that stop the pipeline
+ *   └── RecoverableError - Errors that may allow pipeline to continue
+ *
+ * Advanced usage (error handling in custom stages):
+ *   void processImpl(Context& ctx) override {
+ *     if (critical_condition) {
+ *       throw CriticalError(getName(), "Cannot continue without resource");
+ *     }
+ *     if (can_skip) {
+ *       throw RecoverableError(getName(), "Skipping invalid data");
+ *     }
+ *   }
+ *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
  *	 Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
@@ -20,13 +41,12 @@ namespace pipeline {
  */
 class StageError : public std::runtime_error {
 public:
-  StageError(const std::string& stage_name, const std::string& message)
+  StageError(const std::string &stage_name, const std::string &message)
       : std::runtime_error("[" + stage_name + "] " + message),
-        stage_name_(stage_name),
-        message_(message) {}
+        stage_name_(stage_name), message_(message) {}
 
-  const std::string& getStage() const { return stage_name_; }
-  const std::string& getMessage() const { return message_; }
+  const std::string &getStage() const { return stage_name_; }
+  const std::string &getMessage() const { return message_; }
 
 private:
   std::string stage_name_;
@@ -43,7 +63,7 @@ private:
  */
 class CriticalError : public StageError {
 public:
-  CriticalError(const std::string& stage_name, const std::string& message)
+  CriticalError(const std::string &stage_name, const std::string &message)
       : StageError(stage_name, message) {}
 };
 
@@ -57,7 +77,7 @@ public:
  */
 class RecoverableError : public StageError {
 public:
-  RecoverableError(const std::string& stage_name, const std::string& message)
+  RecoverableError(const std::string &stage_name, const std::string &message)
       : StageError(stage_name, message) {}
 };
 

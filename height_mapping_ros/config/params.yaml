@@ -1,0 +1,15 @@
+# ROS Node Configuration for Height Mapping
+mapping_config: "$(find height_mapping_core)/config/default.yaml"
+
+# Input/Output topics
+input_cloud_topic: "/velodyne/tilted/velodyne_points"
+output_map_topic: "height_map"
+processed_cloud_topic: "processed_cloud"
+
+# Publishing settings
+publish_rate: 10.0              # Hz
+publish_processed_cloud: true   # Enable processed cloud output
+
+# Transform settings
+tf_timeout: 0.1                 # TF lookup timeout (seconds)
+tf_extrapolation: 0.05          # TF extrapolation (seconds)

@@ -8,101 +8,140 @@
  */
 
 #include "height_mapping_core/mapping_engine.h"
+#include "logger/logger.h"
 #include "pipeline_core/pipeline_builder.h"
-#include "pipeline_core/config_loader.h"
+
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 
 namespace height_mapping::core {
 
 MappingEngine::MappingEngine(
-    const EngineConfig &config,
-    std::shared_ptr<ITransformProvider> transform_provider)
+    std::shared_ptr<ITransformProvider> transform_provider,
+    const Config &config)
     : config_(config), transform_provider_(transform_provider) {
 
   initializeMap();
-  setupPipeline();
-  initialized_ = true;
-}
-
-// Factory method: Load pipeline config from YAML
-std::unique_ptr<MappingEngine> MappingEngine::createFromFile(
-    const std::string &config_file,
-    std::shared_ptr<ITransformProvider> transform_provider) {
-
-  // Create a simple engine config with the pipeline config file path
-  EngineConfig config;
-  config.pipeline_config_file = config_file;
-
-  // TODO: Load map config from YAML if needed
-  // For now, use defaults
-
-  return std::make_unique<MappingEngine>(config, transform_provider);
+  setupMappingPipeline();
 }
 
 void MappingEngine::initializeMap() {
-  // Create and initialize the height map
   map_ = std::make_shared<height_map::HeightMap>();
   map_->initialize(config_.map.width, config_.map.height,
                    config_.map.resolution);
   map_->setFrameId(config_.map.frame_id);
 }
 
-void MappingEngine::setupPipeline() {
-  // If we have a pipeline config file, load it
-  if (!config_.pipeline_config_file.empty()) {
-    mapping_pipeline_ = pipeline::ConfigLoader::createPipelineFromFile(config_.pipeline_config_file);
-  } else {
-    // Create a default pipeline with basic stages
-    std::vector<pipeline::StageConfig> stage_configs;
-
-    // Default transform stage
-    pipeline::StageConfig transform_cfg;
-    transform_cfg.type = "TransformStage";
-    transform_cfg.params["target_frame"] = "map";
-    stage_configs.push_back(transform_cfg);
-
-    // Default voxel filter
-    pipeline::StageConfig voxel_cfg;
-    voxel_cfg.type = "VoxelFilterStage";
-    voxel_cfg.params["voxel_size"] = "0.05";
-    stage_configs.push_back(voxel_cfg);
-
-    // Build pipeline
-    mapping_pipeline_ = pipeline::PipelineBuilder()
-                            .addStages(stage_configs)
-                            .stopOnError(true)
-                            .build();
-  }
-}
-
-void MappingEngine::integrateCloud(const PointCloudXYZ &cloud) {
-  MappingContext ctx;
-  ctx.cloud() = cloud;
-  integrateCloudImpl(ctx);
-}
-
-void MappingEngine::integrateCloud(PointCloudXYZ &&cloud) {
-  MappingContext ctx;
-  ctx.cloud() = std::move(cloud);
-  integrateCloudImpl(ctx);
-}
-
-void MappingEngine::integrateCloudImpl(MappingContext &ctx) {
-  if (!initialized_) {
-    std::cerr << "[MappingEngine] Engine not initialized" << std::endl;
+void MappingEngine::setupMappingPipeline() {
+  // Use pipeline config if available (from YAML)
+  if (!config_.pipeline.stages.empty()) {
+    mapping_pipeline_ = pipeline::PipelineBuilder::fromConfig(config_.pipeline);
+    std::cout << "Pipeline created from configuration with "
+              << config_.pipeline.stages.size() << " stages" << std::endl;
     return;
   }
 
-  // Set the map reference
-  ctx.replaceMap(map_);
+  // Fall back to default hardcoded pipeline
+  std::cout << "Using default pipeline (no stages in config)" << std::endl;
+  setupDefaultPipeline();
+}
+
+void MappingEngine::setupDefaultPipeline() {
+  std::vector<pipeline::StageConfig> stage_configs;
+
+  // Update map origin to follow robot (if robot-centric mapping is enabled)
+  if (config_.map.robot_centric) {
+    pipeline::StageConfig map_origin_cfg;
+    map_origin_cfg.name = "MapOriginUpdate";
+    map_origin_cfg.params["update_mode"] = config_.map.update_mode;
+    map_origin_cfg.params["update_threshold"] =
+        std::to_string(config_.map.update_threshold);
+    map_origin_cfg.params["robot_frame"] = "base_link";
+    map_origin_cfg.params["map_frame"] = config_.map.frame_id;
+    stage_configs.push_back(map_origin_cfg);
+  }
+
+  // Transform to base frame for filtering
+  pipeline::StageConfig cloud_to_base;
+  cloud_to_base.name = "PointCloudTransform";
+  cloud_to_base.params["target_frame"] = "base_link";
+  stage_configs.push_back(cloud_to_base);
+
+  // Voxel filter for downsampling (after transform to base frame)
+  pipeline::StageConfig voxel_cfg;
+  voxel_cfg.name = "VoxelFilter";
+  voxel_cfg.params["voxel_size"] = "0.05";           // 5cm voxels
+  voxel_cfg.params["reduction_method"] = "centroid"; // Use centroid method
+  stage_configs.push_back(voxel_cfg);
+
+  // Filter local pointcloud (in base_link frame)
+  pipeline::StageConfig passthrough_cfg;
+  passthrough_cfg.name = "PassthroughFilter";
+  passthrough_cfg.params["x_min"] = "-10.0";
+  passthrough_cfg.params["x_max"] = "10.0";
+  passthrough_cfg.params["y_min"] = "-10.0";
+  passthrough_cfg.params["y_max"] = "10.0";
+  passthrough_cfg.params["z_min"] = "-0.1";
+  passthrough_cfg.params["z_max"] = "2.0";
+  stage_configs.push_back(passthrough_cfg);
+
+  // Transform to map frame for height estimation
+  pipeline::StageConfig transform_cfg;
+  transform_cfg.name = "PointCloudTransform";
+  transform_cfg.params["target_frame"] = config_.map.frame_id;
+  stage_configs.push_back(transform_cfg);
+
+  // // Raycasting for height correction (before estimation)
+  // pipeline::StageConfig raycast_cfg;
+  // raycast_cfg.name = "Raycasting";
+  // raycast_cfg.params["max_ground_angle"] = "-5.0";     // degrees
+  // raycast_cfg.params["correction_threshold"] = "0.02"; // 2cm
+  // raycast_cfg.params["enable_correction"] = "true";
+  // stage_configs.push_back(raycast_cfg);
+
+  // Height estimation
+  pipeline::StageConfig height_est_cfg;
+  height_est_cfg.name = "HeightEstimation";
+  height_est_cfg.params["estimator_type"] = "incremental_mean";
+  stage_configs.push_back(height_est_cfg);
+
+  // Build mapping pipeline using Config
+  pipeline::Config default_pipeline_config;
+  default_pipeline_config.stages = stage_configs;
+  default_pipeline_config.stop_on_error = true;
+  mapping_pipeline_ =
+      pipeline::PipelineBuilder::fromConfig(default_pipeline_config);
+}
+
+void MappingEngine::integrateCloud(std::shared_ptr<PointCloud> cloud) {
+  // Validation
+  if (!cloud) {
+    std::cerr << "[MappingEngine] Null cloud pointer provided" << std::endl;
+    return;
+  }
+  if (!mapping_pipeline_) {
+    std::cerr << "[MappingEngine] Mapping pipeline not set up" << std::endl;
+    return;
+  }
+  if (cloud->empty()) {
+    std::cerr << "[MappingEngine] Empty point cloud, skipping integration"
+              << std::endl;
+    return;
+  }
+  if (cloud->frameId().empty()) {
+    std::cerr << "[MappingEngine] Point cloud has empty frame_id, skipping"
+              << std::endl;
+    return;
+  }
+
+  // Create context with cloud and map
+  MappingContext ctx(cloud, map_);
 
   // Inject transform provider if available
   if (transform_provider_) {
-    // The transform stage will look for this in the context
-    // (This would require updating the TransformStage to check for a
-    // provider)
-    // For now, we'll just ensure the transform stage has access
+    ctx.setService(transform_provider_);
   }
 
   // Process through pipeline
@@ -119,7 +158,7 @@ void MappingEngine::integrateCloudImpl(MappingContext &ctx) {
   } catch (const std::exception &e) {
     std::cerr << "[MappingEngine] Pipeline processing failed: " << e.what()
               << std::endl;
-    if (config_.engine.auto_reset_on_error) {
+    if (config_.engine.reset_on_error) {
       reset();
     }
   }
@@ -134,7 +173,7 @@ MappingEngine::getHeightMap() const {
   return map_;
 }
 
-std::shared_ptr<const PointCloudXYZ> MappingEngine::getProcessedCloud() const {
+std::shared_ptr<const PointCloud> MappingEngine::getProcessedCloud() const {
   if (config_.engine.thread_safe) {
     std::shared_lock<std::shared_mutex> lock(cloud_mutex_);
     return last_processed_cloud_;
@@ -149,34 +188,6 @@ void MappingEngine::reset() {
   } else {
     map_->clear();
   }
-
-  // Reset statistics
-  welford_stats_.count = 0;
-  welford_stats_.mean = 0.0;
-  welford_stats_.M2 = 0.0;
-  welford_stats_.errors = 0;
-}
-
-MappingEngine::Statistics MappingEngine::getStatistics() const {
-  Statistics stats;
-  stats.clouds_processed = welford_stats_.count;
-  stats.avg_processing_time_ms = welford_stats_.mean;
-  if (welford_stats_.count > 1) {
-    stats.variance_processing_time_ms = welford_stats_.M2 / (welford_stats_.count - 1);
-  }
-  stats.pipeline_errors = welford_stats_.errors;
-  return stats;
-}
-
-void MappingEngine::updateStatistics(double duration_ms) {
-  size_t n = ++welford_stats_.count;
-  double old_mean = welford_stats_.mean.load();
-  double delta = duration_ms - old_mean;
-  double new_mean = old_mean + delta / n;
-  welford_stats_.mean.store(new_mean);
-  double delta2 = duration_ms - new_mean;
-  double old_M2 = welford_stats_.M2.load();
-  welford_stats_.M2.store(old_M2 + delta * delta2);
 }
 
 } // namespace height_mapping::core

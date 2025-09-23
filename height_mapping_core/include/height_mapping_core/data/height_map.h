@@ -14,37 +14,44 @@
 
 namespace height_map {
 
+namespace layer {
+
+// Core layers (always initialized)
+static constexpr const char *elevation = "elevation";
+static constexpr const char *variance = "variance";
+static constexpr const char *elevation_min = "elevation_min";
+static constexpr const char *elevation_max = "elevation_max";
+static constexpr const char *count = "measurement_count";
+
+// Statistical quality layers
+static constexpr const char *standard_error = "standard_error";
+static constexpr const char *confidence_interval = "confidence_interval_95";
+
+// Optional layers
+static constexpr const char *confidence = "confidence";
+static constexpr const char *traversability = "traversability";
+static constexpr const char *raycasting = "raycasting";
+static constexpr const char *scan_elevation = "scan_elevation";
+
+// Sensor data layers
+static constexpr const char *intensity = "intensity";
+static constexpr const char *color_r = "color_r";
+static constexpr const char *color_g = "color_g";
+static constexpr const char *color_b = "color_b";
+} // namespace layers
+
 class HeightMap : public grid_map::GridMap {
 public:
-  // ============== LAYER DEFINITIONS ==============
-
-  // Core layers (initialized by default)
-  static constexpr const char *ELEVATION = "elevation";
-  static constexpr const char *VARIANCE = "variance";
-
-  // Statistics layers (optional)
-  static constexpr const char *MIN_HEIGHT = "min_height";
-  static constexpr const char *MAX_HEIGHT = "max_height";
-  static constexpr const char *COUNT = "measurement_count";
-  static constexpr const char *CONFIDENCE = "confidence";
-
-  // Processing layers (optional)
-  static constexpr const char *RAYCASTING = "raycasting";
-  static constexpr const char *SCAN_HEIGHT = "scan_height";
-  static constexpr const char *TRAVERSABILITY = "traversability";
-
-  // Sensor data layers (optional)
-  static constexpr const char *INTENSITY = "intensity";
-  static constexpr const char *COLOR_R = "color_r";
-  static constexpr const char *COLOR_G = "color_g";
-  static constexpr const char *COLOR_B = "color_b";
-
   /**
-   * @brief Default constructor - initializes elevation and variance layers
+   * @brief Default constructor - initializes core layers
    */
-  HeightMap() : grid_map::GridMap({ELEVATION, VARIANCE}) {
-    get(VARIANCE).setConstant(1000.0f);
-    setBasicLayers({ELEVATION});
+  HeightMap()
+      : grid_map::GridMap({layer::elevation, layer::variance,
+                           layer::elevation_min, layer::elevation_max,
+                           layer::count}) {
+    // Initialize layers with appropriate defaults
+    get(layer::count).setConstant(0.0f);
+    setBasicLayers({layer::elevation});
   }
 
   /**
@@ -53,7 +60,10 @@ public:
   void initialize(float width, float height, float resolution) {
     setGeometry(grid_map::Length(width, height), resolution);
     clearAll();
-    get(VARIANCE).setConstant(1000.0f);
+
+    // Reset statistics to defaults
+    get(layer::variance).setConstant(1000.0f);
+    get(layer::count).setConstant(0.0f);
   }
 
   /**
@@ -67,66 +77,90 @@ public:
   /**
    * @brief Check if map is empty (all cells unset)
    */
-  bool empty() const { return get(ELEVATION).array().isNaN().all(); }
+  bool empty() const { return get(layer::elevation).array().isNaN().all(); }
 
   /**
-   * @brief Clear all height data (keeps geometry)
+   * @brief Clear all elevation data (keeps geometry)
    */
   void clear() {
     clearAll();
-    get(VARIANCE).setConstant(1000.0f);
+    get(layer::variance).setConstant(1000.0f);
+    get(layer::count).setConstant(0.0f);
   }
 
   /**
-   * @brief Set height at position
+   * @brief Set elevation at position
    */
-  bool setHeight(float x, float y, float height) {
+  bool setElevation(float x, float y, float elevation) {
     grid_map::Position pos(x, y);
     if (!isInside(pos))
       return false;
 
-    atPosition(ELEVATION, pos) = height;
+    atPosition(layer::elevation, pos) = elevation;
     return true;
   }
 
   /**
-   * @brief Set height with variance at position
+   * @brief Set elevation with variance at position
    */
-  bool setHeight(float x, float y, float height, float variance) {
+  bool setElevation(float x, float y, float elevation, float variance) {
     grid_map::Position pos(x, y);
     if (!isInside(pos))
       return false;
 
-    atPosition(ELEVATION, pos) = height;
-    atPosition(VARIANCE, pos) = variance;
+    atPosition(layer::elevation, pos) = elevation;
+    atPosition(layer::variance, pos) = variance;
     return true;
   }
 
   /**
-   * @brief Get height at position
+   * @brief Get elevation at position
    */
-  bool getHeight(float x, float y, float &height) const {
+  bool getElevation(float x, float y, float &elevation) const {
     grid_map::Position pos(x, y);
     if (!isInside(pos))
       return false;
 
-    height = atPosition(ELEVATION, pos);
-    return std::isfinite(height);
+    elevation = atPosition(layer::elevation, pos);
+    return std::isfinite(elevation);
   }
 
   /**
-   * @brief Direct access to elevation matrix
+   * @brief Check if a cell is empty (no measurements)
    */
-  Eigen::MatrixXf &getElevation() { return get(ELEVATION); }
-
-  const Eigen::MatrixXf &getElevation() const { return get(ELEVATION); }
+  bool isEmptyAt(const grid_map::Index &index) const {
+    return !isValid(index) || std::isnan(at(layer::elevation, index));
+  }
 
   /**
-   * @brief Direct access to variance matrix
+   * @brief Get or create standard error layer
    */
-  Eigen::MatrixXf &getVariance() { return get(VARIANCE); }
+  Eigen::MatrixXf &getStandardError() {
+    if (!exists(layer::standard_error)) {
+      add(layer::standard_error);
+      get(layer::standard_error).setConstant(NAN);
+    }
+    return get(layer::standard_error);
+  }
 
-  const Eigen::MatrixXf &getVariance() const { return get(VARIANCE); }
+  const Eigen::MatrixXf &getStandardError() const {
+    return get(layer::standard_error);
+  }
+
+  /**
+   * @brief Get or create confidence interval layer (95%)
+   */
+  Eigen::MatrixXf &getConfidenceInterval() {
+    if (!exists(layer::confidence_interval)) {
+      add(layer::confidence_interval);
+      get(layer::confidence_interval).setConstant(NAN);
+    }
+    return get(layer::confidence_interval);
+  }
+
+  const Eigen::MatrixXf &getConfidenceInterval() const {
+    return get(layer::confidence_interval);
+  }
 
   /**
    * @brief Get underlying GridMap (for compatibility)

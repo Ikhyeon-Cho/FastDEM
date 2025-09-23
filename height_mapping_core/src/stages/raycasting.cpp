@@ -8,105 +8,144 @@
  */
 
 #include "height_mapping_core/stages/raycasting.h"
+#include "height_mapping_core/interfaces/transform_provider.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
 #include "pipeline_core/stage_registry.h"
 
-#include <iostream>
 #include <cmath>
+#include <iostream>
 
-namespace height_mapping::core {
+namespace height_mapping::core::stages {
 
-RaycastingStage::RaycastingStage()
-    : Stage("Raycasting", "3D to 2.5D Projection") {
-}
+Raycasting::Raycasting() : Stage("Raycasting") {}
 
-void RaycastingStage::configure(const std::map<std::string, std::string>& params) {
-  auto it = params.find("ray_length_max");
+void Raycasting::configure(const std::map<std::string, std::string> &params) {
+  auto it = params.find("max_ground_angle");
   if (it != params.end()) {
-    ray_length_max_ = std::stof(it->second);
+    max_ground_angle_ =
+        std::stof(it->second) * M_PI / 180.0f; // Convert to radians
   }
 
-  it = params.find("ray_length_min");
+  it = params.find("correction_threshold");
   if (it != params.end()) {
-    ray_length_min_ = std::stof(it->second);
+    correction_threshold_ = std::stof(it->second);
   }
 
-  it = params.find("enable_clearing");
+  it = params.find("enable_correction");
   if (it != params.end()) {
-    enable_clearing_ = (it->second == "true" || it->second == "1");
-  }
-
-  it = params.find("clearing_height_threshold");
-  if (it != params.end()) {
-    clearing_height_threshold_ = std::stof(it->second);
+    enable_correction_ = (it->second == "true" || it->second == "1");
   }
 }
 
-void RaycastingStage::processImpl(pipeline::Context& ctx) {
-  auto& mapping_ctx = static_cast<MappingContext&>(ctx);
+void Raycasting::processImpl(pipeline::Context &ctx) {
+  auto &mapping_ctx = static_cast<MappingContext &>(ctx);
+  auto &map = mapping_ctx.map();
+  auto &cloud = mapping_ctx.cloud();
 
-  auto& map = mapping_ctx.map();
-  if (map.empty()) {
-    std::cerr << "[Raycasting] No height map in context" << std::endl;
+  if (cloud.empty() || !enable_correction_) {
     return;
   }
 
-  auto& cloud = mapping_ctx.cloud();
-  if (cloud.empty()) {
-    return;
+  // Get sensor origin from transform provider
+  Eigen::Vector3f sensor_origin(0, 0, 0);
+  auto transform_provider = ctx.getService<ITransformProvider>();
+  if (transform_provider) {
+    // Get transform from map to sensor frame to find sensor position in map
+    auto transform_opt = transform_provider->lookupTransform(
+        cloud.frameId(), "base_link", cloud.timestamp());
+    if (transform_opt.has_value()) {
+      // Sensor is typically at base_link origin
+      sensor_origin = transform_opt.value().translation();
+    }
   }
 
-  // Get sensor origin (assuming it's at 0,0,0 in cloud frame)
-  // In real implementation, this should come from transform
-  float sensor_x = 0.0f;
-  float sensor_y = 0.0f;
-  float sensor_z = 0.0f;
+  // Get map layers
+  namespace layer = height_map::layer;
+  auto &elevation = map[layer::elevation];
+  auto &variance = map[layer::variance];
 
-  size_t rays_cast = 0;
-  size_t cells_updated = 0;
+  // Create or get min ray height layer for this scan
+  if (!map.exists("min_ray_height")) {
+    map.add("min_ray_height");
+  }
+  auto &min_ray_height = map["min_ray_height"];
+  min_ray_height.setConstant(INFINITY);
 
   // Process each point
-  for (const auto& point : cloud.points) {
+  size_t ground_points = 0;
+  size_t corrected_cells = 0;
+
+  for (const auto point : cloud) {  // PointView from iterator
     // Skip invalid points
-    if (!std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z)) {
+    if (!point.isFinite()) {
       continue;
     }
 
-    // Calculate ray length
-    float dx = point.x - sensor_x;
-    float dy = point.y - sensor_y;
-    float dz = point.z - sensor_z;
-    float ray_length = std::sqrt(dx*dx + dy*dy + dz*dz);
+    // Calculate ray angle (negative = pointing down)
+    float dx = point.x() - sensor_origin.x();
+    float dy = point.y() - sensor_origin.y();
+    float dz = point.z() - sensor_origin.z();
+    float horizontal_dist = std::sqrt(dx * dx + dy * dy);
 
-    // Check ray length bounds
-    if (ray_length < ray_length_min_ || ray_length > ray_length_max_) {
-      continue;
+    if (horizontal_dist < 0.1f)
+      continue; // Skip near-vertical rays
+
+    float ray_angle = std::atan2(dz, horizontal_dist);
+
+    // Only process rays that could hit ground (pointing downward)
+    bool is_ground_ray = (ray_angle < max_ground_angle_);
+    if (is_ground_ray) {
+      ground_points++;
     }
 
-    rays_cast++;
+    // Trace ray and track minimum height
+    float ray_length = std::sqrt(dx * dx + dy * dy + dz * dz);
+    Eigen::Vector3f ray_dir(dx / ray_length, dy / ray_length, dz / ray_length);
 
-    // Here we would implement actual raycasting algorithm:
-    // 1. Trace ray from sensor to point
-    // 2. Clear cells along the ray if enable_clearing_
-    // 3. Update height at endpoint
-    // This is a simplified placeholder
+    // Step along ray
+    float step = map.getResolution();
+    for (float t = 0; t < ray_length - step; t += step) {
+      Eigen::Vector3f ray_point = sensor_origin + ray_dir * t;
 
-    // Update statistics
-    cells_updated++;
-    if (enable_clearing_) {
-      // Would count actual cleared cells
-      cells_cleared_++;
+      // Get cell index
+      grid_map::Position pos(ray_point.x(), ray_point.y());
+      grid_map::Index idx;
+      if (!map.getIndex(pos, idx))
+        continue;
+
+      // Track minimum ray height at this cell
+      float &min_height = min_ray_height(idx(0), idx(1));
+      min_height = std::min(min_height, ray_point.z());
     }
   }
 
-  // Update total statistics
-  total_rays_cast_ += rays_cast;
-  this->cells_updated_ += cells_updated;
+  // Second pass: Apply height corrections using minimum ray heights
+  for (grid_map::GridMapIterator it(map); !it.isPastEnd(); ++it) {
+    const auto i = (*it)(0);
+    const auto j = (*it)(1);
 
-  // Store in context
+    float &elev = elevation(i, j);
+    float &var = variance(i, j);
+    float min_ray = min_ray_height(i, j);
+
+    // Only correct if we have ray data and current elevation is too high
+    if (std::isfinite(min_ray) && std::isfinite(elev)) {
+      if (elev > min_ray + correction_threshold_) {
+        // Ground cannot be higher than ray path
+        elev = min_ray + correction_threshold_;
+        var *= 1.5f; // Increase uncertainty for corrected cells
+        corrected_cells++;
+      }
+    }
+  }
+
+  // Update statistics
+  total_rays_cast_ += cloud.size();
+  cells_corrected_ += corrected_cells;
+  ground_points_detected_ += ground_points;
 }
 
 // Register this stage with the factory
-REGISTER_STAGE(RaycastingStage)
+REGISTER_STAGE(Raycasting)
 
-} // namespace height_mapping::core
+} // namespace height_mapping::core::stages

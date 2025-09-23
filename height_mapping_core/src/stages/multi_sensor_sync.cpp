@@ -13,13 +13,12 @@
 
 #include <iostream>
 
-namespace height_mapping::core {
+namespace height_mapping::core::stages {
 
-MultiSensorSyncStage::MultiSensorSyncStage()
-    : Stage("MultiSensorSync", "Sensor Synchronization") {
-}
+MultiSensorSync::MultiSensorSync() : Stage("MultiSensorSync") {}
 
-void MultiSensorSyncStage::configure(const std::map<std::string, std::string>& params) {
+void MultiSensorSync::configure(
+    const std::map<std::string, std::string> &params) {
   auto it = params.find("buffer_size");
   if (it != params.end()) {
     buffer_size_ = std::stoull(it->second);
@@ -33,7 +32,8 @@ void MultiSensorSyncStage::configure(const std::map<std::string, std::string>& p
   it = params.find("merge_policy");
   if (it != params.end()) {
     merge_policy_ = it->second;
-    if (merge_policy_ != "latest" && merge_policy_ != "exact_sync" && merge_policy_ != "nearest") {
+    if (merge_policy_ != "latest" && merge_policy_ != "exact_sync" &&
+        merge_policy_ != "nearest") {
       std::cerr << "[MultiSensorSync] Unknown merge policy: " << merge_policy_
                 << ", using 'latest'" << std::endl;
       merge_policy_ = "latest";
@@ -46,22 +46,24 @@ void MultiSensorSyncStage::configure(const std::map<std::string, std::string>& p
   }
 }
 
-void MultiSensorSyncStage::processImpl(pipeline::Context& ctx) {
-  auto& mapping_ctx = static_cast<MappingContext&>(ctx);
+void MultiSensorSync::processImpl(pipeline::Context &ctx) {
+  auto &mapping_ctx = static_cast<MappingContext &>(ctx);
 
   // Use default sensor ID (would be set by caller in real implementation)
   std::string sensor_id = "default";
 
   // Use current time as timestamp
-  uint64_t timestamp = static_cast<uint64_t>(std::chrono::system_clock::now().time_since_epoch().count());
+  uint64_t timestamp = static_cast<uint64_t>(
+      std::chrono::system_clock::now().time_since_epoch().count());
 
   // Store current cloud in buffer
-  auto& buffer = sensor_buffers_[sensor_id];
+  auto &buffer = sensor_buffers_[sensor_id];
   {
     std::lock_guard<std::mutex> lock(buffer.mutex);
 
     // Add cloud to buffer
-    auto cloud_ptr = std::make_shared<height_map::PointCloudXYZ>(mapping_ctx.cloud());
+    auto cloud_ptr =
+        std::make_shared<geometry::PointCloud>(mapping_ctx.cloud());
     buffer.clouds.push_back(cloud_ptr);
     buffer.timestamps.push_back(timestamp);
 
@@ -91,20 +93,20 @@ void MultiSensorSyncStage::processImpl(pipeline::Context& ctx) {
   // Store statistics
 }
 
-bool MultiSensorSyncStage::synchronizeClouds(pipeline::Context& ctx) {
+bool MultiSensorSync::synchronizeClouds(pipeline::Context &ctx) {
   // Check if all sensors have data
   if (sensor_buffers_.size() < 2) {
-    return false;  // Need at least 2 sensors for sync
+    return false; // Need at least 2 sensors for sync
   }
 
   // Find common timestamp within tolerance
   // This is a simplified implementation
   // Real implementation would find overlapping timestamps across all sensors
 
-  auto& mapping_ctx = static_cast<MappingContext&>(ctx);
-  height_map::PointCloudXYZ merged_cloud;
+  auto &mapping_ctx = static_cast<MappingContext &>(ctx);
+  geometry::PointCloud merged_cloud;
 
-  for (const auto& [sensor_id, buffer] : sensor_buffers_) {
+  for (const auto &[sensor_id, buffer] : sensor_buffers_) {
     std::lock_guard<std::mutex> lock(buffer.mutex);
     if (!buffer.clouds.empty()) {
       // Merge latest cloud from each sensor
@@ -120,12 +122,12 @@ bool MultiSensorSyncStage::synchronizeClouds(pipeline::Context& ctx) {
   return false;
 }
 
-void MultiSensorSyncStage::mergeLatest(pipeline::Context& ctx) {
-  auto& mapping_ctx = static_cast<MappingContext&>(ctx);
-  height_map::PointCloudXYZ merged_cloud = mapping_ctx.cloud();
+void MultiSensorSync::mergeLatest(pipeline::Context &ctx) {
+  auto &mapping_ctx = static_cast<MappingContext &>(ctx);
+  geometry::PointCloud merged_cloud = mapping_ctx.cloud();
 
   // Merge with latest clouds from other sensors
-  for (const auto& [sensor_id, buffer] : sensor_buffers_) {
+  for (const auto &[sensor_id, buffer] : sensor_buffers_) {
     std::lock_guard<std::mutex> lock(buffer.mutex);
     if (!buffer.clouds.empty()) {
       // Skip if this is the current sensor
@@ -140,6 +142,6 @@ void MultiSensorSyncStage::mergeLatest(pipeline::Context& ctx) {
 }
 
 // Register this stage with the factory
-REGISTER_STAGE(MultiSensorSyncStage)
+REGISTER_STAGE(MultiSensorSync)
 
-} // namespace height_mapping::core
+} // namespace height_mapping::core::stages

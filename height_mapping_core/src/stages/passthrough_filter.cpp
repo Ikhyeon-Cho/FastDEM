@@ -14,13 +14,14 @@
 #include <cmath>
 #include <iostream>
 
-namespace height_mapping::core {
+namespace height_mapping::core::stages {
 
-PassthroughFilterStage::PassthroughFilterStage()
-    : Stage("PassthroughFilter", "Point Cloud Filter") {
-}
+using PointCloud = geometry::PointCloud;
 
-void PassthroughFilterStage::configure(const std::map<std::string, std::string>& params) {
+PassthroughFilter::PassthroughFilter() : Stage("PassthroughFilter") {}
+
+void PassthroughFilter::configure(
+    const std::map<std::string, std::string> &params) {
   // X limits
   auto it = params.find("x_min");
   if (it != params.end()) {
@@ -64,56 +65,44 @@ void PassthroughFilterStage::configure(const std::map<std::string, std::string>&
   }
 }
 
-void PassthroughFilterStage::processImpl(pipeline::Context& ctx) {
-  auto& mapping_ctx = static_cast<MappingContext&>(ctx);
+void PassthroughFilter::processImpl(pipeline::Context &ctx) {
+  auto &mapping_ctx = static_cast<MappingContext &>(ctx);
+  auto &cloud = mapping_ctx.cloud();
 
-  auto& cloud = mapping_ctx.cloud();
   if (cloud.empty()) {
     return;
   }
 
-  size_t points_before = cloud.size();
+  // Use the new smart filterInPlace with automatic sensor data handling
+  cloud.filterInPlace([this](const auto& point) {
+    // point is a ConstPointView with unified access to all data
 
-  // Create filtered cloud
-  height_map::PointCloudXYZ filtered_cloud;
-  filtered_cloud.reserve(cloud.size());
-  filtered_cloud.frame_id = cloud.frame_id;
-  filtered_cloud.timestamp = cloud.timestamp;
-
-  // Apply filters point by point
-  for (const auto& point : cloud.points) {
-    // Check NaN
-    if (!std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z)) {
-      continue;
+    // Check if point is finite
+    if (!point.isFinite()) {
+      return false;
     }
 
     // Check axis-aligned bounds
-    if (point.x < x_min_ || point.x > x_max_ ||
-        point.y < y_min_ || point.y > y_max_ ||
-        point.z < z_min_ || point.z > z_max_) {
-      continue;
+    if (point.x() < x_min_ || point.x() > x_max_ ||
+        point.y() < y_min_ || point.y() > y_max_ ||
+        point.z() < z_min_ || point.z() > z_max_) {
+      return false;
     }
 
     // Check distance filter if enabled
     if (use_distance_filter_) {
-      float distance = std::sqrt(point.x * point.x + point.y * point.y + point.z * point.z);
+      float distance = point.norm();
       if (distance < distance_min_ || distance > distance_max_) {
-        continue;
+        return false;
       }
     }
 
     // Point passed all filters
-    filtered_cloud.push_back(point);
-  }
-
-  // Update cloud
-  cloud = std::move(filtered_cloud);
-
-  // Statistics could be logged if needed
-  // size_t points_after = cloud.size();
+    return true;
+  });
 }
 
 // Register this stage with the factory
-REGISTER_STAGE(PassthroughFilterStage)
+REGISTER_STAGE(PassthroughFilter)
 
-} // namespace height_mapping::core
+} // namespace height_mapping::core::stages

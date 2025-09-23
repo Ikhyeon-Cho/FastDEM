@@ -1,6 +1,32 @@
 /*
  * context.h
  *
+ * PUBLIC API - Base class for pipeline data context.
+ *
+ * Context carries data through the pipeline and provides service injection.
+ * Users should inherit from Context to add domain-specific data.
+ *
+ * Example implementation:
+ *   class MyContext : public pipeline::Context {
+ *   public:
+ *     // Data accessors
+ *     void setData(std::shared_ptr<MyData> data) { data_ = data; }
+ *     std::shared_ptr<MyData> getData() const { return data_; }
+ *
+ *   private:
+ *     std::shared_ptr<MyData> data_;
+ *   };
+ *
+ * Service injection example:
+ *   // Set a service
+ *   ctx.setService<ITransformProvider>(transform_provider);
+ *
+ *   // Get a service (in stage)
+ *   auto transform = ctx.getService<ITransformProvider>();
+ *   if (transform) {
+ *     // Use the service
+ *   }
+ *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
  *	 Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
@@ -10,18 +36,35 @@
 #ifndef PIPELINE_CORE_CONTEXT_H
 #define PIPELINE_CORE_CONTEXT_H
 
+#include <memory>
+#include <typeindex>
+#include <unordered_map>
+
 namespace pipeline {
 
 /**
  * @brief Base context class for pipeline processing
  *
- * A pure virtual base class that derived contexts inherit from.
- * Derived classes should contain the actual data to be processed.
+ * Provides data container and service locator functionality for pipeline
+ * stages. Derived classes should contain the actual data to be processed.
  */
 class Context {
 public:
   Context() = default;
   virtual ~Context() = default;
+
+  // Service container for dependency injection
+  template <typename T> void setService(std::shared_ptr<T> service) {
+    services_[std::type_index(typeid(T))] = service;
+  }
+
+  template <typename T> std::shared_ptr<T> getService() const {
+    auto it = services_.find(std::type_index(typeid(T)));
+    if (it != services_.end()) {
+      return std::static_pointer_cast<T>(it->second);
+    }
+    return nullptr;
+  }
 
   // Disable copy to prevent slicing
   Context(const Context &) = delete;
@@ -30,6 +73,9 @@ public:
   // Enable move
   Context(Context &&) = default;
   Context &operator=(Context &&) = default;
+
+private:
+  std::unordered_map<std::type_index, std::shared_ptr<void>> services_;
 };
 
 } // namespace pipeline

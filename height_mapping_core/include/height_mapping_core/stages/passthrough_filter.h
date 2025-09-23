@@ -13,7 +13,7 @@
 #include "pipeline_core/stage.h"
 #include <limits>
 
-namespace height_mapping::core {
+namespace height_mapping::core::stages {
 
 /**
  * @brief Stage that filters points outside specified bounds
@@ -21,9 +21,9 @@ namespace height_mapping::core {
  * Removes points that fall outside the specified x, y, z limits
  * or distance from origin.
  */
-class PassthroughFilterStage : public pipeline::Stage {
+class PassthroughFilter : public pipeline::Stage {
 public:
-  PassthroughFilterStage();
+  PassthroughFilter();
 
   /**
    * @brief Configure the stage from parameters
@@ -33,12 +33,12 @@ public:
    *        - "z_min", "z_max": Z-axis limits in meters
    *        - "distance_min", "distance_max": Distance from origin limits
    */
-  void configure(const std::map<std::string, std::string>& params) override;
+  void configure(const std::map<std::string, std::string> &params) override;
 
   // Setters for programmatic configuration
-  void setXLimits(float min, float max) { x_min_ = min; x_max_ = max; }
-  void setYLimits(float min, float max) { y_min_ = min; y_max_ = max; }
-  void setZLimits(float min, float max) { z_min_ = min; z_max_ = max; }
+  void setXLimits(float min, float max) { x_min_ = min, x_max_ = max; }
+  void setYLimits(float min, float max) { y_min_ = min, y_max_ = max; }
+  void setZLimits(float min, float max) { z_min_ = min, z_max_ = max; }
   void setDistanceLimits(float min, float max) {
     distance_min_ = min;
     distance_max_ = max;
@@ -46,7 +46,7 @@ public:
   }
 
 protected:
-  void processImpl(pipeline::Context& ctx) override;
+  void processImpl(pipeline::Context &ctx) override;
 
 private:
   // Axis-aligned bounds
@@ -63,6 +63,6 @@ private:
   bool use_distance_filter_ = false;
 };
 
-} // namespace height_mapping::core
+} // namespace height_mapping::core::stages
 
 #endif // HEIGHT_MAPPING_CORE_STAGES_PASSTHROUGH_FILTER_H

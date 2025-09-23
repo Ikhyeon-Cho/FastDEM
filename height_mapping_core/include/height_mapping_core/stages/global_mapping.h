@@ -13,7 +13,7 @@
 #include "pipeline_core/stage.h"
 #include <memory>
 
-namespace height_mapping::core {
+namespace height_mapping::core::stages {
 
 /**
  * @brief Stage that aggregates local maps into a global map
@@ -21,9 +21,9 @@ namespace height_mapping::core {
  * Maintains a larger global map by stitching together local map updates,
  * handling overlaps and managing memory for large-scale mapping.
  */
-class GlobalMappingStage : public pipeline::Stage {
+class GlobalMapping : public pipeline::Stage {
 public:
-  GlobalMappingStage();
+  GlobalMapping();
 
   /**
    * @brief Configure the stage from parameters
@@ -35,20 +35,20 @@ public:
    *        - "memory_limit_mb": Maximum memory usage in megabytes
    *        - "enable_compression": Enable map compression
    */
-  void configure(const std::map<std::string, std::string>& params) override;
+  void configure(const std::map<std::string, std::string> &params) override;
 
 protected:
-  void processImpl(pipeline::Context& ctx) override;
+  void processImpl(pipeline::Context &ctx) override;
 
 private:
   // Global map configuration
-  float global_map_size_x_ = 100.0f;  // meters
-  float global_map_size_y_ = 100.0f;  // meters
-  float global_map_resolution_ = 0.1f;  // meters per cell
+  float global_map_size_x_ = 100.0f;   // meters
+  float global_map_size_y_ = 100.0f;   // meters
+  float global_map_resolution_ = 0.1f; // meters per cell
   std::string merge_method_ = "averaging";
 
   // Memory management
-  size_t memory_limit_mb_ = 1024;  // 1GB default
+  size_t memory_limit_mb_ = 1024; // 1GB default
   bool enable_compression_ = false;
 
   // Statistics
@@ -57,11 +57,11 @@ private:
   float global_map_coverage_percent_ = 0.0f;
 
   // Helper functions
-  void mergeLocalToGlobal(pipeline::Context& ctx);
+  void mergeLocalToGlobal(pipeline::Context &ctx);
   float calculateCoverage() const;
   bool checkMemoryUsage() const;
 };
 
-} // namespace height_mapping::core
+} // namespace height_mapping::core::stages
 
 #endif // HEIGHT_MAPPING_CORE_STAGES_GLOBAL_MAPPING_H

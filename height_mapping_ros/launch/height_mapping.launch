@@ -1,12 +1,9 @@
 <launch>
-    <!-- Arguments for config files (can be overridden) -->
-    <arg name="ros_config" default="$(find height_mapping)/config/ros_params.yaml" />
-    <arg name="engine_config" default="$(find height_mapping)/config/engine_config.yaml" />
+    <!-- Configuration file argument -->
+    <arg name="config" default="$(find height_mapping)/config/params.yaml" />
 
     <node name="height_mapping" pkg="height_mapping" type="height_mapping_node" output="screen">
-        <rosparam file="$(arg ros_config)" command="load" />
-        <param name="core_config_file" value="$(arg engine_config)" />
-
+        <rosparam file="$(arg config)" command="load" subst_value="true" />
     </node>
 
 </launch>

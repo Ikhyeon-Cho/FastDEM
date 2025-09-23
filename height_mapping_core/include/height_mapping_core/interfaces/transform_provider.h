@@ -10,11 +10,14 @@
 #ifndef HEIGHT_MAPPING_CORE_INTERFACES_TRANSFORM_PROVIDER_H
 #define HEIGHT_MAPPING_CORE_INTERFACES_TRANSFORM_PROVIDER_H
 
-#include "height_mapping_core/data/transform.h"
+#include "height_mapping_core/geometry/transform.h"
 #include <optional>
 #include <string>
 
 namespace height_mapping::core {
+
+// Import Transform3D from geometry namespace
+using geometry::Transform3D;
 
 /**
  * @brief Interface for providing coordinate transforms
@@ -34,9 +37,8 @@ public:
    * @return Transform if available, nullopt otherwise
    */
   virtual std::optional<Transform3D>
-  lookupTransform(const std::string& target_frame,
-                  const std::string& source_frame,
-                  uint64_t timestamp_ns) = 0;
+  lookupTransform(const std::string &target_frame,
+                  const std::string &source_frame, uint64_t timestamp_ns) = 0;
 
   /**
    * @brief Look up the latest available transform between frames
@@ -45,8 +47,8 @@ public:
    * @return Transform if available, nullopt otherwise
    */
   virtual std::optional<Transform3D>
-  lookupLatestTransform(const std::string& target_frame,
-                        const std::string& source_frame) = 0;
+  lookupLatestTransform(const std::string &target_frame,
+                        const std::string &source_frame) = 0;
 };
 
 } // namespace height_mapping::core

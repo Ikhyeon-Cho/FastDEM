@@ -7,19 +7,14 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef HEIGHT_MAPPING_CORE_DATA_TRANSFORM_H
-#define HEIGHT_MAPPING_CORE_DATA_TRANSFORM_H
+#ifndef HEIGHT_MAPPING_CORE_GEOMETRY_TRANSFORM_H
+#define HEIGHT_MAPPING_CORE_GEOMETRY_TRANSFORM_H
 
-#include "height_mapping_core/data/point_cloud.h"
+#include "height_mapping_core/geometry/point_cloud.h"
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-namespace height_mapping::core {
-
-// Import types from height_map namespace
-using Point3D = height_map::Point3D;
-using PointXYZI = height_map::PointXYZI;
-using PointXYZRGB = height_map::PointXYZRGB;
+namespace geometry {
 
 // 3D rigid transformation (rotation + translation)
 class Transform3D {
@@ -48,7 +43,6 @@ public:
 
   // Factory methods
   static Transform3D Identity() { return Transform3D(); }
-
   static Transform3D fromTranslation(float x, float y, float z) {
     Transform3D tf;
     tf.matrix_(0, 3) = x;
@@ -56,7 +50,6 @@ public:
     tf.matrix_(2, 3) = z;
     return tf;
   }
-
   static Transform3D fromTranslation(const Eigen::Vector3f &translation) {
     return fromTranslation(translation.x(), translation.y(), translation.z());
   }
@@ -69,30 +62,27 @@ public:
     Eigen::Quaternionf q = yawAngle * pitchAngle * rollAngle;
     return Transform3D(q, Eigen::Vector3f::Zero());
   }
-
   static Transform3D fromQuaternion(float x, float y, float z, float w) {
     Eigen::Quaternionf q(w, x, y, z);
     return Transform3D(q, Eigen::Vector3f::Zero());
   }
 
   // Getters
-  Eigen::Matrix4f getMatrix() const { return matrix_; }
-
-  Eigen::Matrix3f getRotation() const { return matrix_.block<3, 3>(0, 0); }
-
-  Eigen::Vector3f getTranslation() const { return matrix_.block<3, 1>(0, 3); }
+  Eigen::Matrix4f matrix() const { return matrix_; }
+  Eigen::Matrix3f rotation() const { return matrix_.block<3, 3>(0, 0); }
+  Eigen::Vector3f translation() const { return matrix_.block<3, 1>(0, 3); }
 
   // Convenience accessors for position
   float x() const { return matrix_(0, 3); }
   float y() const { return matrix_(1, 3); }
   float z() const { return matrix_(2, 3); }
 
-  Eigen::Quaternionf getQuaternion() const {
-    return Eigen::Quaternionf(getRotation());
+  Eigen::Quaternionf quaternion() const {
+    return Eigen::Quaternionf(rotation());
   }
 
   void getRPY(float &roll, float &pitch, float &yaw) const {
-    Eigen::Vector3f rpy = getRotation().eulerAngles(0, 1, 2);
+    Eigen::Vector3f rpy = rotation().eulerAngles(0, 1, 2);
     roll = rpy[0];
     pitch = rpy[1];
     yaw = rpy[2];
@@ -102,11 +92,9 @@ public:
   void setTranslation(const Eigen::Vector3f &translation) {
     matrix_.block<3, 1>(0, 3) = translation;
   }
-
   void setRotation(const Eigen::Matrix3f &rotation) {
     matrix_.block<3, 3>(0, 0) = rotation;
   }
-
   void setRotation(const Eigen::Quaternionf &rotation) {
     matrix_.block<3, 3>(0, 0) = rotation.toRotationMatrix();
   }
@@ -116,20 +104,6 @@ public:
     Eigen::Vector4f p(point.x, point.y, point.z, 1.0f);
     Eigen::Vector4f transformed = matrix_ * p;
     return Point3D(transformed[0], transformed[1], transformed[2]);
-  }
-
-  PointXYZI apply(const PointXYZI &point) const {
-    Eigen::Vector4f p(point.x, point.y, point.z, 1.0f);
-    Eigen::Vector4f transformed = matrix_ * p;
-    return PointXYZI(transformed[0], transformed[1], transformed[2],
-                     point.intensity);
-  }
-
-  PointXYZRGB apply(const PointXYZRGB &point) const {
-    Eigen::Vector4f p(point.x, point.y, point.z, 1.0f);
-    Eigen::Vector4f transformed = matrix_ * p;
-    return PointXYZRGB(transformed[0], transformed[1], transformed[2], point.r,
-                       point.g, point.b);
   }
 
   Eigen::Vector3f apply(const Eigen::Vector3f &vec) const {
@@ -156,11 +130,11 @@ public:
                                  float alpha) {
     // Interpolate translation
     Eigen::Vector3f trans =
-        (1 - alpha) * t1.getTranslation() + alpha * t2.getTranslation();
+        (1 - alpha) * t1.translation() + alpha * t2.translation();
 
     // Interpolate rotation using SLERP
-    Eigen::Quaternionf q1 = t1.getQuaternion();
-    Eigen::Quaternionf q2 = t2.getQuaternion();
+    Eigen::Quaternionf q1 = t1.quaternion();
+    Eigen::Quaternionf q2 = t2.quaternion();
     Eigen::Quaternionf q_interp = q1.slerp(alpha, q2);
 
     return Transform3D(q_interp, trans);
@@ -246,6 +220,6 @@ public:
   }
 };
 
-} // namespace height_mapping::core
+} // namespace geometry
 
-#endif // HEIGHT_MAPPING_CORE_DATA_TRANSFORM_H
+#endif // HEIGHT_MAPPING_CORE_GEOMETRY_TRANSFORM_H

@@ -1,6 +1,25 @@
 /*
  * stage_registry.h
  *
+ * MIXED API - Stage registration and factory.
+ *
+ * PUBLIC: REGISTER_STAGE macro for registering custom stages
+ * INTERNAL: StageRegistry class (used by PipelineBuilder internally)
+ *
+ * Users only need this header for the REGISTER_STAGE macro:
+ *   class MyStage : public pipeline::Stage { ... };
+ *   REGISTER_STAGE(MyStage);  // Auto-registers with factory
+ *
+ * The macro automatically registers your stage class with the factory,
+ * allowing it to be created by name in configuration files:
+ *   stages:
+ *     - name: "MyStage"
+ *       params:
+ *         key: value
+ *
+ * Note: The StageRegistry class itself is internal - users should not
+ * directly call StageRegistry methods.
+ *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
  *	 Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab

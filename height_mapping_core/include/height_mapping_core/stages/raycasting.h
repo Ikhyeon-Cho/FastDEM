@@ -11,44 +11,45 @@
 #define HEIGHT_MAPPING_CORE_STAGES_RAYCASTING_H
 
 #include "pipeline_core/stage.h"
+#include <cmath>
 
-namespace height_mapping::core {
+namespace height_mapping::core::stages {
 
 /**
- * @brief Stage that performs raycasting from 3D points to 2.5D height map
+ * @brief Stage that performs raycasting for height correction
  *
- * Projects 3D point cloud data onto a 2D grid map, handling occlusions
- * and ray tracing for accurate height estimation.
+ * Uses ray constraints to correct overestimated heights. If a ray passes
+ * through a cell at height h, the ground cannot be higher than h.
+ * Ray angle is used to identify likely ground measurements.
  */
-class RaycastingStage : public pipeline::Stage {
+class Raycasting : public pipeline::Stage {
 public:
-  RaycastingStage();
+  Raycasting();
 
   /**
    * @brief Configure the stage from parameters
    * @param params Map of parameter name to value strings
-   *        - "ray_length_max": Maximum ray length in meters
-   *        - "ray_length_min": Minimum ray length in meters
-   *        - "enable_clearing": Enable clearing of cells along ray
-   *        - "clearing_height_threshold": Height threshold for clearing
+   *        - "max_ground_angle": Max angle (degrees) for ground rays (default: -5)
+   *        - "correction_threshold": Buffer height for corrections (default: 0.02m)
+   *        - "enable_correction": Whether to enable height correction (default: true)
    */
-  void configure(const std::map<std::string, std::string>& params) override;
+  void configure(const std::map<std::string, std::string> &params) override;
 
 protected:
-  void processImpl(pipeline::Context& ctx) override;
+  void processImpl(pipeline::Context &ctx) override;
 
 private:
-  float ray_length_max_ = 10.0f;
-  float ray_length_min_ = 0.1f;
-  bool enable_clearing_ = true;
-  float clearing_height_threshold_ = 0.5f;
+  // Configuration parameters
+  float max_ground_angle_ = -5.0f * M_PI / 180.0f; // -5 degrees in radians
+  float correction_threshold_ = 0.02f;             // 2cm buffer
+  bool enable_correction_ = true;                  // Enable height correction
 
   // Statistics
   mutable size_t total_rays_cast_ = 0;
-  mutable size_t cells_updated_ = 0;
-  mutable size_t cells_cleared_ = 0;
+  mutable size_t cells_corrected_ = 0;
+  mutable size_t ground_points_detected_ = 0;
 };
 
-} // namespace height_mapping::core
+} // namespace height_mapping::core::stages
 
 #endif // HEIGHT_MAPPING_CORE_STAGES_RAYCASTING_H

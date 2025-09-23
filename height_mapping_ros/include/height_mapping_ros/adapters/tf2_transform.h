@@ -1,5 +1,5 @@
 /*
- * tf2_transform_provider.h
+ * tf2_transform.h
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -19,15 +19,15 @@
 #include <memory>
 #include <optional>
 
-#include "height_mapping_core/data/transform.h"
+#include "height_mapping_core/geometry/transform.h"
 #include "height_mapping_core/interfaces/transform_provider.h"
 
 namespace height_mapping::ros {
 
-class TF2TransformProvider : public core::ITransformProvider {
+class TF2Transform : public core::ITransformProvider {
 public:
   // Constructor that creates its own buffer and listener
-  TF2TransformProvider()
+  TF2Transform()
       : owned_buffer_(std::make_unique<tf2_ros::Buffer>(
             ::ros::Duration(10.0))), // 10 sec cache
         buffer_(*owned_buffer_),
@@ -38,12 +38,12 @@ public:
   }
 
   // Constructor that uses an external buffer (for sharing between nodes)
-  explicit TF2TransformProvider(tf2_ros::Buffer &buffer) : buffer_(buffer) {}
+  explicit TF2Transform(tf2_ros::Buffer &buffer) : buffer_(buffer) {}
 
-  ~TF2TransformProvider() override = default;
+  ~TF2Transform() override = default;
 
   // ITransformProvider interface
-  std::optional<core::Transform3D>
+  std::optional<geometry::Transform3D>
   lookupTransform(const std::string &target_frame,
                   const std::string &source_frame,
                   uint64_t timestamp_ns) override {
@@ -97,7 +97,7 @@ public:
     }
   }
 
-  std::optional<core::Transform3D>
+  std::optional<geometry::Transform3D>
   lookupLatestTransform(const std::string &target_frame,
                         const std::string &source_frame) override {
 
@@ -155,13 +155,13 @@ public:
   }
 
 private:
-  core::Transform3D
+  geometry::Transform3D
   convertToCore(const geometry_msgs::TransformStamped &tf_msg) const {
     // Convert to Eigen
     Eigen::Isometry3d eigen_tf = tf2::transformToEigen(tf_msg);
 
     // Convert to our Transform3D
-    core::Transform3D result(eigen_tf.matrix().cast<float>());
+    geometry::Transform3D result(eigen_tf.matrix().cast<float>());
 
     return result;
   }
@@ -184,7 +184,7 @@ class StaticTransformProvider : public core::ITransformProvider {
 public:
   void addStaticTransform(const std::string &target_frame,
                           const std::string &source_frame,
-                          const core::Transform3D &transform) {
+                          const geometry::Transform3D &transform) {
 
     std::string key = target_frame + "_" + source_frame;
     static_transforms_[key] = transform;
@@ -194,7 +194,7 @@ public:
     static_transforms_[inverse_key] = transform.inverse();
   }
 
-  std::optional<core::Transform3D>
+  std::optional<geometry::Transform3D>
   lookupTransform(const std::string &target_frame,
                   const std::string &source_frame,
                   uint64_t /*timestamp_ns*/) override {
@@ -202,7 +202,7 @@ public:
     return lookupLatestTransform(target_frame, source_frame);
   }
 
-  std::optional<core::Transform3D>
+  std::optional<geometry::Transform3D>
   lookupLatestTransform(const std::string &target_frame,
                         const std::string &source_frame) override {
 
@@ -217,7 +217,7 @@ public:
   }
 
 private:
-  std::unordered_map<std::string, core::Transform3D> static_transforms_;
+  std::unordered_map<std::string, geometry::Transform3D> static_transforms_;
 };
 
 } // namespace height_mapping::ros

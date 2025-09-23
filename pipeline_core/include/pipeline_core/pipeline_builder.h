@@ -1,6 +1,29 @@
 /*
  * pipeline_builder.h
  *
+ * PUBLIC API - Pipeline construction and configuration.
+ *
+ * This header provides the builder pattern for constructing pipelines.
+ * Users can build pipelines in three ways:
+ * 1. From configuration files (recommended)
+ * 2. From Config objects
+ * 3. Programmatically using the builder pattern
+ *
+ * Example usage:
+ *   // Method 1: From file (most common)
+ *   auto pipeline = pipeline::PipelineBuilder::fromFile("config.yaml");
+ *
+ *   // Method 2: From Config
+ *   auto config = pipeline::Config::fromFile("config.yaml");
+ *   auto pipeline = pipeline::PipelineBuilder::fromConfig(config);
+ *
+ *   // Method 3: Programmatic construction
+ *   pipeline::PipelineBuilder builder;
+ *   builder.addStage("VoxelFilter", {{"voxel_size", "0.1"}})
+ *          .addStage("Transform", {{"target_frame", "map"}})
+ *          .stopOnError(true);
+ *   auto pipeline = builder.build();
+ *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
  *	 Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
@@ -39,26 +62,21 @@ public:
 
   // Method 2: Factory-based creation with config
   PipelineBuilder &addStage(const StageConfig &config) {
-    auto stage = StageRegistry::create(config.type);
+    auto stage = StageRegistry::create(config.name);
 
     // Apply configuration
     stage->configure(config.params);
     stage->setEnabled(config.enabled);
 
-    // Set custom name if provided
-    if (!config.name.empty()) {
-      // Note: Stage name is set in constructor, might need adjustment
-    }
-
     return addStage(std::move(stage));
   }
 
-  // Method 3: Simple factory creation with type and params
+  // Method 3: Simple factory creation with name and params
   PipelineBuilder &
-  addStage(const std::string &type,
+  addStage(const std::string &name,
            const std::map<std::string, std::string> &params = {}) {
     StageConfig config;
-    config.type = type;
+    config.name = name;
     config.params = params;
     config.enabled = true;
     return addStage(config);
@@ -83,6 +101,20 @@ public:
   }
 
   virtual std::unique_ptr<Pipeline> build() { return std::move(pipeline_); }
+
+  // Static factory methods for creating pipelines from configuration
+  static std::unique_ptr<Pipeline> fromFile(const std::string &filename) {
+    auto config = Config::fromFile(filename);
+    return fromConfig(config);
+  }
+
+  static std::unique_ptr<Pipeline> fromConfig(const Config &config) {
+    PipelineBuilder builder;
+    builder.addStages(config.stages);
+    builder.stopOnError(config.stop_on_error);
+
+    return builder.build();
+  }
 
 protected:
   std::unique_ptr<Pipeline> pipeline_;

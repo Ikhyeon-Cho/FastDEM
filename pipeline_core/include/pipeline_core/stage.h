@@ -1,6 +1,36 @@
 /*
  * stage.h
  *
+ * PUBLIC API - Base class for pipeline stages.
+ *
+ * Users must inherit from Stage to create custom processing stages.
+ * Each stage represents a single processing step in the pipeline.
+ *
+ * Example implementation:
+ *   class MyStage : public pipeline::Stage {
+ *   public:
+ *     MyStage() : Stage("MyStage") {}
+ *
+ *     void configure(const std::map<std::string, std::string>& params) override {
+ *       // Parse parameters
+ *       if (params.find("threshold") != params.end()) {
+ *         threshold_ = std::stod(params.at("threshold"));
+ *       }
+ *     }
+ *
+ *   protected:
+ *     void processImpl(pipeline::Context& ctx) override {
+ *       // Implement your processing logic here
+ *       // Access and modify data through ctx
+ *     }
+ *
+ *   private:
+ *     double threshold_ = 1.0;
+ *   };
+ *
+ *   // Register the stage for factory creation
+ *   REGISTER_STAGE(MyStage);
+ *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
  *	 Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
@@ -21,10 +51,7 @@ class Stage {
 public:
   using Ptr = std::unique_ptr<Stage>;
 
-  Stage(const std::string &name, const std::string &type)
-      : name_(name), type_(type) {
-    initialize();
-  }
+  Stage(const std::string &name) : name_(name) { initialize(); }
 
   virtual ~Stage() = default;
 
@@ -35,14 +62,12 @@ public:
   }
 
   // Configuration interface for parameter tuning
-  virtual void configure(const std::map<std::string, std::string> &params) {
-    // Default: no configuration needed
-    // Override in derived classes that need parameters
-  }
+  // Default: no configuration needed
+  // Override in derived classes that need parameters
+  virtual void configure(const std::map<std::string, std::string> &params) {}
 
   // Accessors
   std::string getName() const { return name_; }
-  std::string getType() const { return type_; }
   bool isEnabled() const { return enabled_; }
   void setEnabled(bool enabled) { enabled_ = enabled; }
 
@@ -54,7 +79,6 @@ protected:
 
 private:
   std::string name_;
-  std::string type_;
   bool enabled_ = true;
 };
 

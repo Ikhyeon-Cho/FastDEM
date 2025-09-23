@@ -2,17 +2,30 @@
 <launch>
     <!-- Height Mapping Node with Rviz Visualization -->
 
-    <!-- Arguments for config files (can be overridden) -->
-    <arg name="ros_config" default="$(find height_mapping)/config/ros_params.yaml" />
-    <arg name="engine_config" default="$(find height_mapping)/config/engine_config.yaml" />
+    <!-- Configuration file argument -->
+    <arg name="config" default="$(find height_mapping)/config/unified_config.yaml" />
+
+    <!-- ROS-specific arguments (can override defaults) -->
+    <arg name="input_topic" default="/velodyne/tilted/velodyne_points" />
+    <arg name="output_topic" default="/height_map" />
+    <arg name="publish_rate" default="10.0" />
 
     <!-- Launch height mapping node -->
     <node name="height_mapping" pkg="height_mapping" type="height_mapping_node" output="screen">
-        <!-- Load ROS parameters from YAML file -->
-        <rosparam file="$(arg ros_config)" command="load" />
+        <!-- Core configuration -->
+        <param name="config_file" value="$(arg config)" />
 
-        <!-- Override core config file path if provided -->
-        <param name="core_config_file" value="$(arg engine_config)" />
+        <!-- ROS interface parameters -->
+        <param name="input_cloud_topic" value="$(arg input_topic)" />
+        <param name="output_map_topic" value="$(arg output_topic)" />
+        <param name="publish_rate" value="$(arg publish_rate)" />
+
+        <!-- Additional ROS parameters -->
+        <param name="processed_cloud_topic" value="processed_cloud" />
+        <param name="publish_processed_cloud" value="true" />
+        <param name="queue_size" value="10" />
+        <param name="tf_timeout" value="0.1" />
+        <param name="tf_extrapolation" value="0.05" />
     </node>
 
     <!-- Launch Rviz with height mapping configuration -->

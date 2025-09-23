@@ -6,14 +6,11 @@ add_compile_options(-std=c++17)
 ###################
 ## Find packages ##
 ###################
-find_package(PCL REQUIRED)
-
 find_package(catkin REQUIRED COMPONENTS
     roscpp
     tf2_ros
     tf2_eigen
     grid_map_ros
-    pcl_conversions
     height_mapping_core
     message_generation
 )
@@ -41,7 +38,6 @@ catkin_package(
     roscpp
     tf2_ros
     grid_map_ros
-    pcl_conversions
     height_mapping_core
     message_runtime
 )
@@ -57,19 +53,7 @@ endif()
 
 include_directories(
   include
-  ${PCL_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
-)
-
-################
-## Libraries  ##
-################
-add_library(height_mapping_utils
-  src/utils/pointcloud_converter.cpp
-)
-target_link_libraries(height_mapping_utils
-  ${PCL_LIBRARIES}
-  ${catkin_LIBRARIES}
 )
 
 #############
@@ -78,11 +62,11 @@ target_link_libraries(height_mapping_utils
 # Main height mapping node
 add_executable(height_mapping_node
   src/height_mapping_node.cpp
+  src/adapters/pointcloud_converter.cpp
 )
 target_link_libraries(height_mapping_node
-  height_mapping_utils
-  ${PCL_LIBRARIES}
   ${catkin_LIBRARIES}
+  yaml-cpp
 )
 add_dependencies(height_mapping_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}

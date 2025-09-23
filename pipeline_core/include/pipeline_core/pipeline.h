@@ -1,6 +1,23 @@
 /*
  * pipeline.h
  *
+ * SEMI-PUBLIC API - Pipeline execution engine.
+ *
+ * This header defines the Pipeline class that executes stages sequentially.
+ * Users typically don't create Pipeline directly - use PipelineBuilder instead.
+ * This header is included when you need to store or execute pipelines.
+ *
+ * Typical usage:
+ *   // Create pipeline using builder
+ *   auto pipeline = pipeline::PipelineBuilder::fromFile("config.yaml");
+ *
+ *   // Execute pipeline
+ *   MyContext ctx;
+ *   pipeline->process(ctx);
+ *
+ * Note: Direct Pipeline manipulation (addStage, enableStage) is considered
+ * advanced usage. Most users should configure pipelines through PipelineBuilder.
+ *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
  *	 Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
