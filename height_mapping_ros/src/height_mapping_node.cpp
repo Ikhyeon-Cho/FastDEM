@@ -36,7 +36,7 @@ private:
     setupTransformProvider();
     setupROSInterfaces();
     createMappingEngine();
-    setupParamWatcher();
+    setupDynamicParams();
 
     printNodeInfo();
     LOG_INFO(NODE_NAME, "Height Mapping Node successfully initialized!");
@@ -89,13 +89,14 @@ private:
     LOG_INFO(NODE_NAME, "Mapping engine ready [OK]");
   }
 
-  void setupParamWatcher() {
-    param_watcher_ = std::make_unique<RosParamWatcher>(private_nh_, 0.5);
-
-    // Setup logger parameters
-    setupLoggerParams(*param_watcher_);
-
-    LOG_INFO(NODE_NAME, "Parameter watcher ready [OK]");
+  void setupDynamicParams() {
+    try {
+      param_watcher_ = std::make_unique<RosParamWatcher>(private_nh_);
+      setupLoggerParams(*param_watcher_);
+    } catch (const std::exception &e) {
+      LOG_WARN(NODE_NAME, "Parameter watcher disabled: ", e.what());
+      LOG_WARN(NODE_NAME, "Dynamic parameter updates not available");
+    }
   }
 
   void printNodeInfo() const {
@@ -123,7 +124,8 @@ private:
 
       publishProcessedCloudIfRequested(msg);
     } catch (const std::exception &e) {
-      LOG_ERROR_THROTTLE(1.0, NODE_NAME, "Error processing point cloud: ", e.what());
+      LOG_ERROR_THROTTLE(1.0, NODE_NAME,
+                         "Error processing point cloud: ", e.what());
     }
   }
 
@@ -147,6 +149,8 @@ private:
 
   void publishTimerCallback(const ::ros::TimerEvent &event) {
     publishHeightMap();
+    LOG_DEBUG(NODE_NAME, "Published height map at ",
+              event.current_real.toSec());
   }
 
   void publishHeightMap() {
