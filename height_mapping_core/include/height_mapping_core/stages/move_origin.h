@@ -36,8 +36,7 @@ public:
    * @brief Configure the stage from parameters
    * @param params Map of parameter name to value strings
    *        - "update_mode": continuous, threshold, centered, or fixed
-   *        - "update_threshold": Movement threshold in meters (for threshold
-   * mode)
+   *        - "update_threshold": Movement threshold in meters
    *        - "center_region_size": Size of center region (for centered mode)
    *        - "robot_frame": Robot coordinate frame name
    *        - "map_frame": Map coordinate frame name

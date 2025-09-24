@@ -11,7 +11,6 @@
 #define HEIGHT_MAPPING_CORE_CONFIG_H
 
 #include "pipeline_core/config.h"
-#include <iostream>
 #include <string>
 #include <yaml-cpp/yaml.h>
 

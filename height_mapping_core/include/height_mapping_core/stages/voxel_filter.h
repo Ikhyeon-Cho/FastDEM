@@ -10,8 +10,8 @@
 #ifndef HEIGHT_MAPPING_CORE_STAGES_VOXEL_FILTER_H
 #define HEIGHT_MAPPING_CORE_STAGES_VOXEL_FILTER_H
 
-#include "pipeline_core/stage.h"
 #include "height_mapping_core/geometry/point_cloud.h"
+#include "pipeline_core/stage.h"
 
 namespace height_mapping::core::stages {
 
@@ -31,11 +31,11 @@ namespace height_mapping::core::stages {
 class VoxelFilter : public pipeline::Stage {
 public:
   enum class ReductionMethod {
-    CENTROID,      // Mean of all points (default)
-    RANDOM,        // Random selection
-    FIRST,         // First point encountered
-    CLOSEST,       // Closest to voxel center
-    VOXEL_CENTER   // Use voxel center coordinates
+    CENTROID,    // Mean of all points (default)
+    RANDOM,      // Random selection
+    FIRST,       // First point encountered
+    CLOSEST,     // Closest to voxel center
+    VOXEL_CENTER // Use voxel center coordinates
   };
 
   VoxelFilter();
@@ -44,7 +44,8 @@ public:
    * @brief Configure the stage from parameters
    * @param params Map of parameter name to value strings
    *        - "voxel_size": Size of voxels in meters (default: 0.05)
-   *        - "reduction_method": centroid|random|first|closest|center (default: centroid)
+   *        - "reduction_method": centroid|random|first|closest|center (default:
+   * centroid)
    */
   void configure(const std::map<std::string, std::string> &params) override;
 
@@ -62,9 +63,11 @@ private:
   // Helper struct for voxel grid
   struct VoxelKey {
     int x, y, z;
-    bool operator<(const VoxelKey& other) const {
-      if (x != other.x) return x < other.x;
-      if (y != other.y) return y < other.y;
+    bool operator<(const VoxelKey &other) const {
+      if (x != other.x)
+        return x < other.x;
+      if (y != other.y)
+        return y < other.y;
       return z < other.z;
     }
   };
@@ -73,12 +76,16 @@ private:
   VoxelKey pointToVoxel(float x, float y, float z) const;
 
   // Reduction methods
-  ::geometry::Point3D reduceCentroid(const std::vector<::geometry::Point3D>& points) const;
-  ::geometry::Point3D reduceRandom(const std::vector<::geometry::Point3D>& points) const;
-  ::geometry::Point3D reduceFirst(const std::vector<::geometry::Point3D>& points) const;
-  ::geometry::Point3D reduceClosest(const std::vector<::geometry::Point3D>& points,
-                                     const VoxelKey& voxel) const;
-  ::geometry::Point3D reduceVoxelCenter(const VoxelKey& voxel) const;
+  ::geometry::Point3D
+  reduceCentroid(const std::vector<::geometry::Point3D> &points) const;
+  ::geometry::Point3D
+  reduceRandom(const std::vector<::geometry::Point3D> &points) const;
+  ::geometry::Point3D
+  reduceFirst(const std::vector<::geometry::Point3D> &points) const;
+  ::geometry::Point3D
+  reduceClosest(const std::vector<::geometry::Point3D> &points,
+                const VoxelKey &voxel) const;
+  ::geometry::Point3D reduceVoxelCenter(const VoxelKey &voxel) const;
 };
 
 } // namespace height_mapping::core::stages

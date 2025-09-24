@@ -10,8 +10,8 @@
 #ifndef HEIGHT_MAPPING_CORE_STAGES_HEIGHT_ESTIMATION_H
 #define HEIGHT_MAPPING_CORE_STAGES_HEIGHT_ESTIMATION_H
 
-#include "pipeline_core/stage.h"
 #include "height_mapping_core/estimators/height_estimator_base.h"
+#include "pipeline_core/stage.h"
 #include <memory>
 
 namespace height_mapping::core::stages {
@@ -28,10 +28,14 @@ public:
   /**
    * @brief Configure the stage from parameters
    * @param params Map of parameter name to value strings
-   *        - "estimator_type": "incremental_mean", "kalman_filter", or "moving_average"
-   *        - "process_noise": Process noise for Kalman filter (default: 0.01)
-   *        - "measurement_noise": Measurement noise for Kalman filter (default: 0.1)
-   *        - "alpha": Weight for moving average [0,1] (default: 0.3)
+   *  - "estimator_type":
+   *      - "incremental_mean"
+   *      - "kalman_filter"
+   *      - "moving_average"
+   *
+   *  - "process_noise": Process noise for Kalman filter (default: 0.01)
+   *  - "measurement_noise": Measurement noise for Kalman filter (default: 0.1)
+   *  - "alpha": Weight for moving average [0,1] (default: 0.3)
    */
   void configure(const std::map<std::string, std::string> &params) override;
 
