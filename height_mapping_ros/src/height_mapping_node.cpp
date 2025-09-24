@@ -18,6 +18,7 @@
 #include "height_mapping_ros/adapters/pointcloud_converter.h"
 #include "height_mapping_ros/adapters/tf2_transform.h"
 #include "height_mapping_ros/params.h"
+#include "height_mapping_ros/ros_param_watcher.h"
 
 namespace height_mapping::ros {
 
@@ -35,6 +36,7 @@ private:
     setupTransformProvider();
     setupROSInterfaces();
     createMappingEngine();
+    setupParamWatcher();
 
     printNodeInfo();
     LOG_INFO(NODE_NAME, "Height Mapping Node successfully initialized!");
@@ -85,6 +87,15 @@ private:
     }
 
     LOG_INFO(NODE_NAME, "Mapping engine ready [OK]");
+  }
+
+  void setupParamWatcher() {
+    param_watcher_ = std::make_unique<RosParamWatcher>(private_nh_, 0.5);
+
+    // Setup logger parameters
+    setupLoggerParams(*param_watcher_);
+
+    LOG_INFO(NODE_NAME, "Parameter watcher ready [OK]");
   }
 
   void printNodeInfo() const {
@@ -163,6 +174,7 @@ private:
   // Core components
   std::shared_ptr<TF2Transform> tf_;
   std::unique_ptr<core::MappingEngine> mapper_;
+  std::unique_ptr<RosParamWatcher> param_watcher_;
 
   // ROS interfaces
   ::ros::Subscriber point_cloud_subscriber_;

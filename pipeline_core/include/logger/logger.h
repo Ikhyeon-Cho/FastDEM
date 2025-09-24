@@ -1,4 +1,6 @@
-#pragma once
+#ifndef LOGGER_LOGGER_H
+#define LOGGER_LOGGER_H
+
 #include <chrono>
 #include <iostream>
 #include <sstream>
@@ -216,3 +218,5 @@ public:
   } while (0)
 
 } // namespace logger
+
+#endif // LOGGER_LOGGER_H

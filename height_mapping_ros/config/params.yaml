@@ -13,3 +13,8 @@ publish_processed_cloud: true   # Enable processed cloud output
 # Transform settings
 tf_timeout: 0.1                 # TF lookup timeout (seconds)
 tf_extrapolation: 0.05          # TF extrapolation (seconds)
+
+# Logger settings (dynamically updated)
+logger:
+  level: "INFO"                 # DEBUG, INFO, WARN, ERROR
+  benchmark_enabled: true       # Enable/disable benchmark timing logs
