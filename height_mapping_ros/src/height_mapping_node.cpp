@@ -112,7 +112,7 @@ private:
 
       publishProcessedCloudIfRequested(msg);
     } catch (const std::exception &e) {
-      ROS_ERROR_THROTTLE(1.0, "Error processing point cloud: %s", e.what());
+      LOG_ERROR_THROTTLE(1.0, NODE_NAME, "Error processing point cloud: ", e.what());
     }
   }
 

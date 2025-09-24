@@ -1,6 +1,8 @@
 #pragma once
+#include <chrono>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 
 namespace logger {
 
@@ -26,6 +28,13 @@ enum Level { DEBUG, INFO, WARN, ERROR, BENCH };
 class Logger {
   inline static Level min_level_ = INFO;
   inline static bool benchmark_enabled_ = true;
+
+  // Throttling support
+  struct ThrottleInfo {
+    std::chrono::steady_clock::time_point last_logged;
+    size_t suppressed_count = 0;
+  };
+  inline static std::unordered_map<std::string, ThrottleInfo> throttle_map_;
 
 public:
   static void setLevel(Level level) { min_level_ = level; }
@@ -93,6 +102,30 @@ public:
     ((oss << args), ...);
     return oss.str();
   }
+
+  // Throttled logging - only logs if enough time has passed
+  static bool shouldLogThrottled(const std::string &key,
+                                 double period_seconds) {
+    auto now = std::chrono::steady_clock::now();
+    auto &info = throttle_map_[key];
+
+    auto elapsed =
+        std::chrono::duration<double>(now - info.last_logged).count();
+
+    if (elapsed >= period_seconds) {
+      // Log suppressed count if any
+      if (info.suppressed_count > 0) {
+        std::cout << color::DIM << "[Suppressed " << info.suppressed_count
+                  << " similar messages]" << color::RESET << "\n";
+      }
+      info.last_logged = now;
+      info.suppressed_count = 0;
+      return true;
+    } else {
+      info.suppressed_count++;
+      return false;
+    }
+  }
 };
 
 // Clean macros - module name and variadic args
@@ -118,5 +151,36 @@ public:
 
 #define LOG_NOTICE_BOLD(...)                                                   \
   logger::Logger::notice(logger::Logger::fmt(__VA_ARGS__), true)
+
+// Throttled logging macros - only log if period has elapsed
+#define LOG_ERROR_THROTTLE(period, module, ...)                                \
+  do {                                                                         \
+    static std::string _throttle_key =                                         \
+        std::string(__FILE__) + ":" + std::to_string(__LINE__);                \
+    if (logger::Logger::shouldLogThrottled(_throttle_key, period)) {           \
+      logger::Logger::log(logger::ERROR, module,                               \
+                          logger::Logger::fmt(__VA_ARGS__));                   \
+    }                                                                          \
+  } while (0)
+
+#define LOG_WARN_THROTTLE(period, module, ...)                                 \
+  do {                                                                         \
+    static std::string _throttle_key =                                         \
+        std::string(__FILE__) + ":" + std::to_string(__LINE__);                \
+    if (logger::Logger::shouldLogThrottled(_throttle_key, period)) {           \
+      logger::Logger::log(logger::WARN, module,                                \
+                          logger::Logger::fmt(__VA_ARGS__));                   \
+    }                                                                          \
+  } while (0)
+
+#define LOG_INFO_THROTTLE(period, module, ...)                                 \
+  do {                                                                         \
+    static std::string _throttle_key =                                         \
+        std::string(__FILE__) + ":" + std::to_string(__LINE__);                \
+    if (logger::Logger::shouldLogThrottled(_throttle_key, period)) {           \
+      logger::Logger::log(logger::INFO, module,                                \
+                          logger::Logger::fmt(__VA_ARGS__));                   \
+    }                                                                          \
+  } while (0)
 
 } // namespace logger

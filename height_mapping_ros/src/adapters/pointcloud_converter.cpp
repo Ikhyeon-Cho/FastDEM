@@ -8,9 +8,12 @@
  */
 
 #include "height_mapping_ros/adapters/pointcloud_converter.h"
+#include <logger/logger.h>
 #include <ros/ros.h>
 
 namespace height_mapping::ros::adapters {
+
+static constexpr const char *ADAPTER_NAME = "PointCloudConverter";
 
 std::shared_ptr<PointCloud> fromROS(const sensor_msgs::PointCloud2 &ros_msg) {
 
@@ -52,7 +55,7 @@ std::shared_ptr<PointCloud> fromROS(const sensor_msgs::PointCloud2 &ros_msg) {
   }
 
   if (x_offset < 0 || y_offset < 0 || z_offset < 0) {
-    ROS_ERROR_THROTTLE(1.0, "Point cloud missing x, y, or z fields");
+    LOG_ERROR_THROTTLE(1.0, ADAPTER_NAME, "Point cloud missing x, y, or z fields");
     return core_cloud; // Return empty cloud
   }
 
@@ -215,13 +218,13 @@ sensor_msgs::PointCloud2 toROS(const PointCloud &core_cloud) {
 bool validate(const sensor_msgs::PointCloud2 &msg) {
   // Check frame ID
   if (msg.header.frame_id.empty()) {
-    ROS_WARN_THROTTLE(1.0, "Point cloud has empty frame_id");
+    LOG_WARN_THROTTLE(1.0, ADAPTER_NAME, "Point cloud has empty frame_id");
     return false;
   }
 
   // Check if empty
   if (msg.width * msg.height == 0) {
-    ROS_WARN_THROTTLE(1.0, "Point cloud is empty");
+    LOG_WARN_THROTTLE(1.0, ADAPTER_NAME, "Point cloud is empty");
     return false;
   }
 
@@ -237,7 +240,7 @@ bool validate(const sensor_msgs::PointCloud2 &msg) {
   }
 
   if (!has_x || !has_y || !has_z) {
-    ROS_WARN_THROTTLE(1.0, "Point cloud missing required x, y, or z fields");
+    LOG_WARN_THROTTLE(1.0, ADAPTER_NAME, "Point cloud missing required x, y, or z fields");
     return false;
   }
 
