@@ -13,7 +13,7 @@
 #include "pipeline_core/stage_registry.h"
 
 #include <cmath>
-#include <iostream>
+#include <logger/logger.h>
 
 namespace height_mapping::core::stages {
 
@@ -33,8 +33,8 @@ void MoveOrigin::configure(
     } else if (mode == "fixed") {
       update_mode_ = UpdateMode::FIXED;
     } else {
-      std::cerr << "[MoveOrigin] Unknown update mode: " << mode
-                << ", using CONTINUOUS" << std::endl;
+      LOG_ERROR("MoveOrigin", "Unknown update mode: ", mode,
+                ", using CONTINUOUS");
     }
   }
 

@@ -12,11 +12,13 @@
 #include "height_mapping_core/pipeline/mapping_context.h"
 #include "pipeline_core/stage_registry.h"
 
-#include <iostream>
+#include <logger/logger.h>
 
 namespace height_mapping::core::stages {
 
-HeightEstimation::HeightEstimation() : Stage("HeightEstimation") {
+constexpr const char *STAGE_NAME = "HeightEstimation";
+
+HeightEstimation::HeightEstimation() : Stage(STAGE_NAME) {
   // Create default estimator using factory
   std::map<std::string, std::string> empty_params;
   estimator_ =
@@ -33,15 +35,13 @@ void HeightEstimation::configure(
   estimator_ = estimators::EstimatorFactory::create(estimator_type_, params);
 
   if (!estimator_) {
-    std::cerr << "[HeightEstimation] Failed to create estimator, using default"
-              << std::endl;
+    LOG_ERROR(STAGE_NAME, "Failed to create estimator, using default");
     estimator_ =
         estimators::EstimatorFactory::create("incremental_mean", params);
   }
 
   // Log configuration
-  std::cout << "[HeightEstimation] Configured with " << estimator_->name()
-            << " estimator" << std::endl;
+  LOG_DEBUG(STAGE_NAME, "Configured with ", estimator_->name(), " estimator");
 }
 
 void HeightEstimation::processImpl(pipeline::Context &ctx) {
@@ -55,7 +55,7 @@ void HeightEstimation::processImpl(pipeline::Context &ctx) {
     return;
   }
   if (!estimator_) {
-    std::cerr << "[HeightEstimation] No estimator configured" << std::endl;
+    LOG_ERROR(STAGE_NAME, "No estimator configured");
     return;
   }
 

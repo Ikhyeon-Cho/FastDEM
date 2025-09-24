@@ -12,7 +12,7 @@
 #include "height_mapping_core/estimators/kalman_filter.h"
 #include "height_mapping_core/estimators/moving_average.h"
 #include <algorithm>
-#include <iostream>
+#include <logger/logger.h>
 
 namespace height_mapping::core::estimators {
 
@@ -49,8 +49,8 @@ EstimatorFactory::create(const std::string &type,
 
     // Validate alpha is in [0, 1]
     if (ma_params.alpha < 0.0f || ma_params.alpha > 1.0f) {
-      std::cerr << "[EstimatorFactory] Warning: alpha=" << ma_params.alpha
-                << " out of range [0,1], clamping" << std::endl;
+      LOG_WARN("EstimatorFactory", "Alpha=", ma_params.alpha,
+               " out of range [0,1], clamping");
       ma_params.alpha = std::max(0.01f, std::min(0.99f, ma_params.alpha));
     }
 
@@ -58,8 +58,8 @@ EstimatorFactory::create(const std::string &type,
   }
 
   // Unknown type - default to IncrementalMean
-  std::cerr << "[EstimatorFactory] Unknown estimator type: '" << type
-            << "', using IncrementalMean as default" << std::endl;
+  LOG_ERROR("EstimatorFactory", "Unknown estimator type: '", type,
+            "', using IncrementalMean as default");
   return std::make_unique<IncrementalMean>();
 }
 
@@ -75,9 +75,8 @@ float EstimatorFactory::getFloatParam(
   try {
     return std::stof(it->second);
   } catch (const std::exception &e) {
-    std::cerr << "[EstimatorFactory] Failed to parse '" << key
-              << "' as float: " << it->second
-              << ", using default: " << defaultValue << std::endl;
+    LOG_WARN("EstimatorFactory", "Failed to parse '", key, "' as float: ",
+             it->second, ", using default: ", defaultValue);
     return defaultValue;
   }
 }

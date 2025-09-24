@@ -9,6 +9,7 @@
 
 #include <grid_map_msgs/GridMap.h>
 #include <grid_map_ros/GridMapRosConverter.hpp>
+#include <logger/logger.h>
 #include <memory>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -20,20 +21,23 @@
 
 namespace height_mapping::ros {
 
+static constexpr const char *NODE_NAME = "height_mapping_node";
+
 class MappingNode {
 public:
   MappingNode() : private_nh_("~"), params_(private_nh_) { initialize(); }
 
 private:
   void initialize() {
-    ROS_INFO("Initializing Height Mapping Node...");
+    LOG_NOTICE(" ");
+    LOG_INFO(NODE_NAME, "Initializing Height Mapping Node...");
 
     setupTransformProvider();
     setupROSInterfaces();
     createMappingEngine();
 
     printNodeInfo();
-    ROS_INFO("Height Mapping Node successfully initialized!");
+    LOG_INFO(NODE_NAME, "Height Mapping Node successfully initialized!");
   }
 
   void setupTransformProvider() {
@@ -41,7 +45,7 @@ private:
     tf_->setLookupTimeout(params_.tf_timeout_s);
     tf_->setMaxExtrapolationTime(params_.tf_extrapolation_s);
 
-    ROS_INFO("Tf2 Transform ready [OK]");
+    LOG_INFO(NODE_NAME, "Tf2 Transform ready [OK]");
   }
 
   void setupROSInterfaces() {
@@ -67,7 +71,7 @@ private:
                          &MappingNode::publishTimerCallback, this);
     }
 
-    ROS_INFO("ROS interfaces ready [OK]");
+    LOG_INFO(NODE_NAME, "ROS interfaces ready [OK]");
   }
 
   void createMappingEngine() {
@@ -75,11 +79,12 @@ private:
       mapper_ =
           std::make_unique<core::MappingEngine>(tf_, params_.mapping_config);
     } catch (const std::exception &e) {
-      ROS_ERROR("Failed to create mapping engine from config: %s", e.what());
+      LOG_ERROR(NODE_NAME,
+                "Failed to create mapping engine from config: ", e.what());
       throw;
     }
 
-    ROS_INFO("Mapping engine ready [OK]");
+    LOG_INFO(NODE_NAME, "Mapping engine ready [OK]");
   }
 
   void printNodeInfo() const {
@@ -90,17 +95,14 @@ private:
             ? params_.mapping_config.substr(last_slash + 1)
             : params_.mapping_config;
 
-    ROS_INFO(" ");
-    ROS_INFO("===== Configuration Summary =====");
-    ROS_INFO("Configuration:");
-    ROS_INFO("  Mapping config: %s", config_filename.c_str());
-    ROS_INFO("Topics:");
-    ROS_INFO("  Input:  %s", point_cloud_subscriber_.getTopic().c_str());
-    ROS_INFO("  Output: %s", gridmap_publisher_.getTopic().c_str());
-    ROS_INFO("Processing:");
-    ROS_INFO("  Publish rate: %.1f Hz", params_.publish_rate_hz);
-    ROS_INFO("=================================");
-    ROS_INFO(" ");
+    LOG_NOTICE(" ");
+    LOG_NOTICE_BOLD("===== Configuration Summary =====");
+    LOG_NOTICE("Config: ", config_filename);
+    LOG_NOTICE("Input:  ", point_cloud_subscriber_.getTopic());
+    LOG_NOTICE("Output: ", gridmap_publisher_.getTopic());
+    LOG_NOTICE("Publish rate: ", params_.publish_rate_hz, " Hz");
+    LOG_NOTICE_BOLD("=================================");
+    LOG_NOTICE(" ");
   }
 
   void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
@@ -173,13 +175,13 @@ private:
 
 int main(int argc, char **argv) {
 
-  ros::init(argc, argv, "height_mapping_node");
+  ros::init(argc, argv, height_mapping::ros::NODE_NAME);
 
   try {
     height_mapping::ros::MappingNode node;
     ros::spin();
   } catch (const std::exception &e) {
-    ROS_ERROR("Fatal error: %s", e.what());
+    LOG_ERROR("main", "Fatal error: ", e.what());
     return 1;
   }
 

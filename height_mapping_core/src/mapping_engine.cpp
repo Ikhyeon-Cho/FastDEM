@@ -10,9 +10,11 @@
 #include "height_mapping_core/mapping_engine.h"
 #include "pipeline_core/pipeline_builder.h"
 
-#include <iostream>
+#include <logger/logger.h>
 
 namespace height_mapping::core {
+
+constexpr const char *ENGINE_NAME = "MappingEngine";
 
 MappingEngine::MappingEngine(
     std::shared_ptr<ITransformProvider> transform_provider,
@@ -33,15 +35,15 @@ void MappingEngine::initializeMap() {
 void MappingEngine::setupMappingPipeline() {
   // Use default pipeline if config is not available (from YAML)
   if (config_.pipeline.stages.empty()) {
-    std::cout << "No pipeline configuration found, using default pipeline"
-              << std::endl;
+    LOG_DEBUG(ENGINE_NAME,
+              "No pipeline configuration found, using default pipeline");
     setupDefaultPipeline();
     return;
   }
 
   mapping_pipeline_ = pipeline::PipelineBuilder::fromConfig(config_.pipeline);
-  std::cout << "Pipeline created from configuration with "
-            << config_.pipeline.stages.size() << " stages" << std::endl;
+  LOG_DEBUG(ENGINE_NAME, "Pipeline created from configuration with ",
+            config_.pipeline.stages.size(), " stages");
 }
 
 void MappingEngine::setupDefaultPipeline() {
@@ -70,7 +72,7 @@ void MappingEngine::setupDefaultPipeline() {
 void MappingEngine::registerCloud(std::shared_ptr<PointCloud> cloud) {
   // Validation
   if (!cloud || cloud->empty() || cloud->frameId().empty()) {
-    std::cerr << "[MappingEngine] Invalid point cloud provided" << std::endl;
+    LOG_ERROR(ENGINE_NAME, "Invalid point cloud provided");
     return;
   }
 
@@ -90,8 +92,7 @@ void MappingEngine::registerCloud(std::shared_ptr<PointCloud> cloud) {
       last_processed_cloud_ = ctx.cloudPtr();
     }
   } catch (const std::exception &e) {
-    std::cerr << "[MappingEngine] Pipeline processing failed: " << e.what()
-              << std::endl;
+    LOG_ERROR(ENGINE_NAME, "Pipeline processing failed: ", e.what());
     if (config_.engine.reset_on_error) {
       reset();
     }

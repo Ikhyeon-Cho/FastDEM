@@ -12,8 +12,8 @@
 #include "pipeline_core/stage_registry.h"
 
 #include <cmath>
-#include <iostream>
 #include <limits>
+#include <logger/logger.h>
 #include <map>
 #include <random>
 
@@ -32,7 +32,7 @@ void VoxelFilter::configure(const std::map<std::string, std::string> &params) {
     if (size > 0.0f && size <= 10.0f) {
       voxel_size_ = size;
     } else {
-      std::cerr << "[VoxelFilter] Invalid voxel size: " << size << std::endl;
+      LOG_ERROR("VoxelFilter", "Invalid voxel size: ", size);
     }
   }
 
@@ -51,8 +51,7 @@ void VoxelFilter::configure(const std::map<std::string, std::string> &params) {
     } else if (method == "center" || method == "voxel_center") {
       reduction_method_ = ReductionMethod::VOXEL_CENTER;
     } else {
-      std::cerr << "[VoxelFilter] Unknown reduction method: " << method
-                << std::endl;
+      LOG_ERROR("VoxelFilter", "Unknown reduction method: ", method);
     }
   }
 }

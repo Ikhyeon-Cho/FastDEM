@@ -11,7 +11,7 @@
 #include "height_mapping_core/pipeline/mapping_context.h"
 #include "pipeline_core/stage_registry.h"
 
-#include <iostream>
+#include <logger/logger.h>
 
 namespace height_mapping::core::stages {
 
@@ -34,8 +34,8 @@ void MultiSensorSync::configure(
     merge_policy_ = it->second;
     if (merge_policy_ != "latest" && merge_policy_ != "exact_sync" &&
         merge_policy_ != "nearest") {
-      std::cerr << "[MultiSensorSync] Unknown merge policy: " << merge_policy_
-                << ", using 'latest'" << std::endl;
+      LOG_ERROR("MultiSensorSync", "Unknown merge policy: ", merge_policy_,
+                ", using 'latest'");
       merge_policy_ = "latest";
     }
   }
