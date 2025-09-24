@@ -1,24 +1,30 @@
 /*
- * stage_registry.h
+ * stage_registration.h
  *
- * MIXED API - Stage registration and factory.
+ * IMPLEMENTATION FILE ONLY - Include this header only in .cpp files.
  *
- * PUBLIC: REGISTER_STAGE macro for registering custom stages
- * INTERNAL: StageRegistry class (used by PipelineBuilder internally)
+ * This header provides the REGISTER_STAGE macro for automatic stage registration.
+ * Domain-specific developers should:
+ *   1. Define their stage class in a .h file (inheriting from pipeline::Stage)
+ *   2. Include this header ONLY in their .cpp file
+ *   3. Call REGISTER_STAGE(YourStageName) in the .cpp file
  *
- * Users only need this header for the REGISTER_STAGE macro:
- *   class MyStage : public pipeline::Stage { ... };
+ * Example usage (in .cpp file only):
+ *   #include "my_stage.h"
+ *   #include "pipeline_core/stage_registration.h"
+ *
+ *   // Implementation of MyStage methods...
+ *
  *   REGISTER_STAGE(MyStage);  // Auto-registers with factory
  *
- * The macro automatically registers your stage class with the factory,
- * allowing it to be created by name in configuration files:
+ * This allows your stage to be created by name in configuration files:
  *   stages:
  *     - name: "MyStage"
  *       params:
  *         key: value
  *
- * Note: The StageRegistry class itself is internal - users should not
- * directly call StageRegistry methods.
+ * WARNING: The StageRegistry class below is INTERNAL - do not use directly.
+ *          Only use the REGISTER_STAGE macro.
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -26,8 +32,8 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef PIPELINE_CORE_STAGE_REGISTRY_H
-#define PIPELINE_CORE_STAGE_REGISTRY_H
+#ifndef PIPELINE_CORE_STAGE_REGISTRATION_H
+#define PIPELINE_CORE_STAGE_REGISTRATION_H
 
 #include "pipeline_core/stage.h"
 #include <functional>
@@ -89,4 +95,4 @@ private:
 
 } // namespace pipeline
 
-#endif // PIPELINE_CORE_STAGE_REGISTRY_H
+#endif // PIPELINE_CORE_STAGE_REGISTRATION_H

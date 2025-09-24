@@ -16,6 +16,20 @@
  *   YAML::Node node = ...;
  *   auto config = pipeline::Config::fromYAML(node);
  *
+ * YAML Configuration Format:
+ *   pipeline:
+ *     stop_on_error: true
+ *     stages:
+ *       - name: "MyStage"
+ *         enabled: true
+ *         params:
+ *           threshold: 1.0
+ *           mode: "fast"
+ *       - name: "AnotherStage"
+ *         enabled: false
+ *         params:
+ *           buffer_size: 100
+ *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
  *	 Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab

@@ -10,7 +10,7 @@
 #include "height_mapping_core/stages/transform_cloud.h"
 #include "height_mapping_core/interfaces/transform_provider.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
-#include "pipeline_core/stage_registry.h"
+#include "pipeline_core/stage_registration.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -49,13 +49,13 @@ void TransformCloud::processImpl(pipeline::Context &ctx) {
       target_frame_, cloud.frameId(), cloud.timestamp());
 
   if (!transform_opt.has_value()) {
-    throw std::runtime_error("Failed to get transform from '" + cloud.frameId() +
-                             "' to '" + target_frame_ + "'");
+    throw std::runtime_error("Failed to get transform from '" +
+                             cloud.frameId() + "' to '" + target_frame_ + "'");
   }
 
   // Apply transform to all points
   const auto &T = transform_opt.value().matrix();
-  for (auto point : cloud) {  // PointView from iterator
+  for (auto point : cloud) { // PointView from iterator
     float x = point.x();
     float y = point.y();
     float z = point.z();

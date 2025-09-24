@@ -9,7 +9,7 @@
 
 #include "height_mapping_core/stages/passthrough_filter.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
-#include "pipeline_core/stage_registry.h"
+#include "pipeline_core/stage_registration.h"
 
 #include <cmath>
 #include <iostream>
@@ -74,7 +74,7 @@ void PassthroughFilter::processImpl(pipeline::Context &ctx) {
   }
 
   // Use the new smart filterInPlace with automatic sensor data handling
-  cloud.filterInPlace([this](const auto& point) {
+  cloud.filterInPlace([this](const auto &point) {
     // point is a ConstPointView with unified access to all data
 
     // Check if point is finite
@@ -83,9 +83,8 @@ void PassthroughFilter::processImpl(pipeline::Context &ctx) {
     }
 
     // Check axis-aligned bounds
-    if (point.x() < x_min_ || point.x() > x_max_ ||
-        point.y() < y_min_ || point.y() > y_max_ ||
-        point.z() < z_min_ || point.z() > z_max_) {
+    if (point.x() < x_min_ || point.x() > x_max_ || point.y() < y_min_ ||
+        point.y() > y_max_ || point.z() < z_min_ || point.z() > z_max_) {
       return false;
     }
 

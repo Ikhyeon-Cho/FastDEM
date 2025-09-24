@@ -10,7 +10,7 @@
 #include "height_mapping_core/stages/raycasting.h"
 #include "height_mapping_core/interfaces/transform_provider.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
-#include "pipeline_core/stage_registry.h"
+#include "pipeline_core/stage_registration.h"
 
 #include <cmath>
 #include <iostream>
@@ -75,7 +75,7 @@ void Raycasting::processImpl(pipeline::Context &ctx) {
   size_t ground_points = 0;
   size_t corrected_cells = 0;
 
-  for (const auto point : cloud) {  // PointView from iterator
+  for (const auto point : cloud) { // PointView from iterator
     // Skip invalid points
     if (!point.isFinite()) {
       continue;

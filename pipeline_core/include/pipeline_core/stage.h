@@ -6,7 +6,10 @@
  * Users must inherit from Stage to create custom processing stages.
  * Each stage represents a single processing step in the pipeline.
  *
+ * ###################################################################################
  * Example implementation:
+ *
+ * Header file (my_stage.h):
  *   class MyStage : public pipeline::Stage {
  *   public:
  *     MyStage() : Stage("MyStage") {}
@@ -28,8 +31,13 @@
  *     double threshold_ = 1.0;
  *   };
  *
+ * Implementation file (my_stage.cpp):
+ *   #include "my_stage.h"
+ *   #include "pipeline_core/stage_registration.h"  // Only needed in .cpp
+ *
  *   // Register the stage for factory creation
  *   REGISTER_STAGE(MyStage);
+ * ###################################################################################
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho

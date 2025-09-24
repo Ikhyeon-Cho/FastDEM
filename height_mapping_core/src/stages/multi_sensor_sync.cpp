@@ -9,7 +9,7 @@
 
 #include "height_mapping_core/stages/multi_sensor_sync.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
-#include "pipeline_core/stage_registry.h"
+#include "pipeline_core/stage_registration.h"
 
 #include <logger/logger.h>
 

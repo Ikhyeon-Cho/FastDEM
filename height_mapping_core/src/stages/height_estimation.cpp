@@ -10,8 +10,8 @@
 #include "height_mapping_core/stages/height_estimation.h"
 #include "height_mapping_core/estimators/estimator_factory.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
-#include "pipeline_core/stage_registry.h"
 
+#include "pipeline_core/stage_registration.h"
 #include <logger/logger.h>
 
 namespace height_mapping::core::stages {

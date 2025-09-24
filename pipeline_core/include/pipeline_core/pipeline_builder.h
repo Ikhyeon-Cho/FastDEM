@@ -36,7 +36,7 @@
 #include "pipeline_core/config.h"
 #include "pipeline_core/pipeline.h"
 #include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registry.h"
+#include "pipeline_core/stage_registration.h"
 #include <cassert>
 #include <memory>
 #include <string>

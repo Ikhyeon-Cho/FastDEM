@@ -10,7 +10,7 @@
 #include "height_mapping_core/stages/move_origin.h"
 #include "height_mapping_core/interfaces/transform_provider.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
-#include "pipeline_core/stage_registry.h"
+#include "pipeline_core/stage_registration.h"
 
 #include <cmath>
 #include <logger/logger.h>
@@ -19,8 +19,7 @@ namespace height_mapping::core::stages {
 
 MoveOrigin::MoveOrigin() : Stage("MoveOrigin") {}
 
-void MoveOrigin::configure(
-    const std::map<std::string, std::string> &params) {
+void MoveOrigin::configure(const std::map<std::string, std::string> &params) {
   auto it = params.find("update_mode");
   if (it != params.end()) {
     const std::string &mode = it->second;
