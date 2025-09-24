@@ -8,9 +8,8 @@
  */
 
 #include "height_mapping_core/mapping_engine.h"
+#include "logger/logger.h"
 #include "pipeline_core/pipeline_builder.h"
-
-#include <logger/logger.h>
 
 namespace height_mapping::core {
 
@@ -44,6 +43,10 @@ void MappingEngine::setupMappingPipeline() {
   mapping_pipeline_ = pipeline::PipelineBuilder::fromConfig(config_.pipeline);
   LOG_DEBUG(ENGINE_NAME, "Pipeline created from configuration with ",
             config_.pipeline.stages.size(), " stages");
+
+  // Initialize profiler (optional component)
+  profiler_ =
+      std::make_unique<pipeline::PipelineProfiler>(mapping_pipeline_.get());
 }
 
 void MappingEngine::setupDefaultPipeline() {
@@ -67,6 +70,10 @@ void MappingEngine::setupDefaultPipeline() {
   default_config.stop_on_error = true;
 
   mapping_pipeline_ = pipeline::PipelineBuilder::fromConfig(default_config);
+
+  // Initialize profiler for default pipeline too
+  profiler_ =
+      std::make_unique<pipeline::PipelineProfiler>(mapping_pipeline_.get());
 }
 
 void MappingEngine::registerCloud(std::shared_ptr<PointCloud> cloud) {
@@ -80,9 +87,13 @@ void MappingEngine::registerCloud(std::shared_ptr<PointCloud> cloud) {
   MappingContext ctx(cloud, map_);
   ctx.setService(transform_provider_);
 
-  // Process through pipeline
+  // Process through pipeline (with optional profiling)
   try {
-    mapping_pipeline_->process(ctx);
+    if (benchmark_enabled_ && profiler_) {
+      profiler_->processWithProfiling(ctx);
+    } else {
+      mapping_pipeline_->process(ctx); // Clean path, zero overhead
+    }
 
     // Update processed cloud reference
     if (config_.engine.thread_safe) {
@@ -92,7 +103,8 @@ void MappingEngine::registerCloud(std::shared_ptr<PointCloud> cloud) {
       last_processed_cloud_ = ctx.cloudPtr();
     }
   } catch (const std::exception &e) {
-    LOG_ERROR(ENGINE_NAME, "Pipeline processing failed: ", e.what());
+    LOG_ERROR_THROTTLE(1.0, ENGINE_NAME,
+                       "Pipeline processing failed: ", e.what());
     if (config_.engine.reset_on_error) {
       reset();
     }
@@ -122,6 +134,19 @@ void MappingEngine::reset() {
     map_->clear();
   } else {
     map_->clear();
+  }
+}
+
+void MappingEngine::setBenchmarkEnabled(bool enable) {
+  benchmark_enabled_ = enable;
+  if (profiler_) {
+    profiler_->setAutoprint(enable);
+  }
+}
+
+void MappingEngine::setBenchmarkInterval(size_t interval) {
+  if (profiler_) {
+    profiler_->setPrintInterval(interval);
   }
 }
 

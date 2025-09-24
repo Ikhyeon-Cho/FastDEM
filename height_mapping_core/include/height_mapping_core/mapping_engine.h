@@ -1,11 +1,10 @@
 #pragma once
 
 #include "height_mapping_core/config.h"
-#include "height_mapping_core/data/height_map.h"
-#include "height_mapping_core/geometry/point_cloud.h"
 #include "height_mapping_core/interfaces/transform_provider.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
 #include "pipeline_core/pipeline.h"
+#include "pipeline_core/pipeline_profiler.h"
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -23,8 +22,7 @@ public:
   // Loads from file
   MappingEngine(std::shared_ptr<ITransformProvider> transform_provider,
                 const std::string &config_file = "")
-      : MappingEngine(transform_provider, Config::fromFile(config_file)) {
-  }
+      : MappingEngine(transform_provider, Config::fromFile(config_file)) {}
 
   ~MappingEngine() = default;
 
@@ -33,6 +31,11 @@ public:
   std::shared_ptr<const height_map::HeightMap> getHeightMap() const;
   std::shared_ptr<const PointCloud> getProcessedCloud() const;
   void reset();
+
+  // Benchmarking interfaces
+  void setBenchmarkEnabled(bool enable);
+  void setBenchmarkInterval(size_t interval);
+  pipeline::PipelineProfiler *getProfiler() { return profiler_.get(); }
 
 private:
   void setupMappingPipeline();
@@ -43,7 +46,11 @@ private:
   std::shared_ptr<ITransformProvider> transform_provider_;
 
   std::shared_ptr<height_map::HeightMap> map_;
+
+  // Core pipeline components
   std::unique_ptr<pipeline::Pipeline> mapping_pipeline_;
+  std::unique_ptr<pipeline::PipelineProfiler> profiler_;
+  bool benchmark_enabled_ = false;
 
   mutable std::shared_mutex map_mutex_;
   mutable std::shared_mutex cloud_mutex_;

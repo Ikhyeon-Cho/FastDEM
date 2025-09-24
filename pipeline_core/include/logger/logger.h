@@ -29,7 +29,6 @@ enum Level { DEBUG, INFO, WARN, ERROR, BENCH };
 
 class Logger {
   inline static Level min_level_ = INFO;
-  inline static bool benchmark_enabled_ = true;
 
   // Throttling support
   struct ThrottleInfo {
@@ -40,17 +39,13 @@ class Logger {
 
 public:
   static void setLevel(Level level) { min_level_ = level; }
-  static void setBenchmarkEnabled(bool enable) { benchmark_enabled_ = enable; }
   static Level getLevel() { return min_level_; }
-  static bool isBenchmarkEnabled() { return benchmark_enabled_; }
 
   // Core log function
   static void log(Level level, const std::string &module,
                   const std::string &msg) {
     // BENCH is always shown regardless of min_level
     if (level < min_level_ && level != BENCH)
-      return;
-    if (level == BENCH && !benchmark_enabled_)
       return;
 
     const char *color = "";
@@ -88,6 +83,12 @@ public:
     }
   }
 
+  // Special function for benchmark messages (no module parameter)
+  // BENCH uses cyan color and can optionally have stage name in the message
+  static void bench(const std::string &msg) {
+    std::cout << color::CYAN << msg << color::RESET << "\n";
+  }
+
   // Special function for NOTICE messages (no module parameter)
   // NOTICE uses green color and never has module tags
   static void notice(const std::string &msg, bool bold = false) {
@@ -109,8 +110,16 @@ public:
   static bool shouldLogThrottled(const std::string &key,
                                  double period_seconds) {
     auto now = std::chrono::steady_clock::now();
-    auto &info = throttle_map_[key];
 
+    // Check if this key exists
+    auto it = throttle_map_.find(key);
+    if (it == throttle_map_.end()) {
+      // First time - create entry and log
+      throttle_map_[key] = ThrottleInfo{now, 0};
+      return true;
+    }
+
+    auto &info = it->second;
     auto elapsed =
         std::chrono::duration<double>(now - info.last_logged).count();
 
@@ -144,8 +153,9 @@ public:
 #define LOG_ERROR(module, ...)                                                 \
   logger::Logger::log(logger::ERROR, module, logger::Logger::fmt(__VA_ARGS__))
 
-#define LOG_BENCH(stage, ms)                                                   \
-  logger::Logger::log(logger::BENCH, stage, logger::Logger::fmt(ms, " ms"))
+// BENCH macro - no module parameter, just like NOTICE
+#define LOG_BENCH(...)                                                         \
+  logger::Logger::bench(logger::Logger::fmt(__VA_ARGS__))
 
 // NOTICE macros - no module parameter needed
 #define LOG_NOTICE(...)                                                        \

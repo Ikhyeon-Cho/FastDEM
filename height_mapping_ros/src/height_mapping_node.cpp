@@ -91,8 +91,35 @@ private:
 
   void setupDynamicParams() {
     try {
-      param_watcher_ = std::make_unique<RosParamWatcher>(private_nh_);
+      param_watcher_ =
+          std::make_unique<RosParamWatcher>(private_nh_); // private namespace
       setupLoggerParams(*param_watcher_);
+
+      // Watch benchmark parameters
+      param_watcher_->watch<bool>("benchmark/enabled", [this](bool enabled) {
+        if (mapper_) {
+          mapper_->setBenchmarkEnabled(enabled);
+          LOG_INFO(NODE_NAME, "Benchmark ", enabled ? "enabled" : "disabled");
+        }
+      });
+
+      param_watcher_->watch<int>(
+          "benchmark/report_interval", [this](int interval) {
+            if (mapper_) {
+              mapper_->setBenchmarkInterval(interval);
+              LOG_INFO(NODE_NAME, "Benchmark report interval set to ",
+                       interval);
+            }
+          });
+
+      param_watcher_->watch<bool>(
+          "benchmark/log_each_stage", [this](bool enable) {
+            if (mapper_ && mapper_->getProfiler()) {
+              mapper_->getProfiler()->setLogEachStage(enable);
+              LOG_INFO(NODE_NAME, "Per-stage logging ",
+                       enable ? "enabled" : "disabled");
+            }
+          });
     } catch (const std::exception &e) {
       LOG_WARN(NODE_NAME, "Parameter watcher disabled: ", e.what());
       LOG_WARN(NODE_NAME, "Dynamic parameter updates not available");
@@ -149,8 +176,6 @@ private:
 
   void publishTimerCallback(const ::ros::TimerEvent &event) {
     publishHeightMap();
-    LOG_DEBUG(NODE_NAME, "Published height map at ",
-              event.current_real.toSec());
   }
 
   void publishHeightMap() {

@@ -16,7 +16,8 @@
  *   pipeline->process(ctx);
  *
  * Note: Direct Pipeline manipulation (addStage, enableStage) is considered
- * advanced usage. Most users should configure pipelines through PipelineBuilder.
+ * advanced usage. Most users should configure pipelines through
+ *PipelineBuilder.
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -59,6 +60,8 @@ public:
   }
 
   // Stage access
+  const std::vector<Stage::Ptr> &getStages() const { return stages_; }
+
   Stage *getStage(const std::string &name) {
     auto it = std::find_if(
         stages_.begin(), stages_.end(),

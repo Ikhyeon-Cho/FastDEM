@@ -10,6 +10,8 @@
 #ifndef ROS_PARAM_WATCHER_H
 #define ROS_PARAM_WATCHER_H
 
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <functional>
 #include <ros/ros.h>
@@ -40,12 +42,16 @@ public:
   // Generic watch function - type deduced from callback
   template <typename T>
   void watch(const std::string &param_name, std::function<void(T)> callback) {
-    // Use emplace to avoid default construction
-    params_.emplace(param_name, ParamWatcher<T>(param_name, callback));
+    // Create watcher and get reference
+    auto result = params_.emplace(param_name, ParamWatcher<T>(param_name, callback));
 
     // Initialize with current value if exists
     T value;
     if (nh_.getParam(param_name, value)) {
+      // Access the specific watcher and set initialized state
+      auto& watcher = std::get<ParamWatcher<T>>(result.first->second);
+      watcher.last_value = value;
+      watcher.initialized = true;
       callback(value);
     }
   }
@@ -124,18 +130,23 @@ inline void setupLoggerParams(RosParamWatcher &watcher) {
 // Only include logger if available
 #ifdef LOGGER_LOGGER_H
   watcher.watch<std::string>("logger/level", [](const std::string &level) {
-    if (level == "DEBUG")
-      logger::Logger::setLevel(logger::DEBUG);
-    else if (level == "INFO")
-      logger::Logger::setLevel(logger::INFO);
-    else if (level == "WARN")
-      logger::Logger::setLevel(logger::WARN);
-    else if (level == "ERROR")
-      logger::Logger::setLevel(logger::ERROR);
-  });
+    // Convert to uppercase for case-insensitive comparison
+    std::string upper_level = level;
+    std::transform(upper_level.begin(), upper_level.end(), upper_level.begin(), ::toupper);
 
-  watcher.watch<bool>("logger/benchmark_enabled", [](bool enabled) {
-    logger::Logger::setBenchmarkEnabled(enabled);
+    if (upper_level == "DEBUG")
+      logger::Logger::setLevel(logger::DEBUG);
+    else if (upper_level == "INFO")
+      logger::Logger::setLevel(logger::INFO);
+    else if (upper_level == "WARN" || upper_level == "WARNING")
+      logger::Logger::setLevel(logger::WARN);
+    else if (upper_level == "ERROR")
+      logger::Logger::setLevel(logger::ERROR);
+    else {
+      // Log warning for invalid level
+      LOG_WARN("ParamWatcher", "Invalid logger level '", level, "'. Using INFO. Valid: DEBUG, INFO, WARN, ERROR");
+      logger::Logger::setLevel(logger::INFO);
+    }
   });
 #else
   // Fallback to ROS logging
