@@ -183,4 +183,36 @@ public:
     }                                                                          \
   } while (0)
 
+// "ONCE" logging macros - logs only once per program execution
+// Uses very large throttle period (1 million seconds ~ 11.5 days)
+#define LOG_ERROR_ONCE(module, ...)                                            \
+  do {                                                                         \
+    static std::string _throttle_key =                                         \
+        std::string(__FILE__) + ":" + std::to_string(__LINE__);                \
+    if (logger::Logger::shouldLogThrottled(_throttle_key, 1000000.0)) {        \
+      logger::Logger::log(logger::ERROR, module,                               \
+                          logger::Logger::fmt(__VA_ARGS__));                   \
+    }                                                                          \
+  } while (0)
+
+#define LOG_WARN_ONCE(module, ...)                                             \
+  do {                                                                         \
+    static std::string _throttle_key =                                         \
+        std::string(__FILE__) + ":" + std::to_string(__LINE__);                \
+    if (logger::Logger::shouldLogThrottled(_throttle_key, 1000000.0)) {        \
+      logger::Logger::log(logger::WARN, module,                                \
+                          logger::Logger::fmt(__VA_ARGS__));                   \
+    }                                                                          \
+  } while (0)
+
+#define LOG_INFO_ONCE(module, ...)                                             \
+  do {                                                                         \
+    static std::string _throttle_key =                                         \
+        std::string(__FILE__) + ":" + std::to_string(__LINE__);                \
+    if (logger::Logger::shouldLogThrottled(_throttle_key, 1000000.0)) {        \
+      logger::Logger::log(logger::INFO, module,                                \
+                          logger::Logger::fmt(__VA_ARGS__));                   \
+    }                                                                          \
+  } while (0)
+
 } // namespace logger

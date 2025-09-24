@@ -21,8 +21,11 @@
 
 #include "height_mapping_core/geometry/transform.h"
 #include "height_mapping_core/interfaces/transform_provider.h"
+#include <logger/logger.h>
 
 namespace height_mapping::ros {
+
+static constexpr const char *ADAPTER_NAME = "TF2Transform";
 
 class TF2Transform : public core::ITransformProvider {
 public:
@@ -50,9 +53,9 @@ public:
 
     // Validate frames
     if (target_frame.empty() || source_frame.empty()) {
-      ROS_WARN_ONCE(
-          "Empty frame_id in transform lookup (target: '%s', source: '%s')",
-          target_frame.c_str(), source_frame.c_str());
+      LOG_WARN_ONCE(ADAPTER_NAME,
+                    "Empty frame_id in transform lookup (target: '",
+                    target_frame, "', source: '", source_frame, "')");
       return std::nullopt;
     }
 
@@ -69,15 +72,15 @@ public:
       // Check if the transform is too old (more than max_extrapolation_time)
       double time_diff = std::abs((stamp - tf_msg.header.stamp).toSec());
       if (time_diff > max_extrapolation_time_) {
-        ROS_WARN_THROTTLE(1.0,
-                          "Transform time difference too large: %.3f sec (max: "
-                          "%.3f sec) for %s->%s",
-                          time_diff, max_extrapolation_time_,
-                          source_frame.c_str(), target_frame.c_str());
+        LOG_WARN_THROTTLE(1.0, ADAPTER_NAME,
+                          "Transform time difference too large: ", time_diff,
+                          " sec (max: ", max_extrapolation_time_, " sec) for ",
+                          source_frame, "->", target_frame);
 
         // Try to use latest transform if enabled
         if (use_latest_transform_fallback_) {
-          ROS_WARN_THROTTLE(1.0, "Using latest transform as fallback");
+          LOG_WARN_THROTTLE(1.0, ADAPTER_NAME,
+                            "Using latest transform as fallback");
           return lookupLatestTransform(target_frame, source_frame);
         }
         return std::nullopt;
@@ -86,11 +89,12 @@ public:
       return convertToCore(tf_msg);
 
     } catch (const tf2::TransformException &ex) {
-      ROS_WARN_THROTTLE(1.0, "TF lookup failed: %s", ex.what());
+      LOG_WARN_THROTTLE(1.0, ADAPTER_NAME, "TF lookup failed: ", ex.what());
 
       // Try to use latest transform if enabled and within tolerance
       if (use_latest_transform_fallback_) {
-        ROS_WARN_THROTTLE(1.0, "Using latest transform as fallback");
+        LOG_WARN_THROTTLE(1.0, ADAPTER_NAME,
+                          "Using latest transform as fallback");
         return lookupLatestTransform(target_frame, source_frame);
       }
       return std::nullopt;
@@ -103,9 +107,9 @@ public:
 
     // Validate frames
     if (target_frame.empty() || source_frame.empty()) {
-      ROS_WARN_ONCE(
-          "Empty frame_id in transform lookup (target: '%s', source: '%s')",
-          target_frame.c_str(), source_frame.c_str());
+      LOG_WARN_ONCE(ADAPTER_NAME,
+                    "Empty frame_id in transform lookup (target: '",
+                    target_frame, "', source: '", source_frame, "')");
       return std::nullopt;
     }
 
@@ -117,7 +121,7 @@ public:
       return convertToCore(tf_msg);
 
     } catch (const tf2::TransformException &ex) {
-      ROS_WARN_THROTTLE(1.0, "TF lookup failed: %s", ex.what());
+      LOG_WARN_THROTTLE(1.0, ADAPTER_NAME, "TF lookup failed: ", ex.what());
       return std::nullopt;
     }
   }
