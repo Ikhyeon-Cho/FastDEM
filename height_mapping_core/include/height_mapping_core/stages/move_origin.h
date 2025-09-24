@@ -1,5 +1,5 @@
 /*
- * map_origin_update.h
+ * move_origin.h
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,8 +7,8 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef HEIGHT_MAPPING_CORE_STAGES_MAP_ORIGIN_UPDATE_H
-#define HEIGHT_MAPPING_CORE_STAGES_MAP_ORIGIN_UPDATE_H
+#ifndef HEIGHT_MAPPING_CORE_STAGES_MOVE_ORIGIN_H
+#define HEIGHT_MAPPING_CORE_STAGES_MOVE_ORIGIN_H
 
 #include "pipeline_core/stage.h"
 #include <Eigen/Geometry>
@@ -21,7 +21,7 @@ namespace height_mapping::core::stages {
  * Keeps the map centered around the robot or updates based on movement
  * threshold.
  */
-class MapOriginUpdate : public pipeline::Stage {
+class MoveOrigin : public pipeline::Stage {
 public:
   enum class UpdateMode {
     CONTINUOUS, // Always center on robot
@@ -30,7 +30,7 @@ public:
     FIXED       // Never update origin
   };
 
-  MapOriginUpdate();
+  MoveOrigin();
 
   /**
    * @brief Configure the stage from parameters
@@ -69,4 +69,4 @@ private:
 
 } // namespace height_mapping::core::stages
 
-#endif // HEIGHT_MAPPING_CORE_STAGES_MAP_ORIGIN_UPDATE_H
+#endif // HEIGHT_MAPPING_CORE_STAGES_MOVE_ORIGIN_H

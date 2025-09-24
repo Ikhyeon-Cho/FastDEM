@@ -1,5 +1,5 @@
 /*
- * transform.h
+ * transform_cloud.h
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,8 +7,8 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef HEIGHT_MAPPING_CORE_STAGES_POINT_CLOUD_TRANSFORM_H
-#define HEIGHT_MAPPING_CORE_STAGES_POINT_CLOUD_TRANSFORM_H
+#ifndef HEIGHT_MAPPING_CORE_STAGES_TRANSFORM_CLOUD_H
+#define HEIGHT_MAPPING_CORE_STAGES_TRANSFORM_CLOUD_H
 
 #include "pipeline_core/stage.h"
 #include <string>
@@ -21,9 +21,9 @@ namespace height_mapping::core::stages {
  * Uses the transform provider service to lookup and apply transforms.
  * Requires a transform provider to be injected into the context.
  */
-class PointCloudTransform : public pipeline::Stage {
+class TransformCloud : public pipeline::Stage {
 public:
-  PointCloudTransform();
+  TransformCloud();
 
   /**
    * @brief Configure the stage from parameters
@@ -41,4 +41,4 @@ private:
 
 } // namespace height_mapping::core::stages
 
-#endif // HEIGHT_MAPPING_CORE_STAGES_POINT_CLOUD_TRANSFORM_H
+#endif // HEIGHT_MAPPING_CORE_STAGES_TRANSFORM_CLOUD_H

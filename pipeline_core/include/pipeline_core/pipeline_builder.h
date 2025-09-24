@@ -37,6 +37,7 @@
 #include "pipeline_core/pipeline.h"
 #include "pipeline_core/stage.h"
 #include "pipeline_core/stage_registry.h"
+#include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
@@ -100,7 +101,10 @@ public:
     return *this;
   }
 
-  virtual std::unique_ptr<Pipeline> build() { return std::move(pipeline_); }
+  virtual std::unique_ptr<Pipeline> build() {
+    assert(pipeline_ && "Pipeline must be initialized before build");
+    return std::move(pipeline_);
+  }
 
   // Static factory methods for creating pipelines from configuration
   static std::unique_ptr<Pipeline> fromFile(const std::string &filename) {

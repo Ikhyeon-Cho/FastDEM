@@ -1,6 +1,42 @@
+# IDE
 .vscode/**
+.idea/**
+
+# Data
 data/**
 maps/
 
+# ROS bag files
 *.bag
+
+# Point cloud data
 *.pcd
+
+# Temporary and planning files
+*.txt
+implementation-plan.md
+*_ROADMAP.md
+*_SUMMARY.md
+*-plan.md
+*-integration-plan.md
+config-integration-plan.md
+
+# Build artifacts
+build/
+devel/
+logs/
+.catkin_tools/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C++ build files
+*.o
+*.so
+*.a
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,5 +1,5 @@
 /*
- * point_cloud_transform.cpp
+ * transform_cloud.cpp
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,7 +7,7 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/stages/point_cloud_transform.h"
+#include "height_mapping_core/stages/transform_cloud.h"
 #include "height_mapping_core/interfaces/transform_provider.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
 #include "pipeline_core/stage_registry.h"
@@ -17,9 +17,9 @@
 
 namespace height_mapping::core::stages {
 
-PointCloudTransform::PointCloudTransform() : Stage("PointCloudTransform") {}
+TransformCloud::TransformCloud() : Stage("TransformCloud") {}
 
-void PointCloudTransform::configure(
+void TransformCloud::configure(
     const std::map<std::string, std::string> &params) {
   // Configure target frame
   auto it = params.find("target_frame");
@@ -28,7 +28,7 @@ void PointCloudTransform::configure(
   }
 }
 
-void PointCloudTransform::processImpl(pipeline::Context &ctx) {
+void TransformCloud::processImpl(pipeline::Context &ctx) {
   auto &mapping_ctx = static_cast<MappingContext &>(ctx);
   auto &cloud = mapping_ctx.cloud();
 
@@ -40,7 +40,7 @@ void PointCloudTransform::processImpl(pipeline::Context &ctx) {
   // Get transform provider from context (required)
   auto transform_provider = ctx.getService<ITransformProvider>();
   if (!transform_provider) {
-    throw std::runtime_error("PointCloudTransform stage requires a transform "
+    throw std::runtime_error("TransformCloud stage requires a transform "
                              "provider to be set in context");
   }
 
@@ -70,6 +70,6 @@ void PointCloudTransform::processImpl(pipeline::Context &ctx) {
 }
 
 // Register this stage with the factory
-REGISTER_STAGE(PointCloudTransform)
+REGISTER_STAGE(TransformCloud)
 
 } // namespace height_mapping::core::stages

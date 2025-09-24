@@ -2,60 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build Commands
-
-### Building the Package
-```bash
-# Build all height_mapping packages (core, ROS, and pipeline_core)
-catkin build height_mapping
-
-# Build with release optimizations (strongly recommended for performance)
-catkin build height_mapping -DCMAKE_BUILD_TYPE=Release
-
-# Clean build
-catkin clean height_mapping
-catkin build height_mapping
-
-# Build specific package only
-catkin build height_mapping_core  # Core library only
-catkin build height_mapping_ros   # ROS node only
-catkin build pipeline_core        # Pipeline framework only
-catkin build height_map_core      # Core data structures only
-
-# Build and run tests
-catkin build height_mapping --catkin-make-args run_tests
-```
-
-### Running the System
-```bash
-# Run height mapping with default configuration
-roslaunch height_mapping height_mapping.launch
-
-# Run with visualization (includes RViz)
-roslaunch height_mapping height_mapping_with_rviz.launch
-
-# Run with custom config files
-roslaunch height_mapping height_mapping.launch ros_config:=path/to/ros_params.yaml engine_config:=path/to/engine_config.yaml
-
-# Run with pipeline configuration
-roslaunch height_mapping height_mapping.launch pipeline_config:=$(rospack find height_mapping)/config/pipeline_config.yaml
-```
-
-### Testing and Validation
-```bash
-# Check if nodes are running
-rosnode list | grep height_mapping
-
-# Monitor point cloud input rate
-rostopic hz /velodyne/tilted/velodyne_points
-
-# Monitor height map output
-rostopic echo /height_map/info
-
-# Visualize in RViz
-rosrun rviz rviz -d $(rospack find height_mapping)/rviz/height_mapping.rviz
-```
-
 ## Architecture Overview
 
 ### Package Structure
@@ -90,13 +36,13 @@ The system uses a modular pipeline where stages are executed sequentially on a s
 #### Available Pipeline Stages
 Configured through engine_config.yaml or pipeline_config.yaml, executed in order:
 
-1. **PointCloudTransform**: Transforms point clouds between coordinate frames (base_link/map)
+1. **TransformCloud**: Transforms point clouds between coordinate frames (base_link/map)
 2. **VoxelFilter**: Downsamples using voxel grid (configurable resolution and method)
 3. **PassthroughFilter**: Filters by spatial bounds and distance thresholds
 4. **Raycasting**: Projects 3D points to 2.5D grid with ground correction
 5. **HeightEstimation**: Estimates height using selected algorithm
 6. **MultiSensorSync**: Synchronizes multi-sensor data streams
-7. **MapOriginUpdate**: Updates map position following robot movement
+7. **MoveOrigin**: Updates map position following robot movement
 8. **GlobalMapping**: Aggregates local maps into extended global map
 
 ### Configuration System
@@ -155,19 +101,7 @@ Factory pattern (EstimatorFactory) creates estimators based on configuration.
 5. Add REGISTER_STAGE(YourStageName) at the end of your .cpp file
 6. Add stage configuration to unified_config.yaml (no code changes needed in MappingEngine)
 
-Example:
-```cpp
-// my_stage.h
-class MyStage : public pipeline::Stage {
-  ProcessResult processImpl(pipeline::Context& ctx) override;
-  void configure(const std::map<std::string, std::string>& params) override;
-};
 
-// my_stage.cpp
-#include "height_mapping_core/stages/my_stage.h"
-// ... implementation ...
-REGISTER_STAGE(MyStage)  // Auto-registers with factory
-```
 
 ### Adding a New Height Estimator
 1. Create header in height_mapping_core/include/height_mapping_core/estimators/
@@ -187,19 +121,6 @@ REGISTER_STAGE(MyStage)  // Auto-registers with factory
 - Check stage execution order in pipeline_config.yaml
 - Monitor /rosout for stage processing messages
 - Use rqt_graph to visualize node connections
-
-### Working with Configurations
-```bash
-# Validate configuration before running
-rosparam load height_mapping_ros/config/ros_params.yaml
-rosparam get /height_mapping
-
-# Check active pipeline stages
-grep -A 20 "stages:" height_mapping_ros/config/pipeline_config.yaml
-
-# Monitor runtime parameters
-rosparam get /height_mapping/height_estimation/method
-```
 
 ## Configuration System
 
@@ -251,23 +172,4 @@ pipeline:
       enabled: true
       params:
         estimator_type: "kalman_filter"
-```
-
-### Usage
-```bash
-# Default unified configuration
-roslaunch height_mapping height_mapping.launch
-
-# Custom configuration file
-roslaunch height_mapping height_mapping.launch config:=/path/to/custom.yaml
-
-# Use preset configurations
-roslaunch height_mapping height_mapping_fast.launch      # Fast preset
-roslaunch height_mapping height_mapping_accurate.launch  # Accurate preset
-
-# Override specific parameters
-roslaunch height_mapping height_mapping.launch \
-  config:=$(rospack find height_mapping)/config/unified_config.yaml \
-  input_topic:=/velodyne_points \
-  publish_rate:=20.0
 ```

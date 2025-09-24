@@ -3,12 +3,12 @@
 
 engine:
   map:
-    width: 15.0           # Map width in meters
-    height: 15.0          # Map height in meters
+    width: 200.0           # Map width in meters
+    height: 200.0          # Map height in meters
     resolution: 0.1       # Map resolution in meters per cell
     frame_id: "map"       # Map coordinate frame
-    robot_centric: true   # Move map with robot
-    update_mode: "continuous"  # continuous, threshold, centered, fixed
+    robot_centric: false   # Move map with robot
+    update_mode: "fixed"  # continuous, threshold, centered, fixed
     update_threshold: 2.0      # Threshold for map update (meters)
 
   runtime:

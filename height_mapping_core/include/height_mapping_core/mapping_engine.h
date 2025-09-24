@@ -29,7 +29,7 @@ public:
   ~MappingEngine() = default;
 
   // User interfaces
-  void integrateCloud(std::shared_ptr<PointCloud> cloud);
+  void registerCloud(std::shared_ptr<PointCloud> cloud);
   std::shared_ptr<const height_map::HeightMap> getHeightMap() const;
   std::shared_ptr<const PointCloud> getProcessedCloud() const;
   void reset();

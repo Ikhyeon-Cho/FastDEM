@@ -1,5 +1,5 @@
 /*
- * map_origin_update.cpp
+ * move_origin.cpp
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,7 +7,7 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/stages/map_origin_update.h"
+#include "height_mapping_core/stages/move_origin.h"
 #include "height_mapping_core/interfaces/transform_provider.h"
 #include "height_mapping_core/pipeline/mapping_context.h"
 #include "pipeline_core/stage_registry.h"
@@ -17,9 +17,9 @@
 
 namespace height_mapping::core::stages {
 
-MapOriginUpdate::MapOriginUpdate() : Stage("MapOriginUpdate") {}
+MoveOrigin::MoveOrigin() : Stage("MoveOrigin") {}
 
-void MapOriginUpdate::configure(
+void MoveOrigin::configure(
     const std::map<std::string, std::string> &params) {
   auto it = params.find("update_mode");
   if (it != params.end()) {
@@ -33,7 +33,7 @@ void MapOriginUpdate::configure(
     } else if (mode == "fixed") {
       update_mode_ = UpdateMode::FIXED;
     } else {
-      std::cerr << "[MapOriginUpdate] Unknown update mode: " << mode
+      std::cerr << "[MoveOrigin] Unknown update mode: " << mode
                 << ", using CONTINUOUS" << std::endl;
     }
   }
@@ -59,7 +59,7 @@ void MapOriginUpdate::configure(
   }
 }
 
-void MapOriginUpdate::processImpl(pipeline::Context &ctx) {
+void MoveOrigin::processImpl(pipeline::Context &ctx) {
   auto &mapping_ctx = static_cast<MappingContext &>(ctx);
   auto &map = mapping_ctx.map();
   auto &cloud = mapping_ctx.cloud();
@@ -139,6 +139,6 @@ void MapOriginUpdate::processImpl(pipeline::Context &ctx) {
 }
 
 // Register this stage with the factory
-REGISTER_STAGE(MapOriginUpdate)
+REGISTER_STAGE(MoveOrigin)
 
 } // namespace height_mapping::core::stages

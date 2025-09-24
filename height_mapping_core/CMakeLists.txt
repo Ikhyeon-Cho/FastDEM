@@ -49,13 +49,12 @@ add_library(${PROJECT_NAME}
   src/estimators/moving_average.cpp
   # Stage implementations
   src/stages/voxel_filter.cpp
-  src/stages/point_cloud_transform.cpp
+  src/stages/transform_cloud.cpp
   src/stages/passthrough_filter.cpp
   src/stages/raycasting.cpp
   src/stages/height_estimation.cpp
   src/stages/multi_sensor_sync.cpp
-  src/stages/map_origin_update.cpp
-  src/stages/global_mapping.cpp
+  src/stages/move_origin.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

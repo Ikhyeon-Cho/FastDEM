@@ -44,18 +44,6 @@ private:
     ROS_INFO("Tf2 Transform ready [OK]");
   }
 
-  void createMappingEngine() {
-    try {
-      mapper_ =
-          std::make_unique<core::MappingEngine>(tf_, params_.mapping_config);
-    } catch (const std::exception &e) {
-      ROS_ERROR("Failed to create mapping engine: %s", e.what());
-      throw;
-    }
-
-    ROS_INFO("Mapping engine ready [OK]");
-  }
-
   void setupROSInterfaces() {
     auto &nh = nodeHandle_;
 
@@ -82,6 +70,18 @@ private:
     ROS_INFO("ROS interfaces ready [OK]");
   }
 
+  void createMappingEngine() {
+    try {
+      mapper_ =
+          std::make_unique<core::MappingEngine>(tf_, params_.mapping_config);
+    } catch (const std::exception &e) {
+      ROS_ERROR("Failed to create mapping engine from config: %s", e.what());
+      throw;
+    }
+
+    ROS_INFO("Mapping engine ready [OK]");
+  }
+
   void printNodeInfo() const {
     // Extract filename from path
     size_t last_slash = params_.mapping_config.find_last_of("/");
@@ -106,7 +106,7 @@ private:
   void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
     try {
       auto cloud = adapters::fromROS(*msg);
-      mapper_->integrateCloud(cloud);
+      mapper_->registerCloud(cloud);
 
       publishProcessedCloudIfRequested(msg);
     } catch (const std::exception &e) {

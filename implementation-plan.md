@@ -16,7 +16,7 @@
 3. **Fix transform handling**
    - Let each stage specify required transforms
    - PassthroughFilter: sensor→base transform
-   - MapOriginUpdate: base→map transform
+   - MoveOrigin: base→map transform
    - Remove fixed target_frame from TransformStage
 
 ## Phase 2: Statistical Robustness (Important)
