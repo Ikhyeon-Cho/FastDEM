@@ -14,7 +14,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
-#include "height_mapping_core/mapping_engine.h"
+#include "height_mapping_pipeline/mapping_engine.h"
 #include "height_mapping_ros/adapters/pointcloud_converter.h"
 #include "height_mapping_ros/adapters/tf2_transform.h"
 #include "height_mapping_ros/params.h"
@@ -79,7 +79,7 @@ private:
   void createMappingEngine() {
     try {
       mapper_ =
-          std::make_unique<core::MappingEngine>(tf_, params_.mapping_config);
+          std::make_unique<mapping::MappingEngine>(tf_, params_.mapping_config);
     } catch (const std::exception &e) {
       LOG_ERROR(NODE_NAME,
                 "Failed to create mapping engine from config: ", e.what());
@@ -202,7 +202,7 @@ private:
 
   // Core components
   std::shared_ptr<TF2Transform> tf_;
-  std::unique_ptr<core::MappingEngine> mapper_;
+  std::unique_ptr<mapping::MappingEngine> mapper_;
   std::unique_ptr<RosParamWatcher> param_watcher_;
 
   // ROS interfaces

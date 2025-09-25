@@ -12,7 +12,7 @@
 
 #include "height_mapping_core/estimators/height_estimator_base.h"
 
-namespace height_mapping::core::estimators {
+namespace height_mapping::estimators {
 
 /**
  * @brief Kalman filter estimator for height measurements
@@ -40,6 +40,6 @@ private:
   Parameters params_;
 };
 
-} // namespace height_mapping::core::estimators
+} // namespace height_mapping::estimators
 
 #endif // HEIGHT_MAPPING_CORE_ESTIMATORS_KALMAN_FILTER_H

@@ -12,13 +12,14 @@
 
 #include "height_mapping_core/estimators/height_estimator_base.h"
 
-namespace height_mapping::core::estimators {
+namespace height_mapping::estimators {
 
 /**
  * @brief Statistical mean estimator using Welford's online algorithm
  *
  * Computes running mean and variance using numerically stable method.
- * Reference: https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
+ * Reference:
+ * https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
  */
 class IncrementalMean : public HeightEstimatorBase {
 public:
@@ -30,6 +31,6 @@ public:
   std::string name() const override { return "IncrementalMean"; }
 };
 
-} // namespace height_mapping::core::estimators
+} // namespace height_mapping::estimators
 
 #endif // HEIGHT_MAPPING_CORE_ESTIMATORS_INCREMENTAL_MEAN_H

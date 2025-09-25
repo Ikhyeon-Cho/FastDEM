@@ -14,6 +14,7 @@
   <depend>message_generation</depend>
   <depend>message_runtime</depend>
   <depend>height_mapping_core</depend>
+  <depend>height_mapping_pipeline</depend>
 
   <export>
   </export>

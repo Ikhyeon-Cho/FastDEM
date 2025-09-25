@@ -3,8 +3,8 @@
  *
  * IMPLEMENTATION FILE ONLY - Include this header only in .cpp files.
  *
- * This header provides the REGISTER_STAGE macro for automatic stage registration.
- * Domain-specific developers should:
+ * This header provides the REGISTER_STAGE macro for automatic stage
+ *registration. Domain-specific developers should:
  *   1. Define their stage class in a .h file (inheriting from pipeline::Stage)
  *   2. Include this header ONLY in their .cpp file
  *   3. Call REGISTER_STAGE(YourStageName) in the .cpp file

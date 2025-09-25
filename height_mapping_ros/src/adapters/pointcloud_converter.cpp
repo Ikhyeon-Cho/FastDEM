@@ -55,7 +55,8 @@ std::shared_ptr<PointCloud> fromROS(const sensor_msgs::PointCloud2 &ros_msg) {
   }
 
   if (x_offset < 0 || y_offset < 0 || z_offset < 0) {
-    LOG_ERROR_THROTTLE(1.0, ADAPTER_NAME, "Point cloud missing x, y, or z fields");
+    LOG_ERROR_THROTTLE(1.0, ADAPTER_NAME,
+                       "Point cloud missing x, y, or z fields");
     return core_cloud; // Return empty cloud
   }
 
@@ -240,7 +241,8 @@ bool validate(const sensor_msgs::PointCloud2 &msg) {
   }
 
   if (!has_x || !has_y || !has_z) {
-    LOG_WARN_THROTTLE(1.0, ADAPTER_NAME, "Point cloud missing required x, y, or z fields");
+    LOG_WARN_THROTTLE(1.0, ADAPTER_NAME,
+                      "Point cloud missing required x, y, or z fields");
     return false;
   }
 

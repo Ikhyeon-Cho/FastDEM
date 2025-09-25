@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace height_mapping::core::estimators {
+namespace height_mapping::estimators {
 
 void MovingAverage::update(float &elevation, float &variance, float &count,
                            float new_measurement) {
@@ -37,4 +37,4 @@ void MovingAverage::update(float &elevation, float &variance, float &count,
   variance = EWMA(variance, deviation * deviation);
 }
 
-} // namespace height_mapping::core::estimators
+} // namespace height_mapping::estimators

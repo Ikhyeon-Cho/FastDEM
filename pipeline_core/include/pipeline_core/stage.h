@@ -14,7 +14,8 @@
  *   public:
  *     MyStage() : Stage("MyStage") {}
  *
- *     void configure(const std::map<std::string, std::string>& params) override {
+ *     void configure(const std::map<std::string, std::string>& params) override
+ *{
  *       // Parse parameters
  *       if (params.find("threshold") != params.end()) {
  *         threshold_ = std::stod(params.at("threshold"));
@@ -84,6 +85,67 @@ public:
 
 protected:
   virtual void processImpl(Context &ctx) = 0; // Override in specific stages
+
+  // Parameter parsing utilities
+  static bool loadParam(const std::map<std::string, std::string> &params,
+                         const std::string &key, float &value) {
+    auto it = params.find(key);
+    if (it != params.end()) {
+      value = std::stof(it->second);
+      return true;
+    }
+    return false;
+  }
+
+  static bool loadParam(const std::map<std::string, std::string> &params,
+                         const std::string &key, double &value) {
+    auto it = params.find(key);
+    if (it != params.end()) {
+      value = std::stod(it->second);
+      return true;
+    }
+    return false;
+  }
+
+  static bool loadParam(const std::map<std::string, std::string> &params,
+                         const std::string &key, int &value) {
+    auto it = params.find(key);
+    if (it != params.end()) {
+      value = std::stoi(it->second);
+      return true;
+    }
+    return false;
+  }
+
+  static bool loadParam(const std::map<std::string, std::string> &params,
+                         const std::string &key, size_t &value) {
+    auto it = params.find(key);
+    if (it != params.end()) {
+      value = static_cast<size_t>(std::stoi(it->second));
+      return true;
+    }
+    return false;
+  }
+
+  static bool loadParam(const std::map<std::string, std::string> &params,
+                         const std::string &key, bool &value) {
+    auto it = params.find(key);
+    if (it != params.end()) {
+      value = (it->second == "true" || it->second == "1");
+      return true;
+    }
+    return false;
+  }
+
+  static bool loadParam(const std::map<std::string, std::string> &params,
+                         const std::string &key, std::string &value) {
+    auto it = params.find(key);
+    if (it != params.end()) {
+      value = it->second;
+      return true;
+    }
+    return false;
+  }
 
 private:
   std::string name_;

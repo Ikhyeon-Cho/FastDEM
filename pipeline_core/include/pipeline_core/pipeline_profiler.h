@@ -161,8 +161,8 @@ public:
     LOG_BENCH("---------------------------------------------------------------"
               "------------------");
     char total_buffer[120];
-    snprintf(total_buffer, sizeof(total_buffer), "Total Pipeline:           %7.2f ms",
-             total_avg);
+    snprintf(total_buffer, sizeof(total_buffer),
+             "Total Pipeline:           %7.2f ms", total_avg);
     LOG_BENCH(total_buffer);
   }
 

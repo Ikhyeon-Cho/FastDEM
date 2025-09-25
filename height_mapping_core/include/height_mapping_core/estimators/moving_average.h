@@ -12,7 +12,7 @@
 
 #include "height_mapping_core/estimators/height_estimator_base.h"
 
-namespace height_mapping::core::estimators {
+namespace height_mapping::estimators {
 
 /**
  * @brief Exponential moving average estimator
@@ -22,13 +22,12 @@ namespace height_mapping::core::estimators {
 class MovingAverage : public HeightEstimatorBase {
 public:
   struct Parameters {
-    float alpha = 0.3f;  // Weight for new measurement [0,1]
-                         // Higher alpha = more weight to new measurements
+    float alpha = 0.3f; // Weight for new measurement [0,1]
+                        // Higher alpha = more weight to new measurements
   };
 
   MovingAverage() : params_() {}
-  explicit MovingAverage(const Parameters &params)
-      : params_(params) {}
+  explicit MovingAverage(const Parameters &params) : params_(params) {}
 
   void update(float &elevation, float &variance, float &count,
               float newMeasurement) override;
@@ -41,6 +40,6 @@ private:
   Parameters params_;
 };
 
-} // namespace height_mapping::core::estimators
+} // namespace height_mapping::estimators
 
 #endif // HEIGHT_MAPPING_CORE_ESTIMATORS_MOVING_AVERAGE_H

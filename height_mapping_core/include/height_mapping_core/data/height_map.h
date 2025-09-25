@@ -12,7 +12,7 @@
 
 #include <grid_map_core/grid_map_core.hpp>
 
-namespace height_map {
+namespace height_mapping {
 
 namespace layer {
 
@@ -38,10 +38,12 @@ static constexpr const char *intensity = "intensity";
 static constexpr const char *color_r = "color_r";
 static constexpr const char *color_g = "color_g";
 static constexpr const char *color_b = "color_b";
-} // namespace layers
+} // namespace layer
 
 class HeightMap : public grid_map::GridMap {
 public:
+  using Ptr = std::shared_ptr<HeightMap>;
+  using ConstPtr = std::shared_ptr<const HeightMap>;
   /**
    * @brief Default constructor - initializes core layers
    */
@@ -183,6 +185,6 @@ public:
   // And many more...
 };
 
-} // namespace height_map
+} // namespace height_mapping
 
 #endif // HEIGHT_MAPPING_CORE_DATA_HEIGHT_MAP_H

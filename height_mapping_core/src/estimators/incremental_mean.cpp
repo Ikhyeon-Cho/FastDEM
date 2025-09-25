@@ -10,7 +10,7 @@
 #include "height_mapping_core/estimators/incremental_mean.h"
 #include <cmath>
 
-namespace height_mapping::core::estimators {
+namespace height_mapping::estimators {
 
 void IncrementalMean::update(float &elevation, float &variance, float &count,
                              float new_measurement) {
@@ -45,4 +45,4 @@ void IncrementalMean::update(float &elevation, float &variance, float &count,
   elevation = new_mean;
 }
 
-} // namespace height_mapping::core::estimators
+} // namespace height_mapping::estimators

@@ -154,8 +154,7 @@ public:
   logger::Logger::log(logger::ERROR, module, logger::Logger::fmt(__VA_ARGS__))
 
 // BENCH macro - no module parameter, just like NOTICE
-#define LOG_BENCH(...)                                                         \
-  logger::Logger::bench(logger::Logger::fmt(__VA_ARGS__))
+#define LOG_BENCH(...) logger::Logger::bench(logger::Logger::fmt(__VA_ARGS__))
 
 // NOTICE macros - no module parameter needed
 #define LOG_NOTICE(...)                                                        \

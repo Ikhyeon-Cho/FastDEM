@@ -12,7 +12,7 @@
 
 #include <string>
 
-namespace height_mapping::core::estimators {
+namespace height_mapping::estimators {
 
 class HeightEstimatorBase {
 public:
@@ -40,6 +40,6 @@ public:
   virtual void reset() {}
 };
 
-} // namespace height_mapping::core::estimators
+} // namespace height_mapping::estimators
 
 #endif // HEIGHT_MAPPING_CORE_ESTIMATORS_HEIGHT_ESTIMATOR_BASE_H

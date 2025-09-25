@@ -10,7 +10,7 @@
 #include "height_mapping_core/estimators/kalman_filter.h"
 #include <cmath>
 
-namespace height_mapping::core::estimators {
+namespace height_mapping::estimators {
 
 void KalmanFilter::update(float &elevation, float &variance, float &count,
                           float new_measurement) {
@@ -43,4 +43,4 @@ void KalmanFilter::update(float &elevation, float &variance, float &count,
   variance = std::max(variance, min_variance);
 }
 
-} // namespace height_mapping::core::estimators
+} // namespace height_mapping::estimators

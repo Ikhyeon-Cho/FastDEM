@@ -37,17 +37,14 @@ include_directories(
   ${YAML_CPP_INCLUDE_DIR}
 )
 
-link_directories(${PCL_LIBRARY_DIRS})
-
 # Automatically collect all source files
-file(GLOB STAGE_SOURCES "src/stages/*.cpp")
+file(GLOB ALGORITHM_SOURCES "src/algorithms/*.cpp")
 file(GLOB ESTIMATOR_SOURCES "src/estimators/*.cpp")
 
-# Core library with engine implementation
+# Core library with algorithms and estimators
 add_library(${PROJECT_NAME}
-  src/mapping_engine.cpp
+  ${ALGORITHM_SOURCES}  # Core algorithms
   ${ESTIMATOR_SOURCES}  # Estimator implementations
-  ${STAGE_SOURCES}      # Stage implementations
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -59,7 +56,6 @@ target_link_libraries(${PROJECT_NAME}
   ${PCL_LIBRARIES}
   ${catkin_LIBRARIES}
   ${YAML_CPP_LIBRARIES}
-  pipeline_core
 )
 
 #############

@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
     tf2_eigen
     grid_map_ros
     height_mapping_core
+    height_mapping_pipeline
     message_generation
 )
 
@@ -39,6 +40,7 @@ catkin_package(
     tf2_ros
     grid_map_ros
     height_mapping_core
+    height_mapping_pipeline
     message_runtime
 )
 

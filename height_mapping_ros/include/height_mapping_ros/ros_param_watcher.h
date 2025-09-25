@@ -43,13 +43,14 @@ public:
   template <typename T>
   void watch(const std::string &param_name, std::function<void(T)> callback) {
     // Create watcher and get reference
-    auto result = params_.emplace(param_name, ParamWatcher<T>(param_name, callback));
+    auto result =
+        params_.emplace(param_name, ParamWatcher<T>(param_name, callback));
 
     // Initialize with current value if exists
     T value;
     if (nh_.getParam(param_name, value)) {
       // Access the specific watcher and set initialized state
-      auto& watcher = std::get<ParamWatcher<T>>(result.first->second);
+      auto &watcher = std::get<ParamWatcher<T>>(result.first->second);
       watcher.last_value = value;
       watcher.initialized = true;
       callback(value);
@@ -70,8 +71,8 @@ private:
     ParamWatcher() = default;
 
     // Constructor with parameters
-    ParamWatcher(const std::string& n, std::function<void(T)> cb)
-      : name(n), callback(cb) {}
+    ParamWatcher(const std::string &n, std::function<void(T)> cb)
+        : name(n), callback(cb) {}
 
     void check(::ros::NodeHandle &nh) {
       T current;
@@ -89,15 +90,12 @@ private:
 
   private:
     // Helper for equality comparison - general case
-    template<typename U>
-    static bool isEqual(const U& a, const U& b) {
+    template <typename U> static bool isEqual(const U &a, const U &b) {
       return a == b;
     }
 
     // Specialization for double comparison
-    static bool isEqual(double a, double b) {
-      return std::abs(a - b) < 1e-9;
-    }
+    static bool isEqual(double a, double b) { return std::abs(a - b) < 1e-9; }
   };
 
   void checkAll(const ::ros::TimerEvent & /*event*/) {
@@ -132,7 +130,8 @@ inline void setupLoggerParams(RosParamWatcher &watcher) {
   watcher.watch<std::string>("logger/level", [](const std::string &level) {
     // Convert to uppercase for case-insensitive comparison
     std::string upper_level = level;
-    std::transform(upper_level.begin(), upper_level.end(), upper_level.begin(), ::toupper);
+    std::transform(upper_level.begin(), upper_level.end(), upper_level.begin(),
+                   ::toupper);
 
     if (upper_level == "DEBUG")
       logger::Logger::setLevel(logger::DEBUG);
@@ -144,7 +143,8 @@ inline void setupLoggerParams(RosParamWatcher &watcher) {
       logger::Logger::setLevel(logger::ERROR);
     else {
       // Log warning for invalid level
-      LOG_WARN("ParamWatcher", "Invalid logger level '", level, "'. Using INFO. Valid: DEBUG, INFO, WARN, ERROR");
+      LOG_WARN("ParamWatcher", "Invalid logger level '", level,
+               "'. Using INFO. Valid: DEBUG, INFO, WARN, ERROR");
       logger::Logger::setLevel(logger::INFO);
     }
   });

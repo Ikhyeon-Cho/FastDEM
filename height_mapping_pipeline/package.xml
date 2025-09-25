@@ -1,13 +1,15 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>height_mapping_core</name>
-  <version>0.0.1</version>
-  <description>Core height mapping algorithms and pipeline system</description>
+  <name>height_mapping_pipeline</name>
+  <version>0.1.0</version>
+  <description>Pipeline adapters for height mapping algorithms</description>
+
   <maintainer email="tre0430@korea.ac.kr">Ikhyeon Cho</maintainer>
   <license>.</license>
 
   <buildtool_depend>catkin</buildtool_depend>
-  <depend>grid_map_core</depend>
+
+  <depend>height_mapping_core</depend>
 
   <export>
   </export>

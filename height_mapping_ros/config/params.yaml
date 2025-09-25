@@ -1,5 +1,5 @@
 # ROS Node Configuration for Height Mapping
-mapping_config: "$(find height_mapping_core)/config/default.yaml"
+mapping_config: "$(find height_mapping_pipeline)/config/default.yaml"
 
 # Input/Output topics
 input_cloud_topic: "/velodyne/tilted/velodyne_points"
