@@ -195,6 +195,18 @@ public:
     }                                                                          \
   } while (0)
 
+#define LOG_DEBUG_THROTTLE(period, module, ...)                                \
+  do {                                                                         \
+    if (logger::Logger::getLevel() <= logger::DEBUG) {                         \
+      static std::string _throttle_key =                                       \
+          std::string(__FILE__) + ":" + std::to_string(__LINE__);              \
+      if (logger::Logger::shouldLogThrottled(_throttle_key, period)) {         \
+        logger::Logger::log(logger::DEBUG, module,                             \
+                            logger::Logger::fmt(__VA_ARGS__));                 \
+      }                                                                        \
+    }                                                                          \
+  } while (0)
+
 // "ONCE" logging macros - logs only once per program execution
 // Uses very large throttle period (1 million seconds ~ 11.5 days)
 #define LOG_ERROR_ONCE(module, ...)                                            \
@@ -224,6 +236,18 @@ public:
     if (logger::Logger::shouldLogThrottled(_throttle_key, 1000000.0)) {        \
       logger::Logger::log(logger::INFO, module,                                \
                           logger::Logger::fmt(__VA_ARGS__));                   \
+    }                                                                          \
+  } while (0)
+
+#define LOG_DEBUG_ONCE(module, ...)                                            \
+  do {                                                                         \
+    if (logger::Logger::getLevel() <= logger::DEBUG) {                         \
+      static std::string _throttle_key =                                       \
+          std::string(__FILE__) + ":" + std::to_string(__LINE__);              \
+      if (logger::Logger::shouldLogThrottled(_throttle_key, 1000000.0)) {      \
+        logger::Logger::log(logger::DEBUG, module,                             \
+                            logger::Logger::fmt(__VA_ARGS__));                 \
+      }                                                                        \
     }                                                                          \
   } while (0)
 

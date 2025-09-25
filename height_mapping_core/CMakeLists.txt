@@ -39,22 +39,15 @@ include_directories(
 
 link_directories(${PCL_LIBRARY_DIRS})
 
+# Automatically collect all source files
+file(GLOB STAGE_SOURCES "src/stages/*.cpp")
+file(GLOB ESTIMATOR_SOURCES "src/estimators/*.cpp")
+
 # Core library with engine implementation
 add_library(${PROJECT_NAME}
   src/mapping_engine.cpp
-  # Estimator implementations
-  src/estimators/estimator_factory.cpp
-  src/estimators/incremental_mean.cpp
-  src/estimators/kalman_filter.cpp
-  src/estimators/moving_average.cpp
-  # Stage implementations
-  src/stages/voxel_filter.cpp
-  src/stages/transform_cloud.cpp
-  src/stages/passthrough_filter.cpp
-  src/stages/raycasting.cpp
-  src/stages/height_estimation.cpp
-  src/stages/multi_sensor_sync.cpp
-  src/stages/move_origin.cpp
+  ${ESTIMATOR_SOURCES}  # Estimator implementations
+  ${STAGE_SOURCES}      # Stage implementations
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

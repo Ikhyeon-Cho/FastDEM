@@ -142,16 +142,16 @@ public:
 
     LOG_BENCH("========== Pipeline Benchmark (Window ", window_num, ": Runs ",
               window_start, "-", total_runs_, ") ==========");
-    LOG_BENCH("Stage               Avg(ms)  Last(ms)  Min(ms)  Max(ms)  "
+    LOG_BENCH("Stage                      Avg(ms)  Last(ms)  Min(ms)  Max(ms)  "
               "Usage(%)  Calls");
     LOG_BENCH("---------------------------------------------------------------"
-              "-----------");
+              "------------------");
 
     double total_avg = 0;
     for (const auto &r : reports) {
-      char buffer[100];
+      char buffer[120];
       snprintf(buffer, sizeof(buffer),
-               "%-18s %7.2f  %7.2f  %7.2f  %7.2f   %6.1f%%  %6zu",
+               "%-25s %7.2f  %8.2f  %7.2f  %7.2f   %6.1f%%  %6zu",
                r.stage_name.c_str(), r.avg_ms, r.last_ms, r.min_ms, r.max_ms,
                r.percentage, r.call_count);
       LOG_BENCH(buffer);
@@ -159,9 +159,9 @@ public:
     }
 
     LOG_BENCH("---------------------------------------------------------------"
-              "-----------");
-    char total_buffer[100];
-    snprintf(total_buffer, sizeof(total_buffer), "Total Pipeline:    %7.2f ms",
+              "------------------");
+    char total_buffer[120];
+    snprintf(total_buffer, sizeof(total_buffer), "Total Pipeline:           %7.2f ms",
              total_avg);
     LOG_BENCH(total_buffer);
   }

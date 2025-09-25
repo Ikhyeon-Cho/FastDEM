@@ -1,79 +1,75 @@
-# Incremental Implementation Plan
+# Implementation Status
 
-## Phase 1: Core Foundation (Essential - Do First)
-**Goal:** Get basic height mapping working end-to-end
+## ✅ Completed Features
 
-1. **Implement basic StatMean estimator**
-   - Add incremental mean calculation to HeightEstimation stage
-   - Simple height = (old_height * (n-1) + new_height) / n
-   - Track measurement count per cell
+### Phase 1: Core Foundation
+- [x] **Implement basic StatMean estimator**
+  - [x] Add incremental mean calculation to HeightEstimation stage
+  - [x] Simple height = (old_height * (n-1) + new_height) / n
+  - [x] Track measurement count per cell
+- [x] **Add essential map layers**
+  - [x] elevation_min, elevation_max layers to height_map.h
+  - [x] n_measurements layer for counting points per cell (count layer)
+  - [x] Basic getters/setters for these layers
+- [x] **Fix transform handling**
+  - [x] Let each stage specify required transforms
+  - [x] PassthroughFilter: sensor→base transform
+  - [x] MoveOrigin: base→map transform
+  - [x] Remove fixed target_frame from TransformStage
 
-2. **Add essential map layers**
-   - elevation_min, elevation_max layers to height_map.h
-   - n_measurements layer for counting points per cell
-   - Basic getters/setters for these layers
+### Phase 2: Statistical Robustness
+- [x] **Implement Welford's algorithm for variance**
+  - [x] Proper online variance calculation in StatMean (IncrementalMean)
+  - [x] Track M2 (sum of squared differences)
+  - [x] Convert to sample variance
+- [x] **Add confidence layers**
+  - [x] standard_error = sqrt(variance/n)
+  - [x] confidence_interval = 1.96 * standard_error (95% CI)
+  - [x] Store in optional layers
 
-3. **Fix transform handling**
-   - Let each stage specify required transforms
-   - PassthroughFilter: sensor→base transform
-   - MoveOrigin: base→map transform
-   - Remove fixed target_frame from TransformStage
+### Phase 3: Advanced Estimators (Partial)
+- [x] **Implement Kalman filter estimator**
+  - [x] Process/measurement noise parameters
+  - [x] Kalman gain calculation
+- [x] **Implement Moving Average estimator**
+  - [x] Exponential weighted average
+  - [x] Alpha parameter for weight control
 
-## Phase 2: Statistical Robustness (Important)
-**Goal:** Add proper variance tracking and confidence
+### Phase 4: Sensor Features (Partial)
+- [x] **Add point cloud type support**
+  - [x] Template HeightEstimation for PointXYZI, PointXYZRGB
+  - [x] Add intensity layer for LiDAR
+  - [x] Add RGB layers for cameras
 
-4. **Implement Welford's algorithm for variance**
-   - Proper online variance calculation in StatMean
-   - Track M2 (sum of squared differences)
-   - Convert to sample variance
+### Phase 5: Configuration & Polish (Partial)
+- [x] **Dynamic algorithm selection**
+  - [x] Load estimator type from config
+  - [x] Parameter classes for each estimator
+  - [x] Validation and defaults
 
-5. **Add confidence layers**
-   - standard_error = sqrt(variance/n)
-   - confidence_interval = 1.96 * standard_error (95% CI)
-   - Store in optional layers
+## 📋 TODO List
 
-## Phase 3: Advanced Estimators (Nice to have)
-**Goal:** Support multiple estimation algorithms
+### Phase 3: Advanced Estimators
+- [ ] **Kalman filter improvements**
+  - [ ] Adaptive variance based on distance/angle
+- [ ] **Moving Average improvements**
+  - [ ] Optional adaptive weighting
 
-6. **Implement Kalman filter estimator**
-   - Process/measurement noise parameters
-   - Kalman gain calculation
-   - Adaptive variance based on distance/angle
+### Phase 4: Sensor Features
+- [ ] **Implement raycasting improvements**
+  - [ ] Clear cells between sensor and measurement
+  - [ ] Track scan heights
+  - [ ] Handle occlusions properly
 
-7. **Implement Moving Average estimator**
-   - Exponential weighted average
-   - Alpha parameter for weight control
-   - Optional adaptive weighting
-
-## Phase 4: Sensor Features (Enhancement)
-**Goal:** Support richer sensor data
-
-8. **Add point cloud type support**
-   - Template HeightEstimation for PointXYZI, PointXYZRGB
-   - Add intensity layer for LiDAR
-   - Add RGB layers for cameras
-
-9. **Implement raycasting improvements**
-   - Clear cells between sensor and measurement
-   - Track scan heights
-   - Handle occlusions properly
-
-## Phase 5: Configuration & Polish (Final)
-**Goal:** Runtime flexibility and completeness
-
-10. **Dynamic algorithm selection**
-    - Load estimator type from config
-    - Parameter classes for each estimator
-    - Validation and defaults
-
-11. **Helper utilities**
-    - Point cloud validation functions
-    - Statistics computation helpers
-    - Debug/visualization layers
+### Phase 5: Configuration & Polish
+- [ ] **Helper utilities**
+  - [ ] Point cloud validation functions
+  - [ ] Statistics computation helpers
+  - [ ] Debug/visualization layers
 
 ## Priority Order:
-1. **Must Have:** Phase 1 (Core) + Phase 2 (Statistics)
-2. **Should Have:** Phase 3 (Advanced Estimators)
-3. **Nice to Have:** Phase 4 (Sensor Features) + Phase 5 (Polish)
+1. **Must Have:** ✅ Phase 1 (Core) + ✅ Phase 2 (Statistics) - **COMPLETE**
+2. **Should Have:** Phase 3 (Advanced Estimators) - **MOSTLY COMPLETE**
+3. **Nice to Have:** Phase 4 (Sensor Features) + Phase 5 (Polish) - **IN PROGRESS**
 
 Each phase builds on the previous one and can be tested independently. Start with Phase 1 to get a working system, then incrementally add sophistication.

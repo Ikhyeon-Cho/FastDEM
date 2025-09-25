@@ -16,7 +16,7 @@ tf_extrapolation: 0.05          # TF extrapolation (seconds)
 
 # Logger settings (dynamically updated)
 logger:
-  level: "INFO"                 # DEBUG, INFO, WARN, ERROR
+  level: "DEBUG"                 # DEBUG, INFO, WARN, ERROR
 
 # Benchmarking settings (dynamically updated)
 benchmark:

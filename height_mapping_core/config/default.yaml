@@ -35,23 +35,44 @@ pipeline:
       params:
         target_frame: "base_link"
 
-    # Downsample point cloud using voxel grid
-    - name: "VoxelFilter"
-      enabled: true
-      params:
-        voxel_size: 0.05          # 5cm voxels
-        reduction_method: "centroid"  # centroid, random, or center
+    # # Downsample point cloud using voxel grid
+    # - name: "VoxelFilter"
+    #   enabled: true
+    #   params:
+    #     voxel_size: 0.05          # 5cm voxels
+    #     reduction_method: "centroid"  # centroid, random, or center
 
     # Filter points by distance and height
     - name: "PassthroughFilter"
       enabled: true
       params:
-        x_min: -10.0
-        x_max: 10.0
-        y_min: -10.0
-        y_max: 10.0
-        z_min: -0.1
-        z_max: 2.0
+        x_min: -20.0
+        x_max: 20.0
+        y_min: -20.0
+        y_max: 20.0
+        # z_min: -0.1
+        # z_max: 2.0
+
+    # Grid-based ground segmentation using cell-wise minimum
+    # MUST run in base_link frame for proper ground/obstacle separation
+    - name: "GridGroundSegmentation"
+      enabled: true
+      params:
+        grid_resolution: 0.5          # 50cm grid cells
+        cell_percentile: 0.2          # 20th percentile for robust cell minimum
+        ground_thickness: 0.2         # 30cm ground layer from cell minimum
+        max_ground_height: 0.5        # Max height to consider as ground (filters obstacle-only cells)
+        min_points_per_cell: 2        # Minimum points to process a cell
+        keep_only_ground: true        # Filter to ground points only
+
+    # Alternative: Statistical ground segmentation (global percentile-based)
+    # - name: "StatisticalGroundSegmentation"
+    #   enabled: true
+    #   params:
+    #     ground_percentile: 0.1      # 10th percentile as robust minimum
+    #     ground_thickness: 0.3       # 30cm ground layer thickness
+    #     noise_threshold: 0.5        # Points 50cm below percentile are noise
+    #     keep_only_ground: true      # Filter to ground points only
 
     # Transform to map frame for height estimation
     - name: "TransformCloud"
@@ -59,14 +80,14 @@ pipeline:
       params:
         target_frame: "map"
 
-    # Raycasting for ground correction (optional)
-    - name: "Raycasting"
-      enabled: false
-      params:
-        max_ground_angle: -5.0     # degrees
-        correction_threshold: 0.02  # 2cm
-        enable_correction: true
-        ray_length: 5.0
+    # # Raycasting for ground correction (optional)
+    # - name: "Raycasting"
+    #   enabled: false
+    #   params:
+    #     max_ground_angle: -5.0     # degrees
+    #     correction_threshold: 0.02  # 2cm
+    #     enable_correction: true
+    #     ray_length: 5.0
 
     # Height estimation
     - name: "HeightEstimation"
