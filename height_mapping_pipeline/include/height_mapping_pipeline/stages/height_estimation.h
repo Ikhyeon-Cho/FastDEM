@@ -10,7 +10,7 @@
 #ifndef HEIGHT_MAPPING_PIPELINE_STAGES_HEIGHT_ESTIMATION_H
 #define HEIGHT_MAPPING_PIPELINE_STAGES_HEIGHT_ESTIMATION_H
 
-#include "height_mapping_core/algorithms/height_estimator.h"
+#include "height_mapping_core/algorithms/height_estimation.h"
 #include "height_mapping_pipeline/mapping_context.h"
 #include "pipeline_core/stage.h"
 #include "pipeline_core/stage_registration.h"
@@ -26,27 +26,27 @@ class HeightEstimation : public pipeline::Stage {
 public:
   HeightEstimation()
       : Stage("HeightEstimation"),
-        estimator_(std::make_unique<algorithms::HeightEstimator>()) {}
+        estimator_(std::make_unique<algorithms::HeightEstimation>()) {}
 
   void configure(const std::map<std::string, std::string> &params) override {
-    algorithms::HeightEstimator::Config config;
+    algorithms::HeightEstimation::Config config;
 
     // Load estimator type
     std::string estimator_type_str;
     if (loadParam(params, "estimator_type", estimator_type_str)) {
       if (estimator_type_str == "kalman_filter") {
         config.estimator_type =
-            algorithms::HeightEstimator::Config::EstimatorType::KALMAN_FILTER;
+            algorithms::HeightEstimation::Config::EstimatorType::KALMAN_FILTER;
       } else if (estimator_type_str == "moving_average") {
         config.estimator_type =
-            algorithms::HeightEstimator::Config::EstimatorType::MOVING_AVERAGE;
+            algorithms::HeightEstimation::Config::EstimatorType::MOVING_AVERAGE;
       } else if (estimator_type_str == "incremental_mean") {
-        config.estimator_type = algorithms::HeightEstimator::Config::
+        config.estimator_type = algorithms::HeightEstimation::Config::
             EstimatorType::INCREMENTAL_MEAN;
       } else {
         LOG_ERROR(getName(), "Unknown estimator type: ", estimator_type_str,
                   ", using incremental_mean");
-        config.estimator_type = algorithms::HeightEstimator::Config::
+        config.estimator_type = algorithms::HeightEstimation::Config::
             EstimatorType::INCREMENTAL_MEAN;
       }
     }
@@ -65,15 +65,15 @@ public:
     if (estimator_) {
       estimator_->setConfig(config);
     } else {
-      estimator_ = std::make_unique<algorithms::HeightEstimator>(config);
+      estimator_ = std::make_unique<algorithms::HeightEstimation>(config);
     }
 
     std::string estimator_name = "incremental_mean";
     switch (config.estimator_type) {
-    case algorithms::HeightEstimator::Config::EstimatorType::KALMAN_FILTER:
+    case algorithms::HeightEstimation::Config::EstimatorType::KALMAN_FILTER:
       estimator_name = "kalman_filter";
       break;
-    case algorithms::HeightEstimator::Config::EstimatorType::MOVING_AVERAGE:
+    case algorithms::HeightEstimation::Config::EstimatorType::MOVING_AVERAGE:
       estimator_name = "moving_average";
       break;
     default:
@@ -103,7 +103,7 @@ protected:
   }
 
 private:
-  std::unique_ptr<algorithms::HeightEstimator> estimator_;
+  std::unique_ptr<algorithms::HeightEstimation> estimator_;
 };
 
 REGISTER_STAGE(HeightEstimation)

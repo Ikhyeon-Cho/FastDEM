@@ -10,7 +10,7 @@
 #ifndef HEIGHT_MAPPING_PIPELINE_STAGES_MOVE_ORIGIN_H
 #define HEIGHT_MAPPING_PIPELINE_STAGES_MOVE_ORIGIN_H
 
-#include "height_mapping_core/algorithms/map_origin_updater.h"
+#include "height_mapping_core/algorithms/move_origin.h"
 #include "height_mapping_pipeline/interfaces/transform_provider.h"
 #include "height_mapping_pipeline/mapping_context.h"
 #include "pipeline_core/stage.h"
@@ -29,24 +29,24 @@ class MoveOrigin : public pipeline::Stage {
 public:
   MoveOrigin()
       : Stage("MoveOrigin"),
-        updater_(std::make_unique<algorithms::MapOriginUpdater>()) {}
+        updater_(std::make_unique<algorithms::MoveOrigin>()) {}
 
   void configure(const std::map<std::string, std::string> &params) override {
-    algorithms::MapOriginUpdater::Config config;
+    algorithms::MoveOrigin::Config config;
 
     // Parse update mode
     std::string mode;
     if (loadParam(params, "update_mode", mode)) {
       if (mode == "continuous") {
         config.update_mode =
-            algorithms::MapOriginUpdater::UpdateMode::CONTINUOUS;
+            algorithms::MoveOrigin::UpdateMode::CONTINUOUS;
       } else if (mode == "threshold") {
         config.update_mode =
-            algorithms::MapOriginUpdater::UpdateMode::THRESHOLD;
+            algorithms::MoveOrigin::UpdateMode::THRESHOLD;
       } else if (mode == "centered") {
-        config.update_mode = algorithms::MapOriginUpdater::UpdateMode::CENTERED;
+        config.update_mode = algorithms::MoveOrigin::UpdateMode::CENTERED;
       } else if (mode == "fixed") {
-        config.update_mode = algorithms::MapOriginUpdater::UpdateMode::FIXED;
+        config.update_mode = algorithms::MoveOrigin::UpdateMode::FIXED;
       } else {
         LOG_ERROR(getName(), "Unknown update mode: ", mode,
                   ", using CONTINUOUS");
@@ -63,7 +63,7 @@ public:
     if (updater_) {
       updater_->setConfig(config);
     } else {
-      updater_ = std::make_unique<algorithms::MapOriginUpdater>(config);
+      updater_ = std::make_unique<algorithms::MoveOrigin>(config);
     }
 
     LOG_DEBUG(getName(), "Configured with update_mode=",
@@ -114,7 +114,7 @@ protected:
   }
 
 private:
-  std::unique_ptr<algorithms::MapOriginUpdater> updater_;
+  std::unique_ptr<algorithms::MoveOrigin> updater_;
 };
 
 REGISTER_STAGE(MoveOrigin)

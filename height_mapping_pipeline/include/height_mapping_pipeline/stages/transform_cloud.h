@@ -10,7 +10,7 @@
 #ifndef HEIGHT_MAPPING_PIPELINE_STAGES_TRANSFORM_CLOUD_H
 #define HEIGHT_MAPPING_PIPELINE_STAGES_TRANSFORM_CLOUD_H
 
-#include "height_mapping_core/algorithms/cloud_transformer.h"
+#include "height_mapping_core/algorithms/transform_cloud.h"
 #include "height_mapping_pipeline/interfaces/transform_provider.h"
 #include "height_mapping_pipeline/mapping_context.h"
 #include "pipeline_core/stage.h"
@@ -31,10 +31,10 @@ class TransformCloud : public pipeline::Stage {
 public:
   TransformCloud()
       : Stage("TransformCloud"),
-        transformer_(std::make_unique<algorithms::CloudTransformer>()) {}
+        transformer_(std::make_unique<algorithms::TransformCloud>()) {}
 
   void configure(const std::map<std::string, std::string> &params) override {
-    algorithms::CloudTransformer::Config config;
+    algorithms::TransformCloud::Config config;
 
     // Parse target frame
     loadParam(params, "target_frame", config.target_frame);
@@ -46,7 +46,7 @@ public:
     if (transformer_) {
       transformer_->setConfig(config);
     } else {
-      transformer_ = std::make_unique<algorithms::CloudTransformer>(config);
+      transformer_ = std::make_unique<algorithms::TransformCloud>(config);
     }
 
     LOG_DEBUG(getName(), "Configured with target_frame=", config.target_frame);
@@ -91,7 +91,7 @@ protected:
   }
 
 private:
-  std::unique_ptr<algorithms::CloudTransformer> transformer_;
+  std::unique_ptr<algorithms::TransformCloud> transformer_;
 };
 
 REGISTER_STAGE(TransformCloud)

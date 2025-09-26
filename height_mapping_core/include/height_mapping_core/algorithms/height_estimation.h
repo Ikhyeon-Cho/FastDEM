@@ -1,5 +1,5 @@
 /*
- * height_estimator.h
+ * height_estimation.h
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,8 +7,8 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef HEIGHT_MAPPING_CORE_ALGORITHMS_HEIGHT_ESTIMATOR_H
-#define HEIGHT_MAPPING_CORE_ALGORITHMS_HEIGHT_ESTIMATOR_H
+#ifndef HEIGHT_MAPPING_CORE_ALGORITHMS_HEIGHT_ESTIMATION_H
+#define HEIGHT_MAPPING_CORE_ALGORITHMS_HEIGHT_ESTIMATION_H
 
 #include "height_mapping_core/data/height_map.h"
 #include "height_mapping_core/data/point_cloud.h"
@@ -26,7 +26,7 @@ namespace height_mapping::algorithms {
  * Maintains full feature set including sensor data layers and statistical
  * measures.
  */
-class HeightEstimator {
+class HeightEstimation {
 public:
   /**
    * @brief Configuration parameters for height estimation
@@ -86,9 +86,9 @@ private:
   std::shared_ptr<estimators::HeightEstimatorBase> estimator_;
 
 public:
-  HeightEstimator();
+  HeightEstimation();
 
-  explicit HeightEstimator(const Config &config);
+  explicit HeightEstimation(const Config &config);
 
   void setConfig(const Config &config);
 
@@ -121,4 +121,4 @@ private:
 
 } // namespace height_mapping::algorithms
 
-#endif // HEIGHT_MAPPING_CORE_ALGORITHMS_HEIGHT_ESTIMATOR_H
+#endif // HEIGHT_MAPPING_CORE_ALGORITHMS_HEIGHT_ESTIMATION_H

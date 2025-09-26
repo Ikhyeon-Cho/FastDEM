@@ -1,5 +1,5 @@
 /*
- * map_origin_updater.h
+ * move_origin.h
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,8 +7,8 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef HEIGHT_MAPPING_CORE_ALGORITHMS_MAP_ORIGIN_UPDATER_H
-#define HEIGHT_MAPPING_CORE_ALGORITHMS_MAP_ORIGIN_UPDATER_H
+#ifndef HEIGHT_MAPPING_CORE_ALGORITHMS_MOVE_ORIGIN_H
+#define HEIGHT_MAPPING_CORE_ALGORITHMS_MOVE_ORIGIN_H
 
 #include "height_mapping_core/data/height_map.h"
 #include <Eigen/Core>
@@ -22,7 +22,7 @@ namespace height_mapping::algorithms {
  * Moves the map origin to keep the robot within the mapped area.
  * Supports multiple update strategies.
  */
-class MapOriginUpdater {
+class MoveOrigin {
 public:
   enum class UpdateMode {
     CONTINUOUS, // Always update to robot position
@@ -71,9 +71,9 @@ private:
   mutable Stats cumulative_stats_;
 
 public:
-  MapOriginUpdater() : config_{} { config_.validate(); }
+  MoveOrigin() : config_{} { config_.validate(); }
 
-  explicit MapOriginUpdater(const Config &config) : config_(config) {
+  explicit MoveOrigin(const Config &config) : config_(config) {
     config_.validate();
   }
 
@@ -103,4 +103,4 @@ private:
 
 } // namespace height_mapping::algorithms
 
-#endif // HEIGHT_MAPPING_CORE_ALGORITHMS_MAP_ORIGIN_UPDATER_H
+#endif // HEIGHT_MAPPING_CORE_ALGORITHMS_MOVE_ORIGIN_H

@@ -1,5 +1,5 @@
 /*
- * cloud_transformer.h
+ * transform_cloud.h
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,8 +7,8 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef HEIGHT_MAPPING_CORE_ALGORITHMS_CLOUD_TRANSFORMER_H
-#define HEIGHT_MAPPING_CORE_ALGORITHMS_CLOUD_TRANSFORMER_H
+#ifndef HEIGHT_MAPPING_CORE_ALGORITHMS_TRANSFORM_CLOUD_H
+#define HEIGHT_MAPPING_CORE_ALGORITHMS_TRANSFORM_CLOUD_H
 
 #include "height_mapping_core/data/point_cloud.h"
 #include "height_mapping_core/data/transform.h"
@@ -21,7 +21,7 @@ namespace height_mapping::algorithms {
  *
  * Transforms point clouds between coordinate frames using provided transform.
  */
-class CloudTransformer {
+class TransformCloud {
 public:
   /**
    * @brief Configuration parameters for cloud transformer
@@ -51,9 +51,9 @@ private:
   Config config_;
 
 public:
-  CloudTransformer() : config_{} { config_.validate(); }
+  TransformCloud() : config_{} { config_.validate(); }
 
-  explicit CloudTransformer(const Config &config) : config_(config) {
+  explicit TransformCloud(const Config &config) : config_(config) {
     config_.validate();
   }
 
@@ -92,4 +92,4 @@ public:
 
 } // namespace height_mapping::algorithms
 
-#endif // HEIGHT_MAPPING_CORE_ALGORITHMS_CLOUD_TRANSFORMER_H
+#endif // HEIGHT_MAPPING_CORE_ALGORITHMS_TRANSFORM_CLOUD_H

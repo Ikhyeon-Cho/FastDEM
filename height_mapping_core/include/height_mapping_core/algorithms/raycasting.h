@@ -1,5 +1,5 @@
 /*
- * raycaster.h
+ * raycasting.h
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,8 +7,8 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef HEIGHT_MAPPING_CORE_ALGORITHMS_RAYCASTER_H
-#define HEIGHT_MAPPING_CORE_ALGORITHMS_RAYCASTER_H
+#ifndef HEIGHT_MAPPING_CORE_ALGORITHMS_RAYCASTING_H
+#define HEIGHT_MAPPING_CORE_ALGORITHMS_RAYCASTING_H
 
 #include "height_mapping_core/data/height_map.h"
 #include "height_mapping_core/data/point_cloud.h"
@@ -23,7 +23,7 @@ namespace height_mapping::algorithms {
  * Traces rays from sensor to points to detect and correct false ground heights.
  * Ensures ground elevation is not higher than ray paths.
  */
-class Raycaster {
+class Raycasting {
 public:
   /**
    * @brief Configuration parameters for raycasting
@@ -63,9 +63,9 @@ private:
   mutable Stats cumulative_stats_; // Track cumulative statistics
 
 public:
-  Raycaster() : config_{} { config_.validate(); }
+  Raycasting() : config_{} { config_.validate(); }
 
-  explicit Raycaster(const Config &config) : config_(config) {
+  explicit Raycasting(const Config &config) : config_(config) {
     config_.validate();
   }
 
@@ -103,4 +103,4 @@ private:
 
 } // namespace height_mapping::algorithms
 
-#endif // HEIGHT_MAPPING_CORE_ALGORITHMS_RAYCASTER_H
+#endif // HEIGHT_MAPPING_CORE_ALGORITHMS_RAYCASTING_H

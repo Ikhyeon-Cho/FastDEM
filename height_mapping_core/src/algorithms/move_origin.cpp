@@ -1,5 +1,5 @@
 /*
- * map_origin_updater.cpp
+ * move_origin.cpp
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,13 +7,13 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/algorithms/map_origin_updater.h"
+#include "height_mapping_core/algorithms/move_origin.h"
 #include <cmath>
 
 namespace height_mapping::algorithms {
 
-MapOriginUpdater::Stats
-MapOriginUpdater::updateOrigin(height_mapping::HeightMap &map,
+MoveOrigin::Stats
+MoveOrigin::updateOrigin(height_mapping::HeightMap &map,
                                const Eigen::Vector3f &robot_position) {
 
   Stats stats;
@@ -54,7 +54,7 @@ MapOriginUpdater::updateOrigin(height_mapping::HeightMap &map,
   return stats;
 }
 
-bool MapOriginUpdater::shouldUpdate(const Eigen::Vector3f &robot_position,
+bool MoveOrigin::shouldUpdate(const Eigen::Vector3f &robot_position,
                                     std::string &reason) {
 
   switch (config_.update_mode) {

@@ -1,5 +1,5 @@
 /*
- * height_estimator.cpp
+ * height_estimation.cpp
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,7 +7,7 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/algorithms/height_estimator.h"
+#include "height_mapping_core/algorithms/height_estimation.h"
 #include "height_mapping_core/estimators/incremental_mean.h"
 #include "height_mapping_core/estimators/kalman_filter.h"
 #include "height_mapping_core/estimators/moving_average.h"
@@ -15,7 +15,7 @@
 
 namespace height_mapping::algorithms {
 
-HeightEstimator::HeightEstimator() : config_{} {
+HeightEstimation::HeightEstimation() : config_{} {
   config_.validate();
 
   // Create default estimator
@@ -41,7 +41,7 @@ HeightEstimator::HeightEstimator() : config_{} {
   }
 }
 
-HeightEstimator::HeightEstimator(const Config &config) : config_(config) {
+HeightEstimation::HeightEstimation(const Config &config) : config_(config) {
   config_.validate();
 
   // Create estimator based on type
@@ -67,7 +67,7 @@ HeightEstimator::HeightEstimator(const Config &config) : config_(config) {
   }
 }
 
-void HeightEstimator::setConfig(const Config &config) {
+void HeightEstimation::setConfig(const Config &config) {
   config_ = config;
   config_.validate();
 
@@ -94,8 +94,8 @@ void HeightEstimator::setConfig(const Config &config) {
   }
 }
 
-HeightEstimator::Stats
-HeightEstimator::updateMap(height_mapping::HeightMap &map,
+HeightEstimation::Stats
+HeightEstimation::updateMap(height_mapping::HeightMap &map,
                            const height_mapping::PointCloud &cloud) const {
 
   Stats stats;

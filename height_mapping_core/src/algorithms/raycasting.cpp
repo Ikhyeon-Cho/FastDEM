@@ -1,5 +1,5 @@
 /*
- * raycaster.cpp
+ * raycasting.cpp
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,14 +7,14 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/algorithms/raycaster.h"
+#include "height_mapping_core/algorithms/raycasting.h"
 #include <cmath>
 #include <limits>
 
 namespace height_mapping::algorithms {
 
-Raycaster::Stats
-Raycaster::correctMap(height_mapping::HeightMap &map,
+Raycasting::Stats
+Raycasting::correctMap(height_mapping::HeightMap &map,
                       const height_mapping::PointCloud &cloud,
                       const Eigen::Vector3f &sensor_origin) const {
 
@@ -46,7 +46,7 @@ Raycaster::correctMap(height_mapping::HeightMap &map,
   return stats;
 }
 
-void Raycaster::traceRays(height_mapping::HeightMap &map,
+void Raycasting::traceRays(height_mapping::HeightMap &map,
                           const height_mapping::PointCloud &cloud,
                           const Eigen::Vector3f &sensor_origin,
                           Stats &stats) const {
@@ -100,7 +100,7 @@ void Raycaster::traceRays(height_mapping::HeightMap &map,
   }
 }
 
-void Raycaster::applyCorrections(height_mapping::HeightMap &map,
+void Raycasting::applyCorrections(height_mapping::HeightMap &map,
                                  Stats &stats) const {
 
   namespace layer = height_mapping::layer;
@@ -129,7 +129,7 @@ void Raycaster::applyCorrections(height_mapping::HeightMap &map,
   }
 }
 
-bool Raycaster::isGroundRay(
+bool Raycasting::isGroundRay(
     const height_mapping::PointCloud::ConstPointView &point,
     const Eigen::Vector3f &sensor_origin) const {
 
@@ -137,7 +137,7 @@ bool Raycaster::isGroundRay(
   return (angle < config_.max_ground_angle);
 }
 
-float Raycaster::computeRayAngle(
+float Raycasting::computeRayAngle(
     const height_mapping::PointCloud::ConstPointView &point,
     const Eigen::Vector3f &sensor_origin) const {
 

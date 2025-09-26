@@ -10,7 +10,7 @@
 #ifndef HEIGHT_MAPPING_PIPELINE_STAGES_RAYCASTING_H
 #define HEIGHT_MAPPING_PIPELINE_STAGES_RAYCASTING_H
 
-#include "height_mapping_core/algorithms/raycaster.h"
+#include "height_mapping_core/algorithms/raycasting.h"
 #include "height_mapping_pipeline/interfaces/transform_provider.h"
 #include "height_mapping_pipeline/mapping_context.h"
 #include "pipeline_core/stage.h"
@@ -30,10 +30,10 @@ class Raycasting : public pipeline::Stage {
 public:
   Raycasting()
       : Stage("Raycasting"),
-        raycaster_(std::make_unique<algorithms::Raycaster>()) {}
+        raycaster_(std::make_unique<algorithms::Raycasting>()) {}
 
   void configure(const std::map<std::string, std::string> &params) override {
-    algorithms::Raycaster::Config config;
+    algorithms::Raycasting::Config config;
 
     // Parse max ground angle (convert from degrees to radians)
     float angle_degrees;
@@ -50,7 +50,7 @@ public:
     if (raycaster_) {
       raycaster_->setConfig(config);
     } else {
-      raycaster_ = std::make_unique<algorithms::Raycaster>(config);
+      raycaster_ = std::make_unique<algorithms::Raycasting>(config);
     }
 
     LOG_DEBUG(getName(), "Configured with max_ground_angle=",
@@ -91,7 +91,7 @@ protected:
   }
 
 private:
-  std::unique_ptr<algorithms::Raycaster> raycaster_;
+  std::unique_ptr<algorithms::Raycasting> raycaster_;
 };
 
 REGISTER_STAGE(Raycasting)

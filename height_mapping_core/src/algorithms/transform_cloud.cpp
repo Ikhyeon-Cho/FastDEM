@@ -1,5 +1,5 @@
 /*
- * cloud_transformer.cpp
+ * transform_cloud.cpp
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -7,11 +7,11 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping_core/algorithms/cloud_transformer.h"
+#include "height_mapping_core/algorithms/transform_cloud.h"
 
 namespace height_mapping::algorithms {
 
-CloudTransformer::Stats CloudTransformer::transformInPlace(
+TransformCloud::Stats TransformCloud::transformInPlace(
     height_mapping::PointCloud &cloud,
     const height_mapping::Transform3D &transform) const {
 
@@ -47,7 +47,7 @@ CloudTransformer::Stats CloudTransformer::transformInPlace(
 }
 
 height_mapping::PointCloud
-CloudTransformer::transform(const height_mapping::PointCloud &cloud,
+TransformCloud::transform(const height_mapping::PointCloud &cloud,
                             const height_mapping::Transform3D &transform,
                             Stats &stats) const {
 
@@ -57,7 +57,7 @@ CloudTransformer::transform(const height_mapping::PointCloud &cloud,
   return result;
 }
 
-bool CloudTransformer::needsTransform(
+bool TransformCloud::needsTransform(
     const height_mapping::PointCloud &cloud) const {
   return !cloud.empty() && cloud.frameId() != config_.target_frame;
 }
