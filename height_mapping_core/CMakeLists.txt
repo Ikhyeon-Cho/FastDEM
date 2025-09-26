@@ -2,18 +2,13 @@ cmake_minimum_required(VERSION 3.0.2)
 project(height_mapping_core)
 add_compile_options(-std=c++17)
 
-find_package(yaml-cpp REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
     grid_map_core
 )
 
-# Add pipeline_core as subdirectory
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../pipeline_core ${CMAKE_CURRENT_BINARY_DIR}/pipeline_core)
-
 catkin_package(
   INCLUDE_DIRS
     include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../pipeline_core/include
   LIBRARIES
     ${PROJECT_NAME}
   CATKIN_DEPENDS
@@ -31,10 +26,7 @@ endif()
 
 include_directories(
   include
-  ${CMAKE_CURRENT_SOURCE_DIR}/../pipeline_core/include
-  ${PCL_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
-  ${YAML_CPP_INCLUDE_DIR}
 )
 
 # Automatically collect all source files
@@ -53,9 +45,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME}
-  ${PCL_LIBRARIES}
   ${catkin_LIBRARIES}
-  ${YAML_CPP_LIBRARIES}
 )
 
 #############
