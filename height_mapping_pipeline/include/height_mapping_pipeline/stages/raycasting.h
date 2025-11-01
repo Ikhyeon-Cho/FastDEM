@@ -13,8 +13,8 @@
 #include "height_mapping_core/algorithms/raycasting.h"
 #include "height_mapping_pipeline/interfaces/transform_provider.h"
 #include "height_mapping_pipeline/mapping_context.h"
-#include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registration.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 #include <cmath>
 #include <logger/logger.h>
 #include <memory>
@@ -26,7 +26,7 @@ namespace height_mapping::mapping::stages {
  *
  * This stage optionally uses ITransformProvider service to get sensor origin.
  */
-class Raycasting : public pipeline::Stage {
+class Raycasting : public flowpipe::Stage {
 public:
   Raycasting()
       : Stage("Raycasting"),
@@ -59,7 +59,7 @@ public:
   }
 
 protected:
-  void processImpl(pipeline::Context &ctx) override {
+  void processImpl(flowpipe::Context &ctx) override {
     auto &mapping_ctx = static_cast<MappingContext &>(ctx);
     auto &map = mapping_ctx.map();
     auto &cloud = mapping_ctx.cloud();

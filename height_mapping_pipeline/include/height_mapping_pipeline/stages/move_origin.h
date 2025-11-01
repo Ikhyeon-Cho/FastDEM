@@ -13,8 +13,8 @@
 #include "height_mapping_core/algorithms/move_origin.h"
 #include "height_mapping_pipeline/interfaces/transform_provider.h"
 #include "height_mapping_pipeline/mapping_context.h"
-#include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registration.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 #include <logger/logger.h>
 #include <memory>
 
@@ -25,7 +25,7 @@ namespace height_mapping::mapping::stages {
  *
  * This stage requires ITransformProvider service to get robot position.
  */
-class MoveOrigin : public pipeline::Stage {
+class MoveOrigin : public flowpipe::Stage {
 public:
   MoveOrigin()
       : Stage("MoveOrigin"),
@@ -72,7 +72,7 @@ public:
   }
 
 protected:
-  void processImpl(pipeline::Context &ctx) override {
+  void processImpl(flowpipe::Context &ctx) override {
     auto &mapping_ctx = static_cast<MappingContext &>(ctx);
     auto &map = mapping_ctx.map();
     auto &cloud = mapping_ctx.cloud();

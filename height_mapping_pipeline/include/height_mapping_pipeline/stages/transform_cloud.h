@@ -13,8 +13,8 @@
 #include "height_mapping_core/algorithms/transform_cloud.h"
 #include "height_mapping_pipeline/interfaces/transform_provider.h"
 #include "height_mapping_pipeline/mapping_context.h"
-#include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registration.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 #include <logger/logger.h>
 #include <memory>
 #include <stdexcept>
@@ -27,7 +27,7 @@ namespace height_mapping::mapping::stages {
  * This stage requires ITransformProvider service to be available in the
  * context.
  */
-class TransformCloud : public pipeline::Stage {
+class TransformCloud : public flowpipe::Stage {
 public:
   TransformCloud()
       : Stage("TransformCloud"),
@@ -53,7 +53,7 @@ public:
   }
 
 protected:
-  void processImpl(pipeline::Context &ctx) override {
+  void processImpl(flowpipe::Context &ctx) override {
     auto &mapping_ctx = static_cast<MappingContext &>(ctx);
     auto &cloud = mapping_ctx.cloud();
 

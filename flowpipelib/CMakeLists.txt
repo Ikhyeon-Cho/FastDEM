@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(pipeline_core VERSION 0.0.1 LANGUAGES CXX)
+project(flowpipelib VERSION 0.0.1 LANGUAGES CXX)
 
 # C++17 required
 set(CMAKE_CXX_STANDARD 17)

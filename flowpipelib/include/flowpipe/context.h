@@ -7,7 +7,7 @@
  * Users should inherit from Context to add domain-specific data.
  *
  * Example implementation:
- *   class MyContext : public pipeline::Context {
+ *   class MyContext : public flowpipe::Context {
  *   public:
  *     // Data accessors
  *     void setData(std::shared_ptr<MyData> data) { data_ = data; }
@@ -33,14 +33,14 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef PIPELINE_CORE_CONTEXT_H
-#define PIPELINE_CORE_CONTEXT_H
+#ifndef FLOWPIPE_CONTEXT_H
+#define FLOWPIPE_CONTEXT_H
 
 #include <memory>
 #include <typeindex>
 #include <unordered_map>
 
-namespace pipeline {
+namespace flowpipe {
 
 /**
  * @brief Base context class for pipeline processing
@@ -78,6 +78,6 @@ private:
   std::unordered_map<std::type_index, std::shared_ptr<void>> services_;
 };
 
-} // namespace pipeline
+} // namespace flowpipe
 
-#endif // PIPELINE_CORE_CONTEXT_H
+#endif // FLOWPIPE_CONTEXT_H

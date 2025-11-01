@@ -5,13 +5,13 @@
  *
  * This header provides the REGISTER_STAGE macro for automatic stage
  *registration. Domain-specific developers should:
- *   1. Define their stage class in a .h file (inheriting from pipeline::Stage)
+ *   1. Define their stage class in a .h file (inheriting from flowpipe::Stage)
  *   2. Include this header ONLY in their .cpp file
  *   3. Call REGISTER_STAGE(YourStageName) in the .cpp file
  *
  * Example usage (in .cpp file only):
  *   #include "my_stage.h"
- *   #include "pipeline_core/stage_registration.h"
+ *   #include "flowpipe/stage_registration.h"
  *
  *   // Implementation of MyStage methods...
  *
@@ -32,17 +32,17 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef PIPELINE_CORE_STAGE_REGISTRATION_H
-#define PIPELINE_CORE_STAGE_REGISTRATION_H
+#ifndef FLOWPIPE_STAGE_REGISTRATION_H
+#define FLOWPIPE_STAGE_REGISTRATION_H
 
-#include "pipeline_core/stage.h"
+#include "flowpipe/stage.h"
 #include <functional>
 #include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
 
-namespace pipeline {
+namespace flowpipe {
 
 class StageRegistry {
 public:
@@ -88,11 +88,11 @@ private:
 #define REGISTER_STAGE(Class)                                                  \
   namespace {                                                                  \
   static bool _register_##Class = []() {                                       \
-    pipeline::StageRegistry::registerStage<Class>(#Class);                     \
+    flowpipe::StageRegistry::registerStage<Class>(#Class);                     \
     return true;                                                               \
   }();                                                                         \
   }
 
-} // namespace pipeline
+} // namespace flowpipe
 
-#endif // PIPELINE_CORE_STAGE_REGISTRATION_H
+#endif // FLOWPIPE_STAGE_REGISTRATION_H

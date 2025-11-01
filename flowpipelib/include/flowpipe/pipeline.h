@@ -9,7 +9,7 @@
  *
  * Typical usage:
  *   // Create pipeline using builder
- *   auto pipeline = pipeline::PipelineBuilder::fromFile("config.yaml");
+ *   auto pipeline = flowpipe::PipelineBuilder::fromFile("config.yaml");
  *
  *   // Execute pipeline
  *   MyContext ctx;
@@ -25,19 +25,19 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef PIPELINE_CORE_PIPELINE_H
-#define PIPELINE_CORE_PIPELINE_H
+#ifndef FLOWPIPE_PIPELINE_H
+#define FLOWPIPE_PIPELINE_H
 
-#include "pipeline_core/context.h"
-#include "pipeline_core/exceptions.h"
-#include "pipeline_core/stage.h"
+#include "flowpipe/context.h"
+#include "flowpipe/exceptions.h"
+#include "flowpipe/stage.h"
 #include <algorithm>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
 
-namespace pipeline {
+namespace flowpipe {
 
 class Pipeline {
 public:
@@ -127,6 +127,6 @@ private:
   bool stop_on_error_ = true;
 };
 
-} // namespace pipeline
+} // namespace flowpipe
 
-#endif // PIPELINE_CORE_PIPELINE_H
+#endif // FLOWPIPE_PIPELINE_H

@@ -28,13 +28,13 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef PIPELINE_CORE_EXCEPTIONS_H
-#define PIPELINE_CORE_EXCEPTIONS_H
+#ifndef FLOWPIPE_EXCEPTIONS_H
+#define FLOWPIPE_EXCEPTIONS_H
 
 #include <stdexcept>
 #include <string>
 
-namespace pipeline {
+namespace flowpipe {
 
 /**
  * @brief Base exception for stage processing errors
@@ -81,6 +81,6 @@ public:
       : StageError(stage_name, message) {}
 };
 
-} // namespace pipeline
+} // namespace flowpipe
 
-#endif // PIPELINE_CORE_EXCEPTIONS_H
+#endif // FLOWPIPE_EXCEPTIONS_H

@@ -21,18 +21,18 @@
  * Email: tre0430@korea.ac.kr
  */
 
-#ifndef PIPELINE_CORE_PIPELINE_PROFILER_H
-#define PIPELINE_CORE_PIPELINE_PROFILER_H
+#ifndef FLOWPIPE_PIPELINE_PROFILER_H
+#define FLOWPIPE_PIPELINE_PROFILER_H
 
 #include "logger/logger.h"
-#include "pipeline_core/context.h"
-#include "pipeline_core/pipeline.h"
+#include "flowpipe/context.h"
+#include "flowpipe/pipeline.h"
 #include <chrono>
 #include <map>
 #include <string>
 #include <vector>
 
-namespace pipeline {
+namespace flowpipe {
 
 class PipelineProfiler {
 public:
@@ -227,6 +227,6 @@ private:
   bool log_each_stage_ = false;
 };
 
-} // namespace pipeline
+} // namespace flowpipe
 
-#endif // PIPELINE_CORE_PIPELINE_PROFILER_H
+#endif // FLOWPIPE_PIPELINE_PROFILER_H

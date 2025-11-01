@@ -12,8 +12,8 @@
 
 #include "height_mapping_core/algorithms/passthrough_filter.h"
 #include "height_mapping_pipeline/mapping_context.h"
-#include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registration.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 #include <limits>
 #include <logger/logger.h>
 #include <memory>
@@ -23,7 +23,7 @@ namespace height_mapping::mapping::stages {
 /**
  * @brief Pipeline stage adapter for passthrough filter (header-only)
  */
-class PassthroughFilter : public pipeline::Stage {
+class PassthroughFilter : public flowpipe::Stage {
 public:
   PassthroughFilter()
       : Stage("PassthroughFilter"),
@@ -61,7 +61,7 @@ public:
   }
 
 protected:
-  void processImpl(pipeline::Context &ctx) override {
+  void processImpl(flowpipe::Context &ctx) override {
     auto &mapping_ctx = static_cast<MappingContext &>(ctx);
     auto &cloud = mapping_ctx.cloud();
 

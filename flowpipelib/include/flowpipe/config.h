@@ -10,11 +10,11 @@
  *
  * Example usage:
  *   // Load from file
- *   auto config = pipeline::Config::fromFile("pipeline.yaml");
+ *   auto config = flowpipe::Config::fromFile("pipeline.yaml");
  *
  *   // Parse from YAML node
  *   YAML::Node node = ...;
- *   auto config = pipeline::Config::fromYAML(node);
+ *   auto config = flowpipe::Config::fromYAML(node);
  *
  * YAML Configuration Format:
  *   pipeline:
@@ -36,8 +36,8 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef PIPELINE_CORE_CONFIG_H
-#define PIPELINE_CORE_CONFIG_H
+#ifndef FLOWPIPE_CONFIG_H
+#define FLOWPIPE_CONFIG_H
 
 #include <map>
 #include <string>
@@ -45,7 +45,7 @@
 #include <vector>
 #include <yaml-cpp/yaml.h>
 
-namespace pipeline {
+namespace flowpipe {
 
 // Configuration for a single stage
 struct StageConfig {
@@ -178,6 +178,6 @@ inline Config Config::fromFile(const std::string &filename) {
   }
 }
 
-} // namespace pipeline
+} // namespace flowpipe
 
-#endif // PIPELINE_CORE_CONFIG_H
+#endif // FLOWPIPE_CONFIG_H

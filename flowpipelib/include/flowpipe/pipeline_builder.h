@@ -11,14 +11,14 @@
  *
  * Example usage:
  *   // Method 1: From file (most common)
- *   auto pipeline = pipeline::PipelineBuilder::fromFile("config.yaml");
+ *   auto pipeline = flowpipe::PipelineBuilder::fromFile("config.yaml");
  *
  *   // Method 2: From Config
- *   auto config = pipeline::Config::fromFile("config.yaml");
- *   auto pipeline = pipeline::PipelineBuilder::fromConfig(config);
+ *   auto config = flowpipe::Config::fromFile("config.yaml");
+ *   auto pipeline = flowpipe::PipelineBuilder::fromConfig(config);
  *
  *   // Method 3: Programmatic construction
- *   pipeline::PipelineBuilder builder;
+ *   flowpipe::PipelineBuilder builder;
  *   builder.addStage("VoxelFilter", {{"voxel_size", "0.1"}})
  *          .addStage("Transform", {{"target_frame", "map"}})
  *          .stopOnError(true);
@@ -30,19 +30,19 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef PIPELINE_CORE_PIPELINE_BUILDER_H
-#define PIPELINE_CORE_PIPELINE_BUILDER_H
+#ifndef FLOWPIPE_PIPELINE_BUILDER_H
+#define FLOWPIPE_PIPELINE_BUILDER_H
 
-#include "pipeline_core/config.h"
-#include "pipeline_core/pipeline.h"
-#include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registration.h"
+#include "flowpipe/config.h"
+#include "flowpipe/pipeline.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 #include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
 
-namespace pipeline {
+namespace flowpipe {
 
 /**
  * @brief Builder for constructing pipelines with Factory support
@@ -124,6 +124,6 @@ protected:
   std::unique_ptr<Pipeline> pipeline_;
 };
 
-} // namespace pipeline
+} // namespace flowpipe
 
-#endif // PIPELINE_CORE_PIPELINE_BUILDER_H
+#endif // FLOWPIPE_PIPELINE_BUILDER_H

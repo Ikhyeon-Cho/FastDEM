@@ -12,7 +12,7 @@
 
 #include "height_mapping_core/data/height_map.h"
 #include "height_mapping_core/data/point_cloud.h"
-#include "pipeline_core/context.h"
+#include "flowpipe/context.h"
 #include <memory>
 
 namespace height_mapping::mapping {
@@ -23,7 +23,7 @@ namespace height_mapping::mapping {
  * This class provides a workspace for the mapping pipeline,
  * carrying point cloud data and map reference through the processing stages.
  */
-class MappingContext : public pipeline::Context {
+class MappingContext : public flowpipe::Context {
 public:
   MappingContext(PointCloud::Ptr cloud, HeightMap::Ptr map)
       : cloud_(cloud), map_(map) {

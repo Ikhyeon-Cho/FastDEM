@@ -12,8 +12,8 @@
 
 #include "height_mapping_core/data/point_cloud.h"
 #include "height_mapping_pipeline/mapping_context.h"
-#include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registration.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 #include <chrono>
 #include <deque>
 #include <logger/logger.h>
@@ -29,7 +29,7 @@ namespace height_mapping::mapping::stages {
  * This stage buffers and synchronizes point clouds from multiple sensors.
  * Note: This is a pipeline-specific feature, not a core algorithm.
  */
-class MultiSensorSync : public pipeline::Stage {
+class MultiSensorSync : public flowpipe::Stage {
   struct SensorBuffer {
     std::deque<std::shared_ptr<height_mapping::PointCloud>> clouds;
     std::deque<uint64_t> timestamps;
@@ -66,7 +66,7 @@ public:
   }
 
 protected:
-  void processImpl(pipeline::Context &ctx) override {
+  void processImpl(flowpipe::Context &ctx) override {
     auto &mapping_ctx = static_cast<MappingContext &>(ctx);
 
     // Get sensor ID from context metadata (if available)

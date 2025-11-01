@@ -12,8 +12,8 @@
 
 #include "height_mapping_core/algorithms/height_estimation.h"
 #include "height_mapping_pipeline/mapping_context.h"
-#include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registration.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 #include <logger/logger.h>
 #include <memory>
 
@@ -22,7 +22,7 @@ namespace height_mapping::mapping::stages {
 /**
  * @brief Pipeline stage adapter for height estimation (header-only)
  */
-class HeightEstimation : public pipeline::Stage {
+class HeightEstimation : public flowpipe::Stage {
 public:
   HeightEstimation()
       : Stage("HeightEstimation"),
@@ -83,7 +83,7 @@ public:
   }
 
 protected:
-  void processImpl(pipeline::Context &ctx) override {
+  void processImpl(flowpipe::Context &ctx) override {
 
     auto &mapping_ctx = static_cast<MappingContext &>(ctx);
     auto &map = mapping_ctx.map();

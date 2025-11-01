@@ -9,7 +9,7 @@
 
 #include "height_mapping_pipeline/mapping_engine.h"
 #include "logger/logger.h"
-#include "pipeline_core/pipeline_builder.h"
+#include "flowpipe/pipeline_builder.h"
 
 namespace height_mapping::mapping {
 
@@ -40,40 +40,40 @@ void MappingEngine::setupMappingPipeline() {
     return;
   }
 
-  mapping_pipeline_ = pipeline::PipelineBuilder::fromConfig(config_.pipeline);
+  mapping_pipeline_ = flowpipe::PipelineBuilder::fromConfig(config_.pipeline);
   LOG_DEBUG(ENGINE_NAME, "Pipeline created from configuration with ",
             config_.pipeline.stages.size(), " stages");
 
   // Initialize profiler (optional component)
   profiler_ =
-      std::make_unique<pipeline::PipelineProfiler>(mapping_pipeline_.get());
+      std::make_unique<flowpipe::PipelineProfiler>(mapping_pipeline_.get());
 }
 
 void MappingEngine::setupDefaultPipeline() {
-  std::vector<pipeline::StageConfig> stages;
+  std::vector<flowpipe::StageConfig> stages;
 
   // 1. Transform to map frame (essential for mapping)
-  pipeline::StageConfig transform_stage;
+  flowpipe::StageConfig transform_stage;
   transform_stage.name = "TransformCloud";
   transform_stage.params["target_frame"] = "map";
   stages.push_back(transform_stage);
 
   // 2. Height estimation (core functionality)
-  pipeline::StageConfig height_stage;
+  flowpipe::StageConfig height_stage;
   height_stage.name = "HeightEstimation";
   height_stage.params["estimator_type"] = "incremental_mean";
   stages.push_back(height_stage);
 
   // Create pipeline config and build
-  pipeline::Config default_config;
+  flowpipe::Config default_config;
   default_config.stages = stages;
   default_config.stop_on_error = true;
 
-  mapping_pipeline_ = pipeline::PipelineBuilder::fromConfig(default_config);
+  mapping_pipeline_ = flowpipe::PipelineBuilder::fromConfig(default_config);
 
   // Initialize profiler for default pipeline too
   profiler_ =
-      std::make_unique<pipeline::PipelineProfiler>(mapping_pipeline_.get());
+      std::make_unique<flowpipe::PipelineProfiler>(mapping_pipeline_.get());
 }
 
 void MappingEngine::registerCloud(std::shared_ptr<PointCloud> cloud) {

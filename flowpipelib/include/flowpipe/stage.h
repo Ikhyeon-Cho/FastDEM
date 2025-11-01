@@ -10,7 +10,7 @@
  * Example implementation:
  *
  * Header file (my_stage.h):
- *   class MyStage : public pipeline::Stage {
+ *   class MyStage : public flowpipe::Stage {
  *   public:
  *     MyStage() : Stage("MyStage") {}
  *
@@ -23,7 +23,7 @@
  *     }
  *
  *   protected:
- *     void processImpl(pipeline::Context& ctx) override {
+ *     void processImpl(flowpipe::Context& ctx) override {
  *       // Implement your processing logic here
  *       // Access and modify data through ctx
  *     }
@@ -34,7 +34,7 @@
  *
  * Implementation file (my_stage.cpp):
  *   #include "my_stage.h"
- *   #include "pipeline_core/stage_registration.h"  // Only needed in .cpp
+ *   #include "flowpipe/stage_registration.h"  // Only needed in .cpp
  *
  *   // Register the stage for factory creation
  *   REGISTER_STAGE(MyStage);
@@ -46,15 +46,15 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#ifndef PIPELINE_CORE_STAGE_H
-#define PIPELINE_CORE_STAGE_H
+#ifndef FLOWPIPE_STAGE_H
+#define FLOWPIPE_STAGE_H
 
-#include "pipeline_core/context.h"
+#include "flowpipe/context.h"
 #include <map>
 #include <memory>
 #include <string>
 
-namespace pipeline {
+namespace flowpipe {
 
 class Stage {
 public:
@@ -152,6 +152,6 @@ private:
   bool enabled_ = true;
 };
 
-} // namespace pipeline
+} // namespace flowpipe
 
-#endif // PIPELINE_CORE_STAGE_H
+#endif // FLOWPIPE_STAGE_H

@@ -12,8 +12,8 @@
 
 #include "height_mapping_core/algorithms/statistical_ground_segmentation.h"
 #include "height_mapping_pipeline/mapping_context.h"
-#include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registration.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 #include <logger/logger.h>
 #include <memory>
 
@@ -27,7 +27,7 @@ namespace height_mapping::mapping::stages {
  * the pipeline. It handles configuration parsing from YAML and context
  * management.
  */
-class StatisticalGroundSegmentation : public pipeline::Stage {
+class StatisticalGroundSegmentation : public flowpipe::Stage {
 public:
   StatisticalGroundSegmentation()
       : Stage("StatisticalGroundSegmentation"),
@@ -57,7 +57,7 @@ public:
   }
 
 protected:
-  void processImpl(pipeline::Context &ctx) override {
+  void processImpl(flowpipe::Context &ctx) override {
     auto &mapping_ctx = static_cast<MappingContext &>(ctx);
     auto &cloud = mapping_ctx.cloud();
 

@@ -1,7 +1,7 @@
 #ifndef HEIGHT_MAPPING_PIPELINE_CONFIG_H
 #define HEIGHT_MAPPING_PIPELINE_CONFIG_H
 
-#include "pipeline_core/config.h"
+#include "flowpipe/config.h"
 #include <string>
 #include <yaml-cpp/yaml.h>
 
@@ -25,7 +25,7 @@ struct Config {
     bool verbose{false};
   } engine;
 
-  pipeline::Config pipeline;
+  flowpipe::Config pipeline;
 
   static Config fromFile(const std::string &file_path);
   static Config fromYAML(const YAML::Node &yaml);
@@ -70,7 +70,7 @@ inline Config Config::fromYAML(const YAML::Node &yaml) {
     }
   }
 
-  config.pipeline = pipeline::Config::fromYAML(yaml);
+  config.pipeline = flowpipe::Config::fromYAML(yaml);
   return config;
 }
 

@@ -3,8 +3,8 @@
 #include "height_mapping_pipeline/interfaces/config.h"
 #include "height_mapping_pipeline/interfaces/transform_provider.h"
 #include "height_mapping_pipeline/stage_registration.h"
-#include "pipeline_core/pipeline.h"
-#include "pipeline_core/pipeline_profiler.h"
+#include "flowpipe/pipeline.h"
+#include "flowpipe/pipeline_profiler.h"
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -34,7 +34,7 @@ public:
   // Benchmarking interfaces
   void setBenchmarkEnabled(bool enable);
   void setBenchmarkInterval(size_t interval);
-  pipeline::PipelineProfiler *getProfiler() { return profiler_.get(); }
+  flowpipe::PipelineProfiler *getProfiler() { return profiler_.get(); }
 
 private:
   void setupMappingPipeline();
@@ -47,8 +47,8 @@ private:
   std::shared_ptr<height_mapping::HeightMap> map_;
 
   // Core pipeline components
-  std::unique_ptr<pipeline::Pipeline> mapping_pipeline_;
-  std::unique_ptr<pipeline::PipelineProfiler> profiler_;
+  std::unique_ptr<flowpipe::Pipeline> mapping_pipeline_;
+  std::unique_ptr<flowpipe::PipelineProfiler> profiler_;
   bool benchmark_enabled_ = false;
 
   mutable std::shared_mutex map_mutex_;

@@ -12,8 +12,8 @@
 
 #include "height_mapping_core/algorithms/voxel_filter.h"
 #include "height_mapping_pipeline/mapping_context.h"
-#include "pipeline_core/stage.h"
-#include "pipeline_core/stage_registration.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 #include <logger/logger.h>
 #include <memory>
 
@@ -22,7 +22,7 @@ namespace height_mapping::mapping::stages {
 /**
  * @brief Pipeline stage adapter for voxel filter (header-only)
  */
-class VoxelFilter : public pipeline::Stage {
+class VoxelFilter : public flowpipe::Stage {
 public:
   VoxelFilter()
       : Stage("VoxelFilter"),
@@ -68,7 +68,7 @@ public:
   }
 
 protected:
-  void processImpl(pipeline::Context &ctx) override {
+  void processImpl(flowpipe::Context &ctx) override {
     auto &mapping_ctx = static_cast<MappingContext &>(ctx);
     auto &cloud = mapping_ctx.cloud();
 
