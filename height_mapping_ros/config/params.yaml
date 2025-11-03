@@ -1,25 +1,19 @@
-# ROS Node Configuration for Height Mapping
-mapping_config: "$(find height_mapping_pipeline)/config/default.yaml"
+topics:
+  scan: "/velodyne/tilted/velodyne_points"
+  scan_processed: "processed_cloud"
+  heightmap: "height_map"
+  publish_rate: 10.0             # [Hz]
 
-# Input/Output topics
-input_cloud_topic: "/velodyne/tilted/velodyne_points"
-output_map_topic: "height_map"
-processed_cloud_topic: "processed_cloud"
+tf_tree:
+  lookup_timeout: 0.1            # [sec]
+  max_extrapolation_time: 0.05   # [sec]
 
-# Publishing settings
-publish_rate: 10.0              # Hz
-publish_processed_cloud: true   # Enable processed cloud output
+mapper:
+  config_file: "$(find height_mapping)/config/default.yaml"
+  benchmark:
+    enabled: false                # Enable/disable profiling (default off for zero overhead)
+    report_interval: 100          # Print report every N frames
+    log_each_stage: false         # Log each stage execution (verbose)
 
-# Transform settings
-tf_timeout: 0.1                 # TF lookup timeout (seconds)
-tf_extrapolation: 0.05          # TF extrapolation (seconds)
-
-# Logger settings (dynamically updated)
 logger:
   level: "DEBUG"                 # DEBUG, INFO, WARN, ERROR
-
-# Benchmarking settings (dynamically updated)
-benchmark:
-  enabled: true                # Enable/disable profiling (default off for zero overhead)
-  report_interval: 100          # Print report every N frames
-  log_each_stage: false         # Log each stage execution (verbose)

@@ -40,15 +40,16 @@ namespace flowpipe {
  * @brief Base exception for stage processing errors
  */
 class StageError : public std::runtime_error {
-public:
+ public:
   StageError(const std::string &stage_name, const std::string &message)
       : std::runtime_error("[" + stage_name + "] " + message),
-        stage_name_(stage_name), message_(message) {}
+        stage_name_(stage_name),
+        message_(message) {}
 
   const std::string &getStage() const { return stage_name_; }
   const std::string &getMessage() const { return message_; }
 
-private:
+ private:
   std::string stage_name_;
   std::string message_;
 };
@@ -62,7 +63,7 @@ private:
  * - Required resource unavailable
  */
 class CriticalError : public StageError {
-public:
+ public:
   CriticalError(const std::string &stage_name, const std::string &message)
       : StageError(stage_name, message) {}
 };
@@ -76,11 +77,11 @@ public:
  * - Non-essential computation failed
  */
 class RecoverableError : public StageError {
-public:
+ public:
   RecoverableError(const std::string &stage_name, const std::string &message)
       : StageError(stage_name, message) {}
 };
 
-} // namespace flowpipe
+}  // namespace flowpipe
 
-#endif // FLOWPIPE_EXCEPTIONS_H
+#endif  // FLOWPIPE_EXCEPTIONS_H

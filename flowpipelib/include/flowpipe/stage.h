@@ -49,15 +49,16 @@
 #ifndef FLOWPIPE_STAGE_H
 #define FLOWPIPE_STAGE_H
 
-#include "flowpipe/context.h"
 #include <map>
 #include <memory>
 #include <string>
 
+#include "flowpipe/context.h"
+
 namespace flowpipe {
 
 class Stage {
-public:
+ public:
   using Ptr = std::unique_ptr<Stage>;
 
   Stage(const std::string &name) : name_(name) { initialize(); }
@@ -65,8 +66,7 @@ public:
   virtual ~Stage() = default;
 
   void process(Context &ctx) {
-    if (!isEnabled() || !canProcess(ctx))
-      return;
+    if (!isEnabled() || !canProcess(ctx)) return;
     processImpl(ctx);
   }
 
@@ -83,12 +83,12 @@ public:
   virtual bool canProcess(const Context &ctx) const { return true; }
   virtual void initialize() {}
 
-protected:
-  virtual void processImpl(Context &ctx) = 0; // Override in specific stages
+ protected:
+  virtual void processImpl(Context &ctx) = 0;  // Override in specific stages
 
   // Parameter parsing utilities
   static bool loadParam(const std::map<std::string, std::string> &params,
-                         const std::string &key, float &value) {
+                        const std::string &key, float &value) {
     auto it = params.find(key);
     if (it != params.end()) {
       value = std::stof(it->second);
@@ -98,7 +98,7 @@ protected:
   }
 
   static bool loadParam(const std::map<std::string, std::string> &params,
-                         const std::string &key, double &value) {
+                        const std::string &key, double &value) {
     auto it = params.find(key);
     if (it != params.end()) {
       value = std::stod(it->second);
@@ -108,7 +108,7 @@ protected:
   }
 
   static bool loadParam(const std::map<std::string, std::string> &params,
-                         const std::string &key, int &value) {
+                        const std::string &key, int &value) {
     auto it = params.find(key);
     if (it != params.end()) {
       value = std::stoi(it->second);
@@ -118,7 +118,7 @@ protected:
   }
 
   static bool loadParam(const std::map<std::string, std::string> &params,
-                         const std::string &key, size_t &value) {
+                        const std::string &key, size_t &value) {
     auto it = params.find(key);
     if (it != params.end()) {
       value = static_cast<size_t>(std::stoi(it->second));
@@ -128,7 +128,7 @@ protected:
   }
 
   static bool loadParam(const std::map<std::string, std::string> &params,
-                         const std::string &key, bool &value) {
+                        const std::string &key, bool &value) {
     auto it = params.find(key);
     if (it != params.end()) {
       value = (it->second == "true" || it->second == "1");
@@ -138,7 +138,7 @@ protected:
   }
 
   static bool loadParam(const std::map<std::string, std::string> &params,
-                         const std::string &key, std::string &value) {
+                        const std::string &key, std::string &value) {
     auto it = params.find(key);
     if (it != params.end()) {
       value = it->second;
@@ -147,11 +147,11 @@ protected:
     return false;
   }
 
-private:
+ private:
   std::string name_;
   bool enabled_ = true;
 };
 
-} // namespace flowpipe
+}  // namespace flowpipe
 
-#endif // FLOWPIPE_STAGE_H
+#endif  // FLOWPIPE_STAGE_H

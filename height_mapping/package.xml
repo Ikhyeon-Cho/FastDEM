@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>height_mapping</name>
+  <version>0.1.0</version>
+  <description>Height mapping library with core algorithms and pipeline integration</description>
+
+  <maintainer email="tre0430@korea.ac.kr">Ikhyeon Cho</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>grid_map_core</depend>
+
+  <export>
+  </export>
+</package>

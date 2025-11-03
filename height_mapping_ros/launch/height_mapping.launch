@@ -1,9 +1,10 @@
 <launch>
     <!-- Configuration file argument -->
-    <arg name="config" default="$(find height_mapping)/config/params.yaml" />
+    <arg name="config" default="params.yaml" />
 
-    <node name="height_mapping" pkg="height_mapping" type="height_mapping_node" output="screen">
-        <rosparam file="$(arg config)" command="load" subst_value="true" />
+    <node name="height_mapping" pkg="height_mapping_ros" type="height_mapping_node" output="screen">
+        <rosparam file="$(find height_mapping_ros)/config/$(arg config)" command="load" subst_value="true" />
+        <param name="mapping_config" value="$(find height_mapping)/config/default.yaml" />
     </node>
 
 </launch>

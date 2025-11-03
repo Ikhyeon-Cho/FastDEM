@@ -39,19 +39,20 @@
 #ifndef FLOWPIPE_CONFIG_H
 #define FLOWPIPE_CONFIG_H
 
+#include <yaml-cpp/yaml.h>
+
 #include <map>
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <yaml-cpp/yaml.h>
 
 namespace flowpipe {
 
 // Configuration for a single stage
 struct StageConfig {
-  std::string name;    // Stage name for factory creation and identification
-  bool enabled = true; // Stage enabled/disabled flag
-  std::map<std::string, std::string> params; // Stage-specific parameters
+  std::string name;     // Stage name for factory creation and identification
+  bool enabled = true;  // Stage enabled/disabled flag
+  std::map<std::string, std::string> params;  // Stage-specific parameters
 
   // Helper methods for type conversion
   template <typename T>
@@ -77,10 +78,10 @@ struct StageConfig {
 
 // Configuration for entire pipeline
 struct Config {
-  std::vector<StageConfig> stages; // List of stages to create
-  bool stop_on_error = true;       // Pipeline error handling behavior
+  std::vector<StageConfig> stages;  // List of stages to create
+  bool stop_on_error = true;        // Pipeline error handling behavior
   std::map<std::string, std::string>
-      global_params; // Global parameters for all stages
+      global_params;  // Global parameters for all stages
 
   // Parse configuration from YAML node with flexible structure
   static Config fromYAML(const YAML::Node &root);
@@ -105,7 +106,7 @@ inline Config Config::fromYAML(const YAML::Node &root) {
   }
   // Case 2: Check for direct stages under root
   else if (root["stages"]) {
-    pipeline_node = root; // Settings at root level
+    pipeline_node = root;  // Settings at root level
     stages_node = root["stages"];
   }
   // Case 3: Mixed - pipeline settings but stages at root (rare but supported)
@@ -178,6 +179,6 @@ inline Config Config::fromFile(const std::string &filename) {
   }
 }
 
-} // namespace flowpipe
+}  // namespace flowpipe
 
-#endif // FLOWPIPE_CONFIG_H
+#endif  // FLOWPIPE_CONFIG_H

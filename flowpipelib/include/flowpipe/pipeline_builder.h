@@ -33,14 +33,15 @@
 #ifndef FLOWPIPE_PIPELINE_BUILDER_H
 #define FLOWPIPE_PIPELINE_BUILDER_H
 
-#include "flowpipe/config.h"
-#include "flowpipe/pipeline.h"
-#include "flowpipe/stage.h"
-#include "flowpipe/stage_registration.h"
 #include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "flowpipe/config.h"
+#include "flowpipe/pipeline.h"
+#include "flowpipe/stage.h"
+#include "flowpipe/stage_registration.h"
 
 namespace flowpipe {
 
@@ -48,7 +49,7 @@ namespace flowpipe {
  * @brief Builder for constructing pipelines with Factory support
  */
 class PipelineBuilder {
-public:
+ public:
   PipelineBuilder() { pipeline_ = std::make_unique<Pipeline>(); }
 
   virtual ~PipelineBuilder() = default;
@@ -73,9 +74,9 @@ public:
   }
 
   // Method 3: Simple factory creation with name and params
-  PipelineBuilder &
-  addStage(const std::string &name,
-           const std::map<std::string, std::string> &params = {}) {
+  PipelineBuilder &addStage(
+      const std::string &name,
+      const std::map<std::string, std::string> &params = {}) {
     StageConfig config;
     config.name = name;
     config.params = params;
@@ -120,10 +121,10 @@ public:
     return builder.build();
   }
 
-protected:
+ protected:
   std::unique_ptr<Pipeline> pipeline_;
 };
 
-} // namespace flowpipe
+}  // namespace flowpipe
 
-#endif // FLOWPIPE_PIPELINE_BUILDER_H
+#endif  // FLOWPIPE_PIPELINE_BUILDER_H

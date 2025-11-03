@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>height_mapping</name>
+  <name>height_mapping_ros</name>
   <version>0.0.1</version>
-  <description>Height mapping algorithms with ROS wrapper for 2.5D terrain mapping</description>
+  <description>ROS wrapper for height mapping library</description>
   <maintainer email="tre0430@korea.ac.kr">Ikhyeon Cho</maintainer>
-  <license>TODO</license>
+  <license>MIT</license>
 
   <buildtool_depend>catkin</buildtool_depend>
   <depend>roscpp</depend>
@@ -13,8 +13,7 @@
   <depend>grid_map_ros</depend>
   <depend>message_generation</depend>
   <depend>message_runtime</depend>
-  <depend>height_mapping_core</depend>
-  <depend>height_mapping_pipeline</depend>
+  <depend>height_mapping</depend>
 
   <export>
   </export>

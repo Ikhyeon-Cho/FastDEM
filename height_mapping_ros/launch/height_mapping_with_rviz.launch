@@ -11,7 +11,7 @@
     <arg name="publish_rate" default="10.0" />
 
     <!-- Launch height mapping node -->
-    <node name="height_mapping" pkg="height_mapping" type="height_mapping_node" output="screen">
+    <node name="height_mapping" pkg="height_mapping_ros" type="height_mapping_node" output="screen">
         <!-- Core configuration -->
         <param name="config_file" value="$(arg config)" />
 
@@ -22,7 +22,6 @@
 
         <!-- Additional ROS parameters -->
         <param name="processed_cloud_topic" value="processed_cloud" />
-        <param name="publish_processed_cloud" value="true" />
         <param name="queue_size" value="10" />
         <param name="tf_timeout" value="0.1" />
         <param name="tf_extrapolation" value="0.05" />

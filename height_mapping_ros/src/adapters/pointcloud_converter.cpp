@@ -8,6 +8,7 @@
  */
 
 #include "height_mapping_ros/adapters/pointcloud_converter.h"
+
 #include <logger/logger.h>
 #include <ros/ros.h>
 
@@ -15,8 +16,8 @@ namespace height_mapping::ros::adapters {
 
 static constexpr const char *ADAPTER_NAME = "PointCloudConverter";
 
-std::shared_ptr<PointCloud> fromROS(const sensor_msgs::PointCloud2 &ros_msg) {
-
+std::shared_ptr<PointCloud> fromPointCloud2(
+    const sensor_msgs::PointCloud2 &ros_msg) {
   // Reserve space
   const size_t num_points = ros_msg.width * ros_msg.height;
   auto core_cloud = std::make_shared<PointCloud>(num_points);
@@ -57,7 +58,7 @@ std::shared_ptr<PointCloud> fromROS(const sensor_msgs::PointCloud2 &ros_msg) {
   if (x_offset < 0 || y_offset < 0 || z_offset < 0) {
     LOG_ERROR_THROTTLE(1.0, ADAPTER_NAME,
                        "Point cloud missing x, y, or z fields");
-    return core_cloud; // Return empty cloud
+    return core_cloud;  // Return empty cloud
   }
 
   // Prepare sensor data containers if fields exist
@@ -127,7 +128,7 @@ std::shared_ptr<PointCloud> fromROS(const sensor_msgs::PointCloud2 &ros_msg) {
   return core_cloud;
 }
 
-sensor_msgs::PointCloud2 toROS(const PointCloud &core_cloud) {
+sensor_msgs::PointCloud2 toPointCloud2(const PointCloud &core_cloud) {
   sensor_msgs::PointCloud2 ros_msg;
 
   // Set metadata
@@ -135,10 +136,10 @@ sensor_msgs::PointCloud2 toROS(const PointCloud &core_cloud) {
   ros_msg.header.frame_id = core_cloud.frameId();
 
   // Set dimensions
-  ros_msg.height = 1; // Unorganized cloud
+  ros_msg.height = 1;  // Unorganized cloud
   ros_msg.width = core_cloud.size();
   ros_msg.is_bigendian = false;
-  ros_msg.is_dense = false; // May contain NaN/Inf
+  ros_msg.is_dense = false;  // May contain NaN/Inf
 
   // Determine point structure based on available sensor data
   const bool has_intensity = core_cloud.hasIntensity();
@@ -175,7 +176,7 @@ sensor_msgs::PointCloud2 toROS(const PointCloud &core_cloud) {
     addField("r", offset, sensor_msgs::PointField::UINT8);
     addField("g", offset, sensor_msgs::PointField::UINT8);
     addField("b", offset, sensor_msgs::PointField::UINT8);
-    offset += 1; // Padding for alignment
+    offset += 1;  // Padding for alignment
   }
 
   // Set strides
@@ -187,7 +188,7 @@ sensor_msgs::PointCloud2 toROS(const PointCloud &core_cloud) {
   uint8_t *data_ptr = ros_msg.data.data();
 
   for (size_t i = 0; i < core_cloud.size(); ++i) {
-    auto point = core_cloud[i]; // PointView for unified access
+    auto point = core_cloud[i];  // PointView for unified access
     uint8_t *point_data = data_ptr + i * ros_msg.point_step;
 
     // Write XYZ
@@ -207,9 +208,9 @@ sensor_msgs::PointCloud2 toROS(const PointCloud &core_cloud) {
     // Write color if present
     if (has_color) {
       const auto color = point.color();
-      point_data[current_offset] = color[0];     // R
-      point_data[current_offset + 1] = color[1]; // G
-      point_data[current_offset + 2] = color[2]; // B
+      point_data[current_offset] = color[0];      // R
+      point_data[current_offset + 1] = color[1];  // G
+      point_data[current_offset + 2] = color[2];  // B
     }
   }
 
@@ -249,4 +250,4 @@ bool validate(const sensor_msgs::PointCloud2 &msg) {
   return true;
 }
 
-} // namespace height_mapping::ros::adapters
+}  // namespace height_mapping::ros::adapters

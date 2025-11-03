@@ -1,0 +1,101 @@
+# Unified Configuration for Height Mapping System
+# This file contains both core engine and pipeline configuration
+
+engine:
+  map:
+    width: 15.0           # Map width in meters
+    height: 15.0          # Map height in meters
+    resolution: 0.1       # Map resolution in meters per cell
+    frame_id: "map"       # Map coordinate frame
+    robot_centric: true   # Move map with robot
+    update_mode: "continuous"  # continuous, threshold, centered, fixed
+    update_threshold: 2.0      # Threshold for map update (meters)
+
+  runtime:
+    thread_safe: true           # Enable thread-safe operations
+    reset_on_error: false       # Reset on pipeline errors
+    enable_statistics: false    # Enable statistics collection
+
+pipeline:
+  stop_on_error: true  # Stop pipeline execution on stage error
+
+  stages:
+    # Move map origin to follow robot
+    - name: "MoveOrigin"
+      enabled: true
+      params:
+        update_mode: "continuous"
+        update_threshold: 2.0
+        robot_frame: "base_link"
+        map_frame: "map"
+
+    # Transform point cloud to base frame for filtering
+    - name: "TransformCloud"
+      enabled: true
+      params:
+        target_frame: "base_link"
+
+    # Downsample point cloud using voxel grid
+    - name: "VoxelFilter"
+      enabled: true
+      params:
+        voxel_size: 0.05          # 5cm voxels
+        reduction_method: "centroid"  # centroid, random, or center
+
+    # Filter points by distance and height
+    - name: "PassthroughFilter"
+      enabled: true
+      params:
+        x_min: -20.0
+        x_max: 20.0
+        y_min: -20.0
+        y_max: 20.0
+        # z_min: -0.1
+        # z_max: 2.0
+
+    # Grid-based ground segmentation using cell-wise minimum
+    # MUST run in base_link frame for proper ground/obstacle separation
+    # - name: "GridGroundSegmentation"
+    #   enabled: true
+    #   params:
+    #     grid_resolution: 0.5          # 50cm grid cells
+    #     cell_percentile: 0.2          # 20th percentile for robust cell minimum
+    #     ground_thickness: 0.2         # 30cm ground layer from cell minimum
+    #     max_ground_height: 0.5        # Max height to consider as ground (filters obstacle-only cells)
+    #     min_points_per_cell: 2        # Minimum points to process a cell
+    #     keep_only_ground: true        # Filter to ground points only
+
+    # Alternative: Statistical ground segmentation (global percentile-based)
+    # - name: "StatisticalGroundSegmentation"
+    #   enabled: true
+    #   params:
+    #     ground_percentile: 0.1      # 10th percentile as robust minimum
+    #     ground_thickness: 0.3       # 30cm ground layer thickness
+    #     noise_threshold: 0.5        # Points 50cm below percentile are noise
+    #     keep_only_ground: true      # Filter to ground points only
+
+    # Transform to map frame for height estimation
+    - name: "TransformCloud"
+      enabled: true
+      params:
+        target_frame: "map"
+
+    # Raycasting for ground correction (optional)
+    - name: "Raycasting"
+      enabled: false
+      params:
+        max_ground_angle: -0.0     # degrees
+        correction_threshold: 0.02  # 2cm
+        enable_correction: true
+        ray_length: 5.0
+
+    # Height estimation
+    - name: "HeightEstimation"
+      enabled: true
+      params:
+        estimator_type: "incremental_mean"  # incremental_mean, kalman_filter, moving_average
+        # Kalman filter specific parameters
+        process_noise: 0.01
+        measurement_noise: 0.05
+        # Moving average specific parameters
+        window_size: 10

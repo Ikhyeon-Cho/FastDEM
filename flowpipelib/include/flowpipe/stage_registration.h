@@ -35,21 +35,23 @@
 #ifndef FLOWPIPE_STAGE_REGISTRATION_H
 #define FLOWPIPE_STAGE_REGISTRATION_H
 
-#include "flowpipe/stage.h"
 #include <functional>
 #include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
 
+#include "flowpipe/stage.h"
+
 namespace flowpipe {
 
 class StageRegistry {
-public:
+ public:
   using Creator = std::function<Stage::Ptr()>;
 
   // Register a stage type
-  template <typename T> static void registerStage(const std::string &name) {
+  template <typename T>
+  static void registerStage(const std::string &name) {
     getRegistry()[name] = []() { return std::make_unique<T>(); };
   }
 
@@ -77,7 +79,7 @@ public:
     return types;
   }
 
-private:
+ private:
   static std::map<std::string, Creator> &getRegistry() {
     static std::map<std::string, Creator> registry;
     return registry;
@@ -85,14 +87,14 @@ private:
 };
 
 // Macro for automatic stage registration
-#define REGISTER_STAGE(Class)                                                  \
-  namespace {                                                                  \
-  static bool _register_##Class = []() {                                       \
-    flowpipe::StageRegistry::registerStage<Class>(#Class);                     \
-    return true;                                                               \
-  }();                                                                         \
+#define REGISTER_STAGE(Class)                              \
+  namespace {                                              \
+  static bool _register_##Class = []() {                   \
+    flowpipe::StageRegistry::registerStage<Class>(#Class); \
+    return true;                                           \
+  }();                                                     \
   }
 
-} // namespace flowpipe
+}  // namespace flowpipe
 
-#endif // FLOWPIPE_STAGE_REGISTRATION_H
+#endif  // FLOWPIPE_STAGE_REGISTRATION_H

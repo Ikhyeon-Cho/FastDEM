@@ -24,18 +24,19 @@
 #ifndef FLOWPIPE_PIPELINE_PROFILER_H
 #define FLOWPIPE_PIPELINE_PROFILER_H
 
-#include "logger/logger.h"
-#include "flowpipe/context.h"
-#include "flowpipe/pipeline.h"
 #include <chrono>
 #include <map>
 #include <string>
 #include <vector>
 
+#include "flowpipe/context.h"
+#include "flowpipe/pipeline.h"
+#include "logger/logger.h"
+
 namespace flowpipe {
 
 class PipelineProfiler {
-public:
+ public:
   struct Metrics {
     uint64_t last_duration_us = 0;
     uint64_t total_duration_us = 0;
@@ -117,8 +118,7 @@ public:
     // Generate individual reports in pipeline order
     for (size_t i = 0; i < stage_names_.size(); ++i) {
       const auto &metrics = stage_metrics_[i];
-      if (metrics.call_count == 0)
-        continue;
+      if (metrics.call_count == 0) continue;
 
       reports.push_back(
           {stage_names_[i], metrics.getAvgMs(), metrics.getLastMs(),
@@ -134,18 +134,19 @@ public:
   // Print formatted report
   void printReport() const {
     auto reports = getReport();
-    if (reports.empty())
-      return;
+    if (reports.empty()) return;
 
     size_t window_num = (total_runs_ - 1) / print_interval_ + 1;
     size_t window_start = (window_num - 1) * print_interval_ + 1;
 
     LOG_BENCH("========== Pipeline Benchmark (Window ", window_num, ": Runs ",
               window_start, "-", total_runs_, ") ==========");
-    LOG_BENCH("Stage                      Avg(ms)  Last(ms)  Min(ms)  Max(ms)  "
-              "Usage(%)  Calls");
-    LOG_BENCH("---------------------------------------------------------------"
-              "------------------");
+    LOG_BENCH(
+        "Stage                      Avg(ms)  Last(ms)  Min(ms)  Max(ms)  "
+        "Usage(%)  Calls");
+    LOG_BENCH(
+        "---------------------------------------------------------------"
+        "------------------");
 
     double total_avg = 0;
     for (const auto &r : reports) {
@@ -158,8 +159,9 @@ public:
       total_avg += r.avg_ms;
     }
 
-    LOG_BENCH("---------------------------------------------------------------"
-              "------------------");
+    LOG_BENCH(
+        "---------------------------------------------------------------"
+        "------------------");
     char total_buffer[120];
     snprintf(total_buffer, sizeof(total_buffer),
              "Total Pipeline:           %7.2f ms", total_avg);
@@ -198,7 +200,7 @@ public:
     return pipeline_->getStages();
   }
 
-private:
+ private:
   void updateMetrics(size_t stage_index, const std::string &stage_name,
                      uint64_t duration_us) {
     // Ensure vectors are large enough
@@ -217,8 +219,8 @@ private:
   }
 
   Pipeline *pipeline_;
-  std::vector<std::string> stage_names_; // Stage names in order
-  std::vector<Metrics> stage_metrics_;   // Metrics in order
+  std::vector<std::string> stage_names_;  // Stage names in order
+  std::vector<Metrics> stage_metrics_;    // Metrics in order
   size_t total_runs_ = 0;
 
   // Configuration
@@ -227,6 +229,6 @@ private:
   bool log_each_stage_ = false;
 };
 
-} // namespace flowpipe
+}  // namespace flowpipe
 
-#endif // FLOWPIPE_PIPELINE_PROFILER_H
+#endif  // FLOWPIPE_PIPELINE_PROFILER_H

@@ -11,6 +11,7 @@
 #define HEIGHT_MAPPING_ROS_ADAPTERS_TF2_TRANSFORM_PROVIDER_H
 
 #include <geometry_msgs/TransformStamped.h>
+#include <logger/logger.h>
 #include <ros/ros.h>
 #include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/buffer.h>
@@ -19,37 +20,37 @@
 #include <memory>
 #include <optional>
 
-#include "height_mapping_core/data/transform.h"
-#include "height_mapping_pipeline/interfaces/transform_provider.h"
-#include <logger/logger.h>
+#include "height_mapping/core/data/transform.h"
+#include "height_mapping/pipeline/interfaces/transform_lookup.h"
 
 namespace height_mapping::ros {
 
-static constexpr const char *ADAPTER_NAME = "TF2Transform";
+static constexpr const char *ADAPTER_NAME = "TF2Lookup";
 
-class TF2Transform : public mapping::ITransformProvider {
-public:
+class TF2Lookup : public TransformLookup {
+ public:
+  using Ptr = std::shared_ptr<TF2Lookup>;
+  using ConstPtr = std::shared_ptr<const TF2Lookup>;
+
   // Constructor that creates its own buffer and listener
-  TF2Transform()
+  TF2Lookup()
       : owned_buffer_(std::make_unique<tf2_ros::Buffer>(
-            ::ros::Duration(10.0))), // 10 sec cache
+            ::ros::Duration(10.0))),  // 10 sec cache
         buffer_(*owned_buffer_),
         listener_(std::make_unique<tf2_ros::TransformListener>(buffer_)) {
-
     // Wait a bit for TF buffer to fill
     ::ros::Duration(0.5).sleep();
   }
 
   // Constructor that uses an external buffer (for sharing between nodes)
-  explicit TF2Transform(tf2_ros::Buffer &buffer) : buffer_(buffer) {}
+  explicit TF2Lookup(tf2_ros::Buffer &buffer) : buffer_(buffer) {}
 
-  ~TF2Transform() override = default;
+  ~TF2Lookup() override = default;
 
-  // ITransformProvider interface
+  // TransformLookup interface
   std::optional<Transform3D> lookupTransform(const std::string &target_frame,
                                              const std::string &source_frame,
                                              uint64_t timestamp_ns) override {
-
     // Validate frames
     if (target_frame.empty() || source_frame.empty()) {
       LOG_WARN_ONCE(ADAPTER_NAME,
@@ -100,10 +101,9 @@ public:
     }
   }
 
-  std::optional<Transform3D>
-  lookupLatestTransform(const std::string &target_frame,
-                        const std::string &source_frame) override {
-
+  std::optional<Transform3D> lookupLatestTransform(
+      const std::string &target_frame,
+      const std::string &source_frame) override {
     // Validate frames
     if (target_frame.empty() || source_frame.empty()) {
       LOG_WARN_ONCE(ADAPTER_NAME,
@@ -129,7 +129,6 @@ public:
   bool canTransform(const std::string &target_frame,
                     const std::string &source_frame,
                     const ::ros::Time &time = ::ros::Time(0)) const {
-
     return buffer_.canTransform(target_frame, source_frame, time);
   }
 
@@ -148,7 +147,6 @@ public:
                         const std::string &source_frame,
                         const ::ros::Time &time,
                         const ::ros::Duration &timeout) {
-
     try {
       buffer_.lookupTransform(target_frame, source_frame, time, timeout);
       return true;
@@ -157,9 +155,9 @@ public:
     }
   }
 
-private:
-  Transform3D
-  convertToCore(const geometry_msgs::TransformStamped &tf_msg) const {
+ private:
+  Transform3D convertToCore(
+      const geometry_msgs::TransformStamped &tf_msg) const {
     // Convert to Eigen
     Eigen::Isometry3d eigen_tf = tf2::transformToEigen(tf_msg);
 
@@ -169,26 +167,25 @@ private:
     return result;
   }
 
-private:
+ private:
   std::unique_ptr<tf2_ros::Buffer>
-      owned_buffer_;        // Only used if we create our own
-  tf2_ros::Buffer &buffer_; // Reference to buffer (owned or external)
+      owned_buffer_;         // Only used if we create our own
+  tf2_ros::Buffer &buffer_;  // Reference to buffer (owned or external)
   std::unique_ptr<tf2_ros::TransformListener>
-      listener_;         // Only used if we create our own
-  double timeout_ = 0.1; // Default lookup timeout in seconds
+      listener_;          // Only used if we create our own
+  double timeout_ = 0.1;  // Default lookup timeout in seconds
   double max_extrapolation_time_ =
-      0.1; // Maximum time difference for transform (seconds)
+      0.1;  // Maximum time difference for transform (seconds)
   bool use_latest_transform_fallback_ =
-      false; // Whether to use latest transform as fallback
+      false;  // Whether to use latest transform as fallback
 };
 
 // Simplified transform provider for static transforms
-class StaticTransformProvider : public mapping::ITransformProvider {
-public:
+class StaticTransformProvider : public TransformLookup {
+ public:
   void addStaticTransform(const std::string &target_frame,
                           const std::string &source_frame,
                           const Transform3D &transform) {
-
     std::string key = target_frame + "_" + source_frame;
     static_transforms_[key] = transform;
 
@@ -197,18 +194,15 @@ public:
     static_transforms_[inverse_key] = transform.inverse();
   }
 
-  std::optional<Transform3D>
-  lookupTransform(const std::string &target_frame,
-                  const std::string &source_frame,
-                  uint64_t /*timestamp_ns*/) override {
-
+  std::optional<Transform3D> lookupTransform(
+      const std::string &target_frame, const std::string &source_frame,
+      uint64_t /*timestamp_ns*/) override {
     return lookupLatestTransform(target_frame, source_frame);
   }
 
-  std::optional<Transform3D>
-  lookupLatestTransform(const std::string &target_frame,
-                        const std::string &source_frame) override {
-
+  std::optional<Transform3D> lookupLatestTransform(
+      const std::string &target_frame,
+      const std::string &source_frame) override {
     std::string key = target_frame + "_" + source_frame;
     auto it = static_transforms_.find(key);
 
@@ -219,10 +213,10 @@ public:
     return std::nullopt;
   }
 
-private:
+ private:
   std::unordered_map<std::string, Transform3D> static_transforms_;
 };
 
-} // namespace height_mapping::ros
+}  // namespace height_mapping::ros
 
-#endif // HEIGHT_MAPPING_ROS_ADAPTERS_TF2_TRANSFORM_PROVIDER_H
+#endif  // HEIGHT_MAPPING_ROS_ADAPTERS_TF2_TRANSFORM_PROVIDER_H

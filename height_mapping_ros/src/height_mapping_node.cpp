@@ -8,218 +8,159 @@
  */
 
 #include <grid_map_msgs/GridMap.h>
-#include <grid_map_ros/GridMapRosConverter.hpp>
 #include <logger/logger.h>
-#include <memory>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
-#include "height_mapping_pipeline/mapping_engine.h"
+#include <algorithm>
+#include <grid_map_ros/GridMapRosConverter.hpp>
+#include <memory>
+
+#include "height_mapping/mapper.h"
 #include "height_mapping_ros/adapters/pointcloud_converter.h"
 #include "height_mapping_ros/adapters/tf2_transform.h"
-#include "height_mapping_ros/params.h"
-#include "height_mapping_ros/ros_param_watcher.h"
+#include "height_mapping_ros/node_parameters.h"
 
 namespace height_mapping::ros {
 
-static constexpr const char *NODE_NAME = "height_mapping_node";
+static constexpr const char *LABEL = "height_mapping_node";
 
 class MappingNode {
-public:
-  MappingNode() : private_nh_("~"), params_(private_nh_) { initialize(); }
-
-private:
-  void initialize() {
-    LOG_NOTICE(" ");
-    LOG_INFO(NODE_NAME, "Initializing Height Mapping Node...");
-
-    setupTransformProvider();
+ public:
+  MappingNode()
+      : pnh_{"~"},
+        cfg_{pnh_},
+        tf_tree_{createTFTree(cfg_)},
+        mapper_{createMapper(tf_tree_, cfg_)} {
     setupROSInterfaces();
-    createMappingEngine();
-    setupDynamicParams();
-
+    setupBenchmark();
     printNodeInfo();
-    LOG_INFO(NODE_NAME, "Height Mapping Node successfully initialized!");
   }
 
-  void setupTransformProvider() {
-    tf_ = std::make_shared<TF2Transform>();
-    tf_->setLookupTimeout(params_.tf_timeout_s);
-    tf_->setMaxExtrapolationTime(params_.tf_extrapolation_s);
+ private:
+  TF2Lookup::Ptr createTFTree(const NodeParameters &cfg) {
+    auto tf_tree = std::make_shared<TF2Lookup>();
+    tf_tree->setLookupTimeout(cfg.tf_tree.lookup_timeout);
+    tf_tree->setMaxExtrapolationTime(cfg.tf_tree.max_extrapolation_time);
+    return tf_tree;
+  }
 
-    LOG_INFO(NODE_NAME, "Tf2 Transform ready [OK]");
+  HeightMapper::Ptr createMapper(TF2Lookup::Ptr tf_tree,
+                                 const NodeParameters &cfg) {
+    try {
+      return std::make_unique<HeightMapper>(
+          tf_tree, Config::fromFile(cfg.mapper.config_file));
+    } catch (const std::exception &e) {
+      LOG_ERROR(LABEL, "Failed to create Height mapper: ", e.what());
+      throw;
+    }
   }
 
   void setupROSInterfaces() {
-    auto &nh = nodeHandle_;
+    sub_scan_ = pnh_.subscribe(cfg_.topics.scan, 10,
+                               &MappingNode::pointcloudCallback, this);
+    pub_scan_processed_ =
+        pnh_.advertise<sensor_msgs::PointCloud2>(cfg_.topics.scan_processed, 1);
+    pub_heightmap_ =
+        pnh_.advertise<grid_map_msgs::GridMap>(cfg_.topics.heightmap, 1);
 
-    // Input
-    point_cloud_subscriber_ = nh.subscribe<sensor_msgs::PointCloud2>(
-        params_.input_cloud_topic, 10, &MappingNode::pointCloudCallback, this);
-
-    // Outputs
-    gridmap_publisher_ =
-        nh.advertise<grid_map_msgs::GridMap>(params_.output_map_topic, 1, true);
-
-    if (params_.publish_processed_cloud) {
-      processed_cloud_publisher_ = nh.advertise<sensor_msgs::PointCloud2>(
-          params_.processed_cloud_topic, 1);
-    }
-
-    // Timer for periodic publishing
-    if (params_.publish_rate_hz > 0) {
-      publish_timer_ =
-          nh.createTimer(::ros::Duration(1.0 / params_.publish_rate_hz),
-                         &MappingNode::publishTimerCallback, this);
-    }
-
-    LOG_INFO(NODE_NAME, "ROS interfaces ready [OK]");
-  }
-
-  void createMappingEngine() {
-    try {
-      mapper_ =
-          std::make_unique<mapping::MappingEngine>(tf_, params_.mapping_config);
-    } catch (const std::exception &e) {
-      LOG_ERROR(NODE_NAME,
-                "Failed to create mapping engine from config: ", e.what());
-      throw;
-    }
-
-    LOG_INFO(NODE_NAME, "Mapping engine ready [OK]");
-  }
-
-  void setupDynamicParams() {
-    try {
-      param_watcher_ =
-          std::make_unique<RosParamWatcher>(private_nh_); // private namespace
-      setupLoggerParams(*param_watcher_);
-
-      // Watch benchmark parameters
-      param_watcher_->watch<bool>("benchmark/enabled", [this](bool enabled) {
-        if (mapper_) {
-          mapper_->setBenchmarkEnabled(enabled);
-          LOG_INFO(NODE_NAME, "Benchmark ", enabled ? "enabled" : "disabled");
-        }
-      });
-
-      param_watcher_->watch<int>(
-          "benchmark/report_interval", [this](int interval) {
-            if (mapper_) {
-              mapper_->setBenchmarkInterval(interval);
-              LOG_INFO(NODE_NAME, "Benchmark report interval set to ",
-                       interval);
-            }
-          });
-
-      param_watcher_->watch<bool>(
-          "benchmark/log_each_stage", [this](bool enable) {
-            if (mapper_ && mapper_->getProfiler()) {
-              mapper_->getProfiler()->setLogEachStage(enable);
-              LOG_INFO(NODE_NAME, "Per-stage logging ",
-                       enable ? "enabled" : "disabled");
-            }
-          });
-    } catch (const std::exception &e) {
-      LOG_WARN(NODE_NAME, "Parameter watcher disabled: ", e.what());
-      LOG_WARN(NODE_NAME, "Dynamic parameter updates not available");
-    }
+    if (cfg_.publish_rate > 0.0)
+      pub_timer_ = pnh_.createTimer(::ros::Duration(1.0 / cfg_.publish_rate),
+                                    &MappingNode::publishTimerCallback, this);
   }
 
   void printNodeInfo() const {
+    // Set logger level
+    logger::setLevelFromString(cfg_.logger_level);
+
+    if (tf_tree_) LOG_INFO(LABEL, "Tf2 Transform ready [OK]");
+    if (mapper_) LOG_INFO(LABEL, "Mapping engine ready [OK]");
+    LOG_INFO(LABEL, "ROS interfaces ready [OK]");
+
     // Extract filename from path
-    size_t last_slash = params_.mapping_config.find_last_of("/");
-    std::string config_filename =
+    size_t last_slash = cfg_.mapper.config_file.find_last_of("/");
+    std::string cfg_filename =
         (last_slash != std::string::npos)
-            ? params_.mapping_config.substr(last_slash + 1)
-            : params_.mapping_config;
+            ? cfg_.mapper.config_file.substr(last_slash + 1)
+            : cfg_.mapper.config_file;
 
     LOG_NOTICE(" ");
     LOG_NOTICE_BOLD("===== Configuration Summary =====");
-    LOG_NOTICE("Config: ", config_filename);
-    LOG_NOTICE("Input:  ", point_cloud_subscriber_.getTopic());
-    LOG_NOTICE("Output: ", gridmap_publisher_.getTopic());
-    LOG_NOTICE("Publish rate: ", params_.publish_rate_hz, " Hz");
+    LOG_NOTICE("Config: ", cfg_filename);
+    LOG_NOTICE("Input:  ", sub_scan_.getTopic());
+    LOG_NOTICE("Output: ", pub_heightmap_.getTopic());
+    LOG_NOTICE("Publish rate: ", cfg_.publish_rate, " Hz");
+    LOG_NOTICE("Benchmarking: ",
+               cfg_.mapper.benchmark.enabled ? "Enabled" : "Disabled");
+    LOG_NOTICE("Logger level: ", cfg_.logger_level);
     LOG_NOTICE_BOLD("=================================");
     LOG_NOTICE(" ");
+    LOG_INFO(LABEL, "Height Mapping Node successfully initialized!");
   }
 
-  void pointCloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
-    try {
-      auto cloud = adapters::fromROS(*msg);
-      mapper_->registerCloud(cloud);
+  void setupBenchmark() {
+    mapper_->setBenchmarkEnabled(cfg_.mapper.benchmark.enabled);
+    mapper_->setBenchmarkInterval(cfg_.mapper.benchmark.report_interval);
+    if (mapper_->getProfiler()) {
+      mapper_->getProfiler()->setLogEachStage(
+          cfg_.mapper.benchmark.log_each_stage);
+    }
+  }
 
-      publishProcessedCloudIfRequested(msg);
+  void pointcloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
+    try {
+      mapper_->integrate(adapters::fromPointCloud2(*msg));
+
+      // Publish processed scan if available
+      auto processed = mapper_->getScanProcessed();
+      if (processed) {
+        publishScanProcessed(adapters::toPointCloud2(*processed));
+      }
     } catch (const std::exception &e) {
-      LOG_ERROR_THROTTLE(1.0, NODE_NAME,
+      LOG_ERROR_THROTTLE(1.0, LABEL,
                          "Error processing point cloud: ", e.what());
     }
   }
 
-  void publishProcessedCloudIfRequested(
-      const sensor_msgs::PointCloud2::ConstPtr &original_msg) {
-    // Check if publication is enabled and has subscribers
-    if (!params_.publish_processed_cloud) {
-      return;
-    }
-    if (processed_cloud_publisher_.getNumSubscribers() == 0) {
-      return;
-    }
-    auto processed_cloud = mapper_->getProcessedCloud();
-    if (!processed_cloud) {
-      return;
-    }
+  void publishScanProcessed(const sensor_msgs::PointCloud2 &msg) {
+    if (pub_scan_processed_.getNumSubscribers() == 0) return;
+    pub_scan_processed_.publish(msg);
+  }
 
-    sensor_msgs::PointCloud2 cloud_msg = adapters::toROS(*processed_cloud);
-    processed_cloud_publisher_.publish(cloud_msg);
+  void publishHeightMap(const grid_map_msgs::GridMap &msg) {
+    if (pub_heightmap_.getNumSubscribers() == 0) return;
+    pub_heightmap_.publish(msg);
   }
 
   void publishTimerCallback(const ::ros::TimerEvent &event) {
-    publishHeightMap();
-  }
-
-  void publishHeightMap() {
-    if (gridmap_publisher_.getNumSubscribers() == 0) {
-      return;
-    }
     auto height_map = mapper_->getHeightMap();
-    if (!height_map) {
-      return;
+    if (height_map) {
+      grid_map_msgs::GridMap msg;
+      grid_map::GridMapRosConverter::toMessage(height_map->toGridMap(), msg);
+      publishHeightMap(msg);
     }
-
-    grid_map_msgs::GridMap msg;
-    grid_map::GridMapRosConverter::toMessage(height_map->getGridMap(), msg);
-    gridmap_publisher_.publish(msg);
   }
 
-private:
-  // ROS handles
-  ::ros::NodeHandle nodeHandle_;
-  ::ros::NodeHandle private_nh_;
+  ::ros::NodeHandle pnh_{"~"};
+  NodeParameters cfg_{pnh_};
 
-  // Configuration
-  Parameters params_;
+  TF2Lookup::Ptr tf_tree_;
+  HeightMapper::Ptr mapper_;
 
-  // Core components
-  std::shared_ptr<TF2Transform> tf_;
-  std::unique_ptr<mapping::MappingEngine> mapper_;
-  std::unique_ptr<RosParamWatcher> param_watcher_;
-
-  // ROS interfaces
-  ::ros::Subscriber point_cloud_subscriber_;
-  ::ros::Publisher processed_cloud_publisher_;
-  ::ros::Publisher gridmap_publisher_;
-  ::ros::Timer publish_timer_;
+  ::ros::Subscriber sub_scan_;
+  ::ros::Publisher pub_scan_processed_;
+  ::ros::Publisher pub_heightmap_;
+  ::ros::Timer pub_timer_;
 };
 
-} // namespace height_mapping::ros
+}  // namespace height_mapping::ros
 
 int main(int argc, char **argv) {
+  using namespace height_mapping::ros;
 
-  ros::init(argc, argv, height_mapping::ros::NODE_NAME);
-
+  ros::init(argc, argv, LABEL);
   try {
-    height_mapping::ros::MappingNode node;
+    MappingNode node;
     ros::spin();
   } catch (const std::exception &e) {
     LOG_ERROR("main", "Fatal error: ", e.what());

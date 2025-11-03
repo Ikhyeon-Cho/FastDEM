@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(height_mapping)
+project(height_mapping_ros)
 
 add_compile_options(-std=c++17)
 
@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
     tf2_eigen
     grid_map_ros
     message_generation
-    height_mapping_pipeline
+    height_mapping
 )
 
 ####################
@@ -39,7 +39,7 @@ catkin_package(
     tf2_ros
     grid_map_ros
     message_runtime
-    height_mapping_pipeline
+    height_mapping
 )
 
 ###########

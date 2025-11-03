@@ -28,19 +28,20 @@
 #ifndef FLOWPIPE_PIPELINE_H
 #define FLOWPIPE_PIPELINE_H
 
-#include "flowpipe/context.h"
-#include "flowpipe/exceptions.h"
-#include "flowpipe/stage.h"
 #include <algorithm>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
 
+#include "flowpipe/context.h"
+#include "flowpipe/exceptions.h"
+#include "flowpipe/stage.h"
+
 namespace flowpipe {
 
 class Pipeline {
-public:
+ public:
   Pipeline() = default;
 
   // Disable copy
@@ -78,10 +79,9 @@ public:
 
   // Processing
   void process(Context &ctx) {
-    std::lock_guard<std::mutex> lock(process_mutex_); // Thread-safe
+    std::lock_guard<std::mutex> lock(process_mutex_);  // Thread-safe
 
-    if (stages_.empty())
-      return;
+    if (stages_.empty()) return;
 
     for (auto &stage : stages_) {
       // Check if stage can process
@@ -94,12 +94,12 @@ public:
 
       } catch (const CriticalError &e) {
         // Critical errors always stop the pipeline
-        throw; // Re-throw to caller
+        throw;  // Re-throw to caller
 
       } catch (const RecoverableError &e) {
         // Recoverable errors respect stop_on_error setting
         if (stop_on_error_) {
-          throw; // Re-throw if configured to stop
+          throw;  // Re-throw if configured to stop
         }
         // Otherwise continue to next stage
 
@@ -121,12 +121,12 @@ public:
     }
   }
 
-private:
+ private:
   std::vector<Stage::Ptr> stages_;
   mutable std::mutex process_mutex_;
   bool stop_on_error_ = true;
 };
 
-} // namespace flowpipe
+}  // namespace flowpipe
 
-#endif // FLOWPIPE_PIPELINE_H
+#endif  // FLOWPIPE_PIPELINE_H
