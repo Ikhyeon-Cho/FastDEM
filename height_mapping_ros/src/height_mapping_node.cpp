@@ -5,167 +5,181 @@
  *      Author: Ikhyeon Cho
  *	Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
  *       Email: tre0430@korea.ac.kr
+ *
  */
 
-#include <grid_map_msgs/GridMap.h>
-#include <logger/logger.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <spdlog/spdlog.h>
 
-#include <algorithm>
+#include <filesystem>
 #include <grid_map_ros/GridMapRosConverter.hpp>
 #include <memory>
 
-#include "height_mapping/mapper.h"
-#include "height_mapping_ros/adapters/pointcloud_converter.h"
-#include "height_mapping_ros/adapters/tf2_transform.h"
+#include "height_mapping/height_mapping.h"
+#include "height_mapping_ros/adapters/pointcloud2.h"
+#include "height_mapping_ros/adapters/tf2.h"
 #include "height_mapping_ros/node_parameters.h"
 
-namespace height_mapping::ros {
+namespace fs = std::filesystem;
+using namespace height_mapping_ros;
 
-static constexpr const char *LABEL = "height_mapping_node";
+namespace height_mapping {
 
 class MappingNode {
  public:
-  MappingNode()
-      : pnh_{"~"},
-        cfg_{pnh_},
-        tf_tree_{createTFTree(cfg_)},
-        mapper_{createMapper(tf_tree_, cfg_)} {
-    setupROSInterfaces();
-    setupBenchmark();
-    printNodeInfo();
+  MappingNode() : nh_{"~"} {}
+
+  bool initialize() {
+    if (!loadParameters()) return false;
+    if (!setupTF2()) return false;
+    if (!setupMapper()) return false;
+
+    setupPublishersAndSubscribers();
+    printNodeSummary();
+
+    spdlog::info("Height mapping node initialized successfully!");
+    return true;
   }
 
  private:
-  TF2Lookup::Ptr createTFTree(const NodeParameters &cfg) {
-    auto tf_tree = std::make_shared<TF2Lookup>();
-    tf_tree->setLookupTimeout(cfg.tf_tree.lookup_timeout);
-    tf_tree->setMaxExtrapolationTime(cfg.tf_tree.max_extrapolation_time);
-    return tf_tree;
-  }
+  // Type Aliases
+  using MapperPtr = std::unique_ptr<IMapper>;
+  using TF2Ptr = std::shared_ptr<adapters::TF2>;
 
-  HeightMapper::Ptr createMapper(TF2Lookup::Ptr tf_tree,
-                                 const NodeParameters &cfg) {
-    try {
-      return std::make_unique<HeightMapper>(
-          tf_tree, Config::fromFile(cfg.mapper.config_file));
-    } catch (const std::exception &e) {
-      LOG_ERROR(LABEL, "Failed to create Height mapper: ", e.what());
-      throw;
+  bool loadParameters() {
+    params_ = NodeParameters::load(nh_);
+    if (!params_.isValid()) {
+      spdlog::error("Invalid node parameters. Check your launch/config file.");
+      return false;
     }
+    spdlog::set_level(spdlog::level::from_str(params_.logger_level));
+    return true;
   }
 
-  void setupROSInterfaces() {
-    sub_scan_ = pnh_.subscribe(cfg_.topics.scan, 10,
-                               &MappingNode::pointcloudCallback, this);
-    pub_scan_processed_ =
-        pnh_.advertise<sensor_msgs::PointCloud2>(cfg_.topics.scan_processed, 1);
-    pub_heightmap_ =
-        pnh_.advertise<grid_map_msgs::GridMap>(cfg_.topics.heightmap, 1);
-
-    if (cfg_.publish_rate > 0.0)
-      pub_timer_ = pnh_.createTimer(::ros::Duration(1.0 / cfg_.publish_rate),
-                                    &MappingNode::publishTimerCallback, this);
+  bool setupTF2() {
+    tf2_ = std::make_shared<adapters::TF2>(params_.tf);
+    spdlog::info("TF2 adapter initialized [OK]");
+    return true;
   }
 
-  void printNodeInfo() const {
-    // Set logger level
-    logger::setLevelFromString(cfg_.logger_level);
+  bool setupMapper() {
+    // ISP: Single TF system viewed through two semantic interfaces
+    // ROS TF address both extrinsics and robot pose in same system
+    IExtrinsicsProvider::Ptr extrinsics = tf2_;
+    IRobotPoseProvider::Ptr pose_provider = tf2_;
 
-    if (tf_tree_) LOG_INFO(LABEL, "Tf2 Transform ready [OK]");
-    if (mapper_) LOG_INFO(LABEL, "Mapping engine ready [OK]");
-    LOG_INFO(LABEL, "ROS interfaces ready [OK]");
-
-    // Extract filename from path
-    size_t last_slash = cfg_.mapper.config_file.find_last_of("/");
-    std::string cfg_filename =
-        (last_slash != std::string::npos)
-            ? cfg_.mapper.config_file.substr(last_slash + 1)
-            : cfg_.mapper.config_file;
-
-    LOG_NOTICE(" ");
-    LOG_NOTICE_BOLD("===== Configuration Summary =====");
-    LOG_NOTICE("Config: ", cfg_filename);
-    LOG_NOTICE("Input:  ", sub_scan_.getTopic());
-    LOG_NOTICE("Output: ", pub_heightmap_.getTopic());
-    LOG_NOTICE("Publish rate: ", cfg_.publish_rate, " Hz");
-    LOG_NOTICE("Benchmarking: ",
-               cfg_.mapper.benchmark.enabled ? "Enabled" : "Disabled");
-    LOG_NOTICE("Logger level: ", cfg_.logger_level);
-    LOG_NOTICE_BOLD("=================================");
-    LOG_NOTICE(" ");
-    LOG_INFO(LABEL, "Height Mapping Node successfully initialized!");
-  }
-
-  void setupBenchmark() {
-    mapper_->setBenchmarkEnabled(cfg_.mapper.benchmark.enabled);
-    mapper_->setBenchmarkInterval(cfg_.mapper.benchmark.report_interval);
-    if (mapper_->getProfiler()) {
-      mapper_->getProfiler()->setLogEachStage(
-          cfg_.mapper.benchmark.log_each_stage);
-    }
-  }
-
-  void pointcloudCallback(const sensor_msgs::PointCloud2::ConstPtr &msg) {
     try {
-      mapper_->integrate(adapters::fromPointCloud2(*msg));
-
-      // Publish processed scan if available
-      auto processed = mapper_->getScanProcessed();
-      if (processed) {
-        publishScanProcessed(adapters::toPointCloud2(*processed));
+      if (params_.use_configurable_mapper) {
+        // ppl::HeightMapper (experimental)
+        auto config = ppl::HeightMapper::Config::load(params_.config_path);
+        mapper_ = std::make_unique<ppl::HeightMapper>(config, extrinsics,
+                                                      pose_provider);
+        spdlog::info("ppl::HeightMapper initialized [OK]");
+      } else {
+        // HeightMapper (Standard)
+        auto config = HeightMapper::Config::load(params_.config_path);
+        mapper_ =
+            std::make_unique<HeightMapper>(config, extrinsics, pose_provider);
+        spdlog::info("HeightMapper initialized [OK]");
       }
-    } catch (const std::exception &e) {
-      LOG_ERROR_THROTTLE(1.0, LABEL,
-                         "Error processing point cloud: ", e.what());
+    } catch (const std::exception& e) {
+      spdlog::error("Mapper initialization failed: {}", e.what());
+      return false;
     }
+    return true;
   }
 
-  void publishScanProcessed(const sensor_msgs::PointCloud2 &msg) {
-    if (pub_scan_processed_.getNumSubscribers() == 0) return;
-    pub_scan_processed_.publish(msg);
+  void setupPublishersAndSubscribers() {
+    scan_sub_ = nh_.subscribe(params_.topics.input_scan, 10,
+                              &MappingNode::onScanReceived, this);
+
+    processed_cloud_pub_ =
+        nh_.advertise<sensor_msgs::PointCloud2>("scan/processed", 1);
+
+    height_map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("map/gridmap", 1);
+
+    map_publish_timer_ =
+        nh_.createTimer(ros::Duration(1.0 / params_.topics.publish_rate),
+                        &MappingNode::publishMap, this);
   }
 
-  void publishHeightMap(const grid_map_msgs::GridMap &msg) {
-    if (pub_heightmap_.getNumSubscribers() == 0) return;
-    pub_heightmap_.publish(msg);
-  }
+  // ==================== Callbacks ====================
 
-  void publishTimerCallback(const ::ros::TimerEvent &event) {
-    auto height_map = mapper_->getHeightMap();
-    if (height_map) {
-      grid_map_msgs::GridMap msg;
-      grid_map::GridMapRosConverter::toMessage(height_map->toGridMap(), msg);
-      publishHeightMap(msg);
+  void onScanReceived(const sensor_msgs::PointCloud2::ConstPtr& msg) {
+    static bool first_scan = true;
+    if (first_scan) {
+      spdlog::info("First scan received. Mapping started...");
+      first_scan = false;
     }
+
+    // Zero-copy: adapter returns shared_ptr, integrate accepts shared_ptr
+    auto scan_cloud = adapters::fromPointCloud2(*msg);
+    mapper_->integrate(scan_cloud);
+    publishDebugData();
   }
 
-  ::ros::NodeHandle pnh_{"~"};
-  NodeParameters cfg_{pnh_};
+  void publishMap(const ros::TimerEvent&) {
+    // Skip if no subscribers
+    if (height_map_pub_.getNumSubscribers() == 0) return;
 
-  TF2Lookup::Ptr tf_tree_;
-  HeightMapper::Ptr mapper_;
+    grid_map_msgs::GridMap msg;
+    grid_map::GridMapRosConverter::toMessage(mapper_->getHeightMap(), msg);
+    height_map_pub_.publish(msg);
+  }
 
-  ::ros::Subscriber sub_scan_;
-  ::ros::Publisher pub_scan_processed_;
-  ::ros::Publisher pub_heightmap_;
-  ::ros::Timer pub_timer_;
+  // ==================== Helpers ====================
+
+  void publishDebugData() {
+    // TODO: Debug output functionality removed during ppl migration
+    // Re-implement if needed using new pipeline architecture
+  }
+
+  void printNodeSummary() const {
+    // C++17 filesystem for clean path parsing
+    std::string config_name = fs::path(params_.config_path).filename();
+    std::string mapper_type = mapper_->name();
+
+    spdlog::info("");
+    spdlog::info("===== Height Mapping Node =====");
+    spdlog::info("  Mapper   : {}", mapper_type);
+    spdlog::info("  Config   : {}", config_name);
+    spdlog::info("  Input    : {}", scan_sub_.getTopic());
+    spdlog::info("  Output   : {}", height_map_pub_.getTopic());
+    spdlog::info("  Pub rate : {} Hz", params_.topics.publish_rate);
+    spdlog::info("===============================");
+    spdlog::info("");
+  }
+
+  ros::NodeHandle nh_;
+
+  // Core objects
+  NodeParameters params_;
+  TF2Ptr tf2_;
+  MapperPtr mapper_;
+
+  // ROS handles
+  ros::Subscriber scan_sub_;
+  ros::Publisher processed_cloud_pub_;
+  ros::Publisher height_map_pub_;
+  ros::Timer map_publish_timer_;
 };
 
-}  // namespace height_mapping::ros
+}  // namespace height_mapping
 
-int main(int argc, char **argv) {
-  using namespace height_mapping::ros;
-
-  ros::init(argc, argv, LABEL);
-  try {
-    MappingNode node;
-    ros::spin();
-  } catch (const std::exception &e) {
-    LOG_ERROR("main", "Fatal error: ", e.what());
+int main(int argc, char** argv) {
+  ros::init(argc, argv, "height_mapping_node");
+  height_mapping::MappingNode node;
+  if (!node.initialize()) {
     return 1;
   }
+
+  // Multi-threaded spinner for parallel processing:
+  // Thread 1: Point cloud processing (mapping)
+  // Thread 2: Map publishing (visualization)
+  ros::AsyncSpinner spinner(2);
+  spinner.start();
+  ros::waitForShutdown();
 
   return 0;
 }

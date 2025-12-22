@@ -1,0 +1,71 @@
+# Height Mapping Configuration - Local Mapping (Robot-Centric)
+# Uses ppl (Pipeline Library) format
+
+# Mapper settings
+mapper:
+  map:
+    width: 15.0           # Map width in meters
+    height: 15.0          # Map height in meters
+    resolution: 0.1       # Map resolution in meters per cell
+    frame_id: "map"       # Map coordinate frame
+
+# Pipeline configuration
+# Include MoveOrigin for robot-centric mapping, exclude for map-centric
+pipeline:
+  stages:
+    - MoveOrigin          # Robot-centric: map follows robot
+    - VoxelFilter
+    - PassthroughFilter
+    # - GridGroundSegmentation
+    # - StatisticalGroundSegmentation
+    # - Raycasting
+    - HeightEstimation
+
+# Algorithm configurations
+algorithms:
+  VoxelFilter:
+    type: VoxelFilter
+    voxel_size: 0.05          # 5cm voxels
+    reduction_method: "centroid"  # centroid, random, first, closest, center
+
+  PassthroughFilter:
+    type: PassthroughFilter
+    x_min: -20.0
+    x_max: 20.0
+    y_min: -20.0
+    y_max: 20.0
+    # z_min: -0.1
+    # z_max: 2.0
+
+  GridGroundSegmentation:
+    type: GridGroundSegmentation
+    grid_resolution: 0.5          # 50cm grid cells
+    cell_percentile: 0.2          # 20th percentile for robust cell minimum
+    ground_thickness: 0.2         # Ground layer from cell minimum
+    max_ground_height: 0.5        # Max height to consider as ground
+    min_points_per_cell: 2        # Minimum points to process a cell
+    keep_only_ground: true        # Filter to ground points only
+
+  StatisticalGroundSegmentation:
+    type: StatisticalGroundSegmentation
+    ground_percentile: 0.1      # 10th percentile as robust minimum
+    ground_thickness: 0.3       # Ground layer thickness
+    noise_threshold: 0.5        # Points below percentile threshold are noise
+    keep_only_ground: true      # Filter to ground points only
+
+  Raycasting:
+    type: Raycasting
+    max_ground_angle: 0.0       # degrees
+    correction_threshold: 0.02  # 2cm
+    enable_correction: true
+    ray_step_size: 0.1
+
+  HeightEstimation:
+    type: HeightEstimation
+    estimator_type: "incremental_mean"  # incremental_mean, kalman_filter, moving_average
+    # Kalman filter parameters
+    kalman_process_noise: 0.01
+    kalman_measurement_noise: 0.05
+    kalman_initial_variance: 1000.0
+    # Moving average parameters
+    moving_average_alpha: 0.3

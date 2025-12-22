@@ -14,59 +14,70 @@
 
 #include <string>
 
-namespace height_mapping::ros {
+#include "height_mapping_ros/adapters/tf2.h"
+
+namespace height_mapping_ros {
 
 struct NodeParameters {
+  std::string config_path{""};  // Mapper config file path
+  std::string logger_level{"info"};
+  bool use_configurable_mapper{false};  // false: HeightMapper
+
   struct Topics {
-    std::string scan{"/points"};
-    std::string heightmap{"height_map"};
-    std::string scan_processed{"scan_processed"};
+    std::string input_scan{"/points"};
+    double publish_rate{10.0};
   } topics;
 
-  double publish_rate{10.0};
+  adapters::TF2::Config tf;
 
-  struct TfTree {
-    double lookup_timeout{0.1};
-    double max_extrapolation_time{0.05};
-  } tf_tree;
+  /// Load parameters from ROS parameter server
+  static NodeParameters load(::ros::NodeHandle& nh) {
+    NodeParameters params;
 
-  struct Mapper {
-    std::string config_file{""};
-    struct Benchmark {
-      bool enabled{false};
-      int report_interval{100};
-      bool log_each_stage{false};
-    } benchmark;
-  } mapper;
-
-  std::string logger_level{"INFO"};  // DEBUG, INFO, WARN, ERROR
-
-  NodeParameters(::ros::NodeHandle &nh) {
-    // Helper lambda
-    auto load = [&nh](const std::string &name, auto &value) {
+    auto load_param = [&nh](const std::string& name, auto& value) {
       value = nh.param(name, value);
     };
 
-    load("topics/scan", topics.scan);
-    load("topics/scan_processed", topics.scan_processed);
-    load("topics/heightmap", topics.heightmap);
-    load("topics/publish_rate", publish_rate);
+    load_param("config_path", params.config_path);
+    load_param("use_configurable_mapper", params.use_configurable_mapper);
+    load_param("topics/input_scan", params.topics.input_scan);
+    load_param("topics/publish_rate", params.topics.publish_rate);
+    load_param("tf/base_frame", params.tf.base_frame);
+    load_param("tf/map_frame", params.tf.map_frame);
+    load_param("tf/max_wait_time", params.tf.max_wait_time);
+    load_param("tf/max_stale_time", params.tf.max_stale_time);
+    load_param("logger/level", params.logger_level);
 
-    // Transform settings
-    load("tf_tree/lookup_timeout", tf_tree.lookup_timeout);
-    load("tf_tree/max_extrapolation_time", tf_tree.max_extrapolation_time);
+    return params;
+  }
 
-    // Mapper settings
-    load("mapper/config_file", mapper.config_file);
-    load("mapper/benchmark/enabled", mapper.benchmark.enabled);
-    load("mapper/benchmark/report_interval", mapper.benchmark.report_interval);
-    load("mapper/benchmark/log_each_stage", mapper.benchmark.log_each_stage);
+  bool isValid() const {
+    if (config_path.empty()) {
+      ROS_ERROR("config_path is empty. Specify a valid YAML config file path.");
+      return false;
+    }
 
-    // Logger settings
-    load("logger/level", logger_level);
+    if (topics.publish_rate <= 0.0) {
+      ROS_ERROR("Invalid publish_rate: %.2f (must be > 0)",
+                topics.publish_rate);
+      return false;
+    }
+
+    if (tf.max_wait_time < 0.0) {
+      ROS_ERROR("Invalid max_wait_time: %.2f (must be >= 0)", tf.max_wait_time);
+      return false;
+    }
+
+    if (tf.max_stale_time < 0.0) {
+      ROS_ERROR("Invalid max_stale_time: %.2f (must be >= 0)",
+                tf.max_stale_time);
+      return false;
+    }
+
+    return true;
   }
 };
 
-}  // namespace height_mapping::ros
+}  // namespace height_mapping_ros
 
 #endif  // HEIGHT_MAPPING_ROS_NODE_PARAMETERS_H

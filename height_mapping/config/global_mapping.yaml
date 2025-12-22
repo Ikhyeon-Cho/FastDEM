@@ -1,80 +1,52 @@
-# Unified Configuration for Height Mapping System
-# This file contains both core engine and pipeline configuration
+# Height Mapping Configuration - Global Mapping (Fixed Origin)
+# Uses ppl (Pipeline Library) format
 
-engine:
+# Mapper settings
+mapper:
   map:
-    width: 200.0           # Map width in meters
-    height: 200.0          # Map height in meters
+    width: 200.0          # Map width in meters
+    height: 200.0         # Map height in meters
     resolution: 0.1       # Map resolution in meters per cell
     frame_id: "map"       # Map coordinate frame
-    robot_centric: false   # Move map with robot
-    update_mode: "fixed"  # continuous, threshold, centered, fixed
-    update_threshold: 2.0      # Threshold for map update (meters)
 
-  runtime:
-    thread_safe: true           # Enable thread-safe operations
-    reset_on_error: false       # Reset on pipeline errors
-    enable_statistics: false    # Enable statistics collection
-
+# Pipeline configuration
+# No MoveOrigin stage = map-centric (fixed origin)
 pipeline:
-  stop_on_error: true  # Stop pipeline execution on stage error
-
   stages:
-    # Move map origin to follow robot
-    - name: "MoveOrigin"
-      enabled: true
-      params:
-        update_mode: "continuous"
-        update_threshold: 2.0
-        robot_frame: "base_link"
-        map_frame: "map"
+    - VoxelFilter
+    - PassthroughFilter
+    # - Raycasting
+    - HeightEstimation
 
-    # Transform point cloud to base frame for filtering
-    - name: "TransformCloud"
-      enabled: true
-      params:
-        target_frame: "base_link"
+# Algorithm configurations
+algorithms:
+  VoxelFilter:
+    type: VoxelFilter
+    voxel_size: 0.05          # 5cm voxels
+    reduction_method: "centroid"  # centroid, random, first, closest, center
 
-    # Downsample point cloud using voxel grid
-    - name: "VoxelFilter"
-      enabled: true
-      params:
-        voxel_size: 0.05          # 5cm voxels
-        reduction_method: "centroid"  # centroid, random, or center
+  PassthroughFilter:
+    type: PassthroughFilter
+    x_min: -10.0
+    x_max: 10.0
+    y_min: -10.0
+    y_max: 10.0
+    z_min: -0.1
+    z_max: 2.0
 
-    # Filter points by distance and height
-    - name: "PassthroughFilter"
-      enabled: true
-      params:
-        x_min: -10.0
-        x_max: 10.0
-        y_min: -10.0
-        y_max: 10.0
-        z_min: -0.1
-        z_max: 2.0
+  Raycasting:
+    type: Raycasting
+    max_ground_angle: -5.0      # degrees
+    correction_threshold: 0.02  # 2cm
+    enable_correction: true
+    ray_step_size: 0.1
 
-    # Transform to map frame for height estimation
-    - name: "TransformCloud"
-      enabled: true
-      params:
-        target_frame: "map"
-
-    # Raycasting for ground correction (optional)
-    - name: "Raycasting"
-      enabled: false
-      params:
-        max_ground_angle: -5.0     # degrees
-        correction_threshold: 0.02  # 2cm
-        enable_correction: true
-        ray_length: 5.0
-
-    # Height estimation
-    - name: "HeightEstimation"
-      enabled: true
-      params:
-        estimator_type: "incremental_mean"  # incremental_mean, kalman_filter, moving_average
-        # Kalman filter specific parameters
-        process_noise: 0.01
-        measurement_noise: 0.05
-        # Moving average specific parameters
-        window_size: 10
+  HeightEstimation:
+    type: HeightEstimation
+    estimator_type: "incremental_mean"  # incremental_mean, kalman_filter, moving_average
+    # Kalman filter parameters
+    kalman_process_noise: 0.01
+    kalman_measurement_noise: 0.05
+    kalman_initial_variance: 1000.0
+    # Moving average parameters
+    moving_average_alpha: 0.3

@@ -1,36 +1,42 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.10)
 project(height_mapping_ros)
 
-add_compile_options(-std=c++17)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-###################
-## Find packages ##
-###################
+###############
+## Dependencies
+###############
+
+# ROS dependencies (catkin)
 find_package(catkin REQUIRED COMPONENTS
-    roscpp
-    tf2_ros
-    tf2_eigen
-    grid_map_ros
-    message_generation
-    height_mapping
+  roscpp
+  tf2_ros
+  tf2_eigen
+  grid_map_ros
+  message_generation
 )
 
-####################
-## Service files  ##
-####################
+# Pure CMake dependency (our core library)
+find_package(height_mapping REQUIRED)
+message(STATUS "height_mapping_INCLUDE_DIRS: ${height_mapping_INCLUDE_DIRS}")
+message(STATUS "height_mapping_LIBRARIES: ${height_mapping_LIBRARIES}")
+message(STATUS "height_mapping_LIBRARY_DIRS: ${height_mapping_LIBRARY_DIRS}")
+
+###############
+## Messages  ##
+###############
+
 add_service_files(
   FILES
   save_map.srv
 )
+generate_messages()
 
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
+###############
+## Catkin    ##
+###############
 
-###################################
-## catkin specific configuration ##
-###################################
 catkin_package(
   INCLUDE_DIRS
     include
@@ -39,12 +45,12 @@ catkin_package(
     tf2_ros
     grid_map_ros
     message_runtime
-    height_mapping
 )
 
 ###########
 ## Build ##
 ###########
+
 # Default to Release build
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -59,15 +65,17 @@ include_directories(
 #############
 ## Nodes   ##
 #############
+
 # Main height mapping node
 add_executable(height_mapping_node
   src/height_mapping_node.cpp
-  src/adapters/pointcloud_converter.cpp
 )
+
 target_link_libraries(height_mapping_node
   ${catkin_LIBRARIES}
-  yaml-cpp
+  height_mapping::height_mapping
 )
+
 add_dependencies(height_mapping_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}

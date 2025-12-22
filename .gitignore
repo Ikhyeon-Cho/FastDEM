@@ -21,6 +21,8 @@ implementation-plan.md
 *-plan.md
 *-integration-plan.md
 config-integration-plan.md
+chat.md
+FLOWPIPE_API_USAGE.md
 
 # Build artifacts
 build/
