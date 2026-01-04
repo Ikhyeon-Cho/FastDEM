@@ -1,162 +1,102 @@
 # nanoPCL
 
-**Header-only C++17 point cloud library. No ROS. No PCL. Just Eigen.**
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
+[![Header-only](https://img.shields.io/badge/header--only-yes-green.svg)]()
 
-PCL is powerful but heavy. nanoPCL gives you the most-used features in a single header.
-
-## Features
-
-- **Point Cloud** - Container with frame/timestamp metadata
-- **Filters** - VoxelGrid, Passthrough
-- **Transforms** - SE(3)/SO(3) with frame-aware operations
-- **Geometry** - AABB, OBB bounding boxes
-
-## Quick Start
+**Lightweight point cloud library. No ROS. No PCL. Just Eigen.**
 
 ```cpp
 #include <nanopcl/nanopcl.hpp>
-
 using namespace nanopcl;
 
-// Create point cloud
 PointCloud cloud("lidar");
-cloud.push_back(Point(1.0f, 2.0f, 3.0f));
-// ... add more points
+cloud.push_back(Point(1, 2, 3));
 
-// Downsample
-filters::VoxelGrid voxel({.voxel_size = 0.1f});
-voxel.filterInPlace(cloud);
-
-// Filter by bounds
-filters::Passthrough pass({.z_min = -1.0f, .z_max = 2.0f});
-pass.filterInPlace(cloud);
-
-// Transform
-SE3d T = SE3d::from2D(1.0, 0.0, M_PI/4);
+cloud = filters::voxelGrid(cloud, 0.1f);  // Downsample
+SE3d T = SE3d::from2D(1.0, 0.0, M_PI/4);  // Transform
 cloud = T * cloud;
 ```
 
 ## Installation
 
-### CMake FetchContent (Recommended)
-
 ```cmake
+# CMakeLists.txt
 include(FetchContent)
-FetchContent_Declare(
-  nanoPCL
+FetchContent_Declare(nanoPCL
   GIT_REPOSITORY https://github.com/Ikhyeon-Cho/nanoPCL.git
-  GIT_TAG main
-)
+  GIT_TAG main)
 FetchContent_MakeAvailable(nanoPCL)
-
 target_link_libraries(your_target PRIVATE nanoPCL::nanoPCL)
 ```
 
-### Manual
+**Requirements:** C++17, Eigen3 (>= 3.3)
 
-```bash
-git clone https://github.com/Ikhyeon-Cho/nanoPCL.git
-cd nanoPCL
-mkdir build && cd build
-cmake ..
-sudo make install
-```
+## Features
 
-## Requirements
+| Module | Functions |
+|--------|-----------|
+| **Core** | `PointCloud`, `Point`, timestamps, frame IDs |
+| **Filters** | `voxelGrid`, `cropBox`, `cropRange`, `filter`, `removeInvalid` |
+| **Transforms** | `SE3`, `SO3`, frame-aware `Transform` |
+| **Geometry** | `AABB`, `OBB`, `estimateNormals` |
+| **I/O** | PCD, BIN (KITTI), TUM trajectory |
 
-- C++17 compiler
-- Eigen3 (>= 3.3)
+## Examples
 
-## API Reference
+See [`examples/`](examples/) for working code:
 
-### Core Types
+- **01_point_cloud** - Core PointCloud API, memory management
+- **02_attributes** - Optional channels (intensity, time, ring, color, label)
+- **03_filters** - VoxelGrid, Passthrough filtering
+- **04_io** - Load/save PCD, BIN, TUM formats
+- **05_normals** - Surface normal estimation
+- **06_deskew** - Motion compensation
 
-```cpp
-// Point (Eigen::Vector3f alias)
-Point p(1.0f, 2.0f, 3.0f);
-float dist = distance(p, Point::Zero());
+## Performance
 
-// PointCloud with metadata
-PointCloud cloud("laser_frame");
-cloud.setTimestamp(timestamp_ns);
-cloud.push_back(Point(x, y, z));
-for (const auto& pt : cloud) { /* ... */ }
-```
+Benchmark: 500k points, Release build (`-O3`), Intel Core i7
 
-### Filters
+| Operation | nanoPCL | PCL | Speedup |
+|-----------|---------|-----|---------|
+| Construction | 0.02 ms | 7.8 ms | **350x** |
+| Transform | 8.5 ms | 18.7 ms | **2.2x** |
+| Random Access | 4.5 ms | 8.2 ms | **1.8x** |
+| Deep Copy | 4.5 ms | 7.3 ms | **1.6x** |
 
-```cpp
-// VoxelGrid - downsample point cloud
-filters::VoxelGrid voxel({
-  .voxel_size = 0.1f,
-  .method = filters::VoxelGrid::Method::CENTROID
-});
-auto stats = voxel.filterInPlace(cloud);
+**Memory per point:**
+| Type | nanoPCL | PCL |
+|------|---------|-----|
+| XYZ only | 12 bytes | 16 bytes (PointXYZ) |
+| XYZ + Intensity | 16 bytes | 32 bytes (PointXYZI) |
+| Full (XYZ+I+Ring) | 18 bytes | 48 bytes (PointXYZINormal) |
 
-// Passthrough - filter by bounds
-filters::Passthrough pass({
-  .x_min = -10.0f, .x_max = 10.0f,
-  .z_min = -1.0f, .z_max = 3.0f,
-  .use_distance_filter = true,
-  .distance_max = 50.0f
-});
-pass.filterInPlace(cloud);
-```
+### Why is nanoPCL faster?
 
-### Transforms
+**Structure of Arrays (SoA)** vs PCL's Array of Structures (AoS):
 
 ```cpp
-// SE3 rigid body transform
-SE3d T = SE3d::from2D(x, y, yaw);
-SE3d T = SE3d::fromRPY(roll, pitch, yaw);
-SE3d T = SE3d::fromQuaternion(qx, qy, qz, qw);
+// nanoPCL (SoA) - Contiguous XYZ, optional attributes
+points_:     [x0,y0,z0] [x1,y1,z1] [x2,y2,z2] ...  // Cache-friendly for transforms
+intensity_:  [i0] [i1] [i2] ...                     // Allocated only if needed
 
-// Transform point cloud
-PointCloud cloud_map = T * cloud_lidar;
-
-// Frame-aware Transform
-Transform tf;
-tf.from("lidar").to("map").with(se3);
-PointCloud cloud_map = tf * cloud_lidar;  // validates frames
-
-// Composition with frame checking
-Transform T_map_base = ...;
-Transform T_base_lidar = ...;
-Transform T_map_lidar = T_map_base * T_base_lidar;  // throws if frames don't match
+// PCL (AoS) - Interleaved, always allocated
+points_:     [x0,y0,z0,pad,i0,pad,pad,pad] [x1,y1,z1,pad,i1,pad,pad,pad] ...
 ```
 
-### Geometry
+Run benchmarks: `cmake -DNANOPCL_BUILD_BENCHMARKS=ON .. && make && ./benchmarks/benchmark_pointcloud`
 
-```cpp
-// Axis-Aligned Bounding Box
-AABB box = AABB::fromCenterSize(center, size, "map");
-bool inside = box.contains(point);
+## Why nanoPCL?
 
-// Oriented Bounding Box
-OBB obb(center, orientation, extent, "map");
-AABB aabb = obb.toAABB();
-```
-
-## Comparison with PCL
-
-| Feature | PCL | nanoPCL |
-|---------|-----|---------|
+| | PCL | nanoPCL |
+|--|-----|---------|
 | Build time | Minutes | Seconds |
-| Binary size | Large | Tiny |
-| Dependencies | Many (VTK, Boost, ...) | Eigen only |
-| VoxelGrid filter | ✓ | ✓ |
-| Passthrough filter | ✓ | ✓ |
-| ICP/NDT | ✓ | ✗ |
-| Visualization | ✓ | ✗ |
-| PCD I/O | ✓ | ✗ (planned) |
+| Dependencies | VTK, Boost, FLANN... | Eigen only |
+| Binary size | Large | Zero (header-only) |
+| Memory | Fixed per point type | Pay for what you use |
 
-nanoPCL is **not** a PCL replacement. It's for when you need basic point cloud operations without the heavyweight dependency.
+nanoPCL is **not** a PCL replacement. It's for when you need basic operations without heavyweight dependencies.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Author
-
-Ikhyeon Cho (tre0430@korea.ac.kr)
-Korea University, Intelligent Systems & Robotics Lab
+MIT License - [Ikhyeon Cho](mailto:tre0430@korea.ac.kr), Korea University

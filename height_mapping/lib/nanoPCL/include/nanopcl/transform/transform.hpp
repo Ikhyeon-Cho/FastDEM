@@ -5,17 +5,12 @@
 #ifndef NANOPCL_TRANSFORM_TRANSFORM_HPP
 #define NANOPCL_TRANSFORM_TRANSFORM_HPP
 
-#include <cassert>
 #include <stdexcept>
 #include <string>
 
 #include "nanopcl/transform/se3.hpp"
 
 namespace nanopcl {
-
-// ============================================================================
-// Transform - Frame-Aware SE(3) Wrapper
-// ============================================================================
 
 /**
  * @brief Frame-aware transformation wrapper for SE3
@@ -52,13 +47,19 @@ class Transform_ {
   // ========== Fluent Setters ==========
 
   Transform_& from(const std::string& frame) {
-    assert(source_.empty() && "source frame already set");
+    if (!source_.empty()) {
+      throw std::runtime_error("Transform: source frame already set to '" +
+                               source_ + "'");
+    }
     source_ = frame;
     return *this;
   }
 
   Transform_& to(const std::string& frame) {
-    assert(target_.empty() && "target frame already set");
+    if (!target_.empty()) {
+      throw std::runtime_error("Transform: target frame already set to '" +
+                               target_ + "'");
+    }
     target_ = frame;
     return *this;
   }
@@ -85,8 +86,8 @@ class Transform_ {
   // ========== Accessors ==========
 
   const SE3Type& T() const { return T_; }
-  const std::string& source_frame() const { return source_; }
-  const std::string& target_frame() const { return target_; }
+  const std::string& child_frame() const { return source_; }
+  const std::string& parent_frame() const { return target_; }
 
   SO3_<Scalar> rotation() const { return T_.rotation(); }
   Quaternion quaternion() const { return T_.quaternion(); }
@@ -112,35 +113,25 @@ class Transform_ {
   // ========== Operations ==========
 
   Transform_ inverse() const {
-    assert(isValid() && "Cannot invert uninitialized transform");
+    if (!isValid()) {
+      throw std::runtime_error(
+          "Transform: cannot invert uninitialized transform");
+    }
     return Transform_(T_.inverse(), target_, source_);
   }
 
-  Transform_ operator*(const Transform_& other) const {
-    assert(isValid() && "Left operand not initialized");
-    assert(other.isValid() && "Right operand not initialized");
-    if (source_ != other.target_) {
-      throw std::runtime_error("Transform composition frame mismatch: '" +
-                               source_ + "' != '" + other.target_ + "'");
-    }
-    return Transform_(T_ * other.T_, other.source_, target_);
-  }
+  /// Compose transforms (frame-checked)
+  Transform_ operator*(const Transform_& other) const;
 
-  Transform_& operator*=(const Transform_& other) {
-    assert(isValid() && "Left operand not initialized");
-    assert(other.isValid() && "Right operand not initialized");
-    if (source_ != other.target_) {
-      throw std::runtime_error("Transform composition frame mismatch: '" +
-                               source_ + "' != '" + other.target_ + "'");
-    }
-    T_ = T_ * other.T_;
-    source_ = other.source_;
-    return *this;
-  }
+  /// In-place composition (frame-checked)
+  Transform_& operator*=(const Transform_& other);
 
   template <typename T>
   Eigen::Matrix<T, 3, 1> operator*(const Eigen::Matrix<T, 3, 1>& p) const {
-    assert(isValid() && "Cannot transform point with uninitialized transform");
+    if (!isValid()) {
+      throw std::runtime_error(
+          "Transform: cannot apply uninitialized transform to point");
+    }
     return T_ * p;
   }
 
@@ -158,18 +149,11 @@ class Transform_ {
 
   // ========== Interpolation ==========
 
-  Transform_ slerp(const Transform_& other, Scalar t) const {
-    if (source_ != other.source_ || target_ != other.target_) {
-      throw std::runtime_error("slerp requires matching frames");
-    }
-    return Transform_(T_.slerp(other.T_, t), source_, target_);
-  }
+  /// Spherical linear interpolation (frame-checked)
+  Transform_ slerp(const Transform_& other, Scalar t) const;
 
-  std::string toString() const {
-    std::stringstream ss;
-    ss << "Transform [" << source_ << " -> " << target_ << "]";
-    return ss.str();
-  }
+  /// String representation
+  std::string toString() const;
 };
 
 using Transformd = Transform_<double>;
@@ -177,5 +161,8 @@ using Transformf = Transform_<float>;
 using Transform = Transformd;
 
 }  // namespace nanopcl
+
+// Include implementation
+#include "nanopcl/transform/impl/transform_impl.hpp"
 
 #endif  // NANOPCL_TRANSFORM_TRANSFORM_HPP

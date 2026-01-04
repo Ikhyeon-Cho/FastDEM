@@ -1,0 +1,19 @@
+# Build directories
+build/
+build_*/
+cmake-build-*/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+
+# Compiled files
+*.o
+*.a
+*.so
+
+# Test outputs
+*.pcd
+*.bin

@@ -6,79 +6,163 @@
 #define NANOPCL_CORE_POINT_HPP
 
 #include <Eigen/Core>
+#include <array>
+#include <cstdint>
 
 namespace nanopcl {
 
-// ============================================================================
-// Point Type Definition
-// ============================================================================
-
-/**
- * @brief 3D point with float precision
- *
- * Direct alias for Eigen::Vector3f, providing memory efficiency and cache
- * performance. Float precision is sufficient for typical robotics sensors
- * (LiDAR has ~3cm precision, cameras have pixel-level precision).
- *
- * Usage:
- * @code
- * Point p1(1.0f, 2.0f, 3.0f);
- * Point p2 = Point::Zero();
- * float dist = distance(p1, p2);
- * @endcode
- *
- * @note For double precision, use Eigen::Vector3d directly
- * @note This is NOT a template - Point is always float
- */
+/// 3D point with float precision
 using Point = Eigen::Vector3f;
 
-// ============================================================================
-// Utility Functions
-// ============================================================================
-
 /**
- * @brief Compute 3D Euclidean distance between two points
- * @param a First point
- * @param b Second point
- * @return Distance in meters
- */
-inline float distance(const Point& a, const Point& b) {
-  return (a - b).norm();
-}
-
-/**
- * @brief Compute 2D Euclidean distance between two points (ignoring z)
- * @param a First point
- * @param b Second point
- * @return 2D distance in meters
- */
-inline float distance2D(const Point& a, const Point& b) {
-  return (a.head<2>() - b.head<2>()).norm();
-}
-
-/**
- * @brief Compute squared 3D Euclidean distance (faster, no sqrt)
- * @param a First point
- * @param b Second point
- * @return Squared distance
+ * @brief Strong Types for Point Attributes
  *
- * @note Use this for distance comparisons to avoid expensive sqrt()
+ * These structs serve two roles:
+ * 1. Type-safe tags for variadic push_back (API)
+ * 2. Data storage types (Implementation) - Zero overhead wrappers
  */
-inline float distanceSquared(const Point& a, const Point& b) {
-  return (a - b).squaredNorm();
-}
+
+struct Intensity {
+  float val;
+  explicit constexpr Intensity(float v) : val(v) {}
+};
+
+struct Time {
+  float val;
+  explicit constexpr Time(float v) : val(v) {}
+};
+
+struct Ring {
+  uint16_t val;
+  explicit constexpr Ring(uint16_t v) : val(v) {}
+};
+
+struct Normal {
+  Eigen::Vector3f val;
+  explicit Normal(const Eigen::Vector3f& v) : val(v) {}
+  Normal(float nx, float ny, float nz) : val(nx, ny, nz) {}
+};
+
+struct Color {
+  std::array<uint8_t, 3> rgb{0, 0, 0};
+
+  // Constructors
+  constexpr Color() = default;
+  constexpr Color(uint8_t r, uint8_t g, uint8_t b) : rgb{r, g, b} {}
+  explicit constexpr Color(const std::array<uint8_t, 3>& v) : rgb(v) {}
+
+  // Factory methods
+  static constexpr Color fromHex(uint32_t hex) {
+    return Color((hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF);
+  }
+
+  static constexpr Color fromNormalized(float r, float g, float b) {
+    return Color(static_cast<uint8_t>(r * 255), static_cast<uint8_t>(g * 255),
+                 static_cast<uint8_t>(b * 255));
+  }
+
+  // Predefined colors
+  static constexpr Color Black() { return Color(0, 0, 0); }
+  static constexpr Color White() { return Color(255, 255, 255); }
+  static constexpr Color Red() { return Color(255, 0, 0); }
+  static constexpr Color Green() { return Color(0, 255, 0); }
+  static constexpr Color Blue() { return Color(0, 0, 255); }
+  static constexpr Color Yellow() { return Color(255, 255, 0); }
+  static constexpr Color Cyan() { return Color(0, 255, 255); }
+  static constexpr Color Magenta() { return Color(255, 0, 255); }
+
+  // Conversion
+  constexpr uint32_t toHex() const {
+    return (static_cast<uint32_t>(rgb[0]) << 16) |
+           (static_cast<uint32_t>(rgb[1]) << 8) |  //
+           static_cast<uint32_t>(rgb[2]);
+  }
+
+  // Accessors
+  constexpr uint8_t r() const { return rgb[0]; }
+  constexpr uint8_t g() const { return rgb[1]; }
+  constexpr uint8_t b() const { return rgb[2]; }
+
+  constexpr uint8_t& r() { return rgb[0]; }
+  constexpr uint8_t& g() { return rgb[1]; }
+  constexpr uint8_t& b() { return rgb[2]; }
+
+  // Array access
+  constexpr uint8_t& operator[](size_t i) { return rgb[i]; }
+  constexpr uint8_t operator[](size_t i) const { return rgb[i]; }
+
+  // Comparison (element-wise for C++17 constexpr compatibility)
+  constexpr bool operator==(const Color& other) const {
+    return rgb[0] == other.rgb[0] &&  //
+           rgb[1] == other.rgb[1] &&  //
+           rgb[2] == other.rgb[2];
+  }
+  constexpr bool operator!=(const Color& other) const {
+    return !(*this == other);
+  }
+};
+
+// =============================================================================
+// Label (Semantic Segmentation)
+// =============================================================================
+
+/// Strong type for semantic class construction
+struct SemanticClass {
+  uint16_t val;
+  explicit constexpr SemanticClass(uint16_t v) : val(v) {}
+};
+
+/// Strong type for instance ID construction
+struct InstanceId {
+  uint16_t val;
+  explicit constexpr InstanceId(uint16_t v = 0) : val(v) {}
+};
 
 /**
- * @brief Compute squared 2D Euclidean distance (faster, no sqrt)
- * @param a First point
- * @param b Second point
- * @return Squared 2D distance
+ * @brief Semantic label for point cloud segmentation
  *
- * @note Use this for 2D distance comparisons to avoid expensive sqrt()
+ * Follows SemanticKITTI/NuScenes format:
+ * - Lower 16 bits: semantic class (e.g., 10=car, 11=bicycle)
+ * - Upper 16 bits: instance ID (distinguishes objects of same class)
+ *
+ * @note sizeof(Label) == sizeof(uint32_t) for memory efficiency
  */
-inline float distance2DSquared(const Point& a, const Point& b) {
-  return (a.head<2>() - b.head<2>()).squaredNorm();
-}
+struct Label {
+  uint32_t val;
+
+  // --- Constructors ---
+  constexpr Label() : val(0) {}
+  explicit constexpr Label(uint32_t raw) : val(raw) {}
+
+  constexpr Label(SemanticClass cls, InstanceId inst = InstanceId(0))
+      : val((static_cast<uint32_t>(inst.val) << 16) | cls.val) {}
+
+  // --- Accessors ---
+  constexpr uint16_t semanticClass() const {
+    return static_cast<uint16_t>(val & 0xFFFF);
+  }
+  constexpr uint16_t instanceId() const {
+    return static_cast<uint16_t>(val >> 16);
+  }
+
+  // --- Mutators ---
+  constexpr void setSemanticClass(uint16_t cls) {
+    val = (val & 0xFFFF0000) | cls;
+  }
+  constexpr void setInstanceId(uint16_t inst) {
+    val = (val & 0x0000FFFF) | (static_cast<uint32_t>(inst) << 16);
+  }
+
+  // --- Comparison ---
+  constexpr bool operator==(const Label& other) const {
+    return val == other.val;
+  }
+  constexpr bool operator!=(const Label& other) const {
+    return val != other.val;
+  }
+};
+
+static_assert(sizeof(Label) == sizeof(uint32_t), "Label must be 4 bytes");
 
 }  // namespace nanopcl
 

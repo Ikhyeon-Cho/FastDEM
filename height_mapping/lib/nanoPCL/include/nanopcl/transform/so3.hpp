@@ -7,15 +7,9 @@
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include <cmath>
-#include <sstream>
 #include <string>
 
 namespace nanopcl {
-
-// ============================================================================
-// SO(3) - Special Orthogonal Group (Rotation Only)
-// ============================================================================
 
 /**
  * @brief SO(3) rotation transformation
@@ -42,115 +36,57 @@ class SO3_ {
  public:
   // ========== Constructors ==========
 
-  /**
-   * @brief Default constructor (identity rotation)
-   */
+  /// Default constructor (identity rotation)
   SO3_() : rotation_(Quaternion::Identity()) {}
 
-  /**
-   * @brief Construct from Eigen::Quaternion
-   */
+  /// Construct from Eigen::Quaternion
   explicit SO3_(const Quaternion& q) : rotation_(q.normalized()) {}
 
-  /**
-   * @brief Construct from rotation matrix
-   */
+  /// Construct from rotation matrix
   explicit SO3_(const Matrix3& R) : rotation_(R) { rotation_.normalize(); }
 
   // ========== Factory Methods ==========
 
-  /**
-   * @brief Create identity rotation
-   */
+  /// Create identity rotation
   static SO3_ Identity() { return SO3_(); }
 
-  /**
-   * @brief Create from roll-pitch-yaw angles (intrinsic ZYX convention)
-   * @param roll Rotation around X-axis (radians)
-   * @param pitch Rotation around Y-axis (radians)
-   * @param yaw Rotation around Z-axis (radians)
-   */
-  static SO3_ fromRPY(Scalar roll, Scalar pitch, Scalar yaw) {
-    return SO3_(Quaternion(AngleAxis(yaw, Vector3::UnitZ()) *
-                           AngleAxis(pitch, Vector3::UnitY()) *
-                           AngleAxis(roll, Vector3::UnitX())));
-  }
+  /// Create from roll-pitch-yaw angles (intrinsic ZYX convention)
+  static SO3_ fromRPY(Scalar roll, Scalar pitch, Scalar yaw);
 
-  /**
-   * @brief Create from yaw angle only (rotation around Z-axis)
-   * @param yaw Rotation around Z-axis (radians)
-   */
+  /// Create from yaw angle only (rotation around Z-axis)
   static SO3_ fromYaw(Scalar yaw) {
     return SO3_(Quaternion(AngleAxis(yaw, Vector3::UnitZ())));
   }
 
-  /**
-   * @brief Create from quaternion components (x, y, z, w)
-   */
+  /// Create from quaternion components (x, y, z, w)
   static SO3_ fromQuaternion(Scalar x, Scalar y, Scalar z, Scalar w) {
     return SO3_(Quaternion(w, x, y, z));
   }
 
-  /**
-   * @brief Create from Eigen quaternion
-   */
+  /// Create from Eigen quaternion
   static SO3_ fromQuaternion(const Quaternion& q) { return SO3_(q); }
 
-  /**
-   * @brief Create from angle-axis representation
-   */
-  static SO3_ fromAngleAxis(Scalar angle, const Vector3& axis) {
-    return SO3_(Quaternion(AngleAxis(angle, axis.normalized())));
-  }
+  /// Create from angle-axis representation
+  static SO3_ fromAngleAxis(Scalar angle, const Vector3& axis);
 
-  /**
-   * @brief Create from rotation matrix
-   */
+  /// Create from rotation matrix
   static SO3_ fromRotationMatrix(const Matrix3& R) { return SO3_(R); }
 
   // ========== Lie Algebra Operations ==========
 
-  /**
-   * @brief Exponential map: so(3) -> SO(3)
-   */
-  static SO3_ exp(const Vector3& omega) {
-    Scalar angle = omega.norm();
-    if (angle < Scalar(1e-10)) {
-      return SO3_::Identity();
-    }
-    Vector3 axis = omega / angle;
-    return SO3_(Quaternion(AngleAxis(angle, axis)));
-  }
+  /// Exponential map: so(3) -> SO(3)
+  static SO3_ exp(const Vector3& omega);
 
-  /**
-   * @brief Logarithm map: SO(3) -> so(3)
-   */
-  Vector3 log() const {
-    AngleAxis aa(rotation_);
-    Scalar angle = aa.angle();
-    if (angle < Scalar(1e-10)) {
-      return Vector3::Zero();
-    }
-    return angle * aa.axis();
-  }
+  /// Logarithm map: SO(3) -> so(3)
+  Vector3 log() const;
 
   // ========== Accessors ==========
 
   const Quaternion& quaternion() const { return rotation_; }
   Matrix3 matrix() const { return rotation_.toRotationMatrix(); }
 
-  void getRPY(Scalar& roll, Scalar& pitch, Scalar& yaw) const {
-    auto m = matrix();
-    pitch = std::asin(std::clamp(-m(2, 0), Scalar(-1), Scalar(1)));
-
-    if (std::abs(std::cos(pitch)) > Scalar(1e-6)) {
-      roll = std::atan2(m(2, 1), m(2, 2));
-      yaw = std::atan2(m(1, 0), m(0, 0));
-    } else {
-      roll = Scalar(0);
-      yaw = std::atan2(-m(0, 1), m(1, 1));
-    }
-  }
+  /// Get roll, pitch, yaw angles
+  void getRPY(Scalar& roll, Scalar& pitch, Scalar& yaw) const;
 
   Scalar yaw() const {
     auto m = matrix();
@@ -160,10 +96,13 @@ class SO3_ {
   // ========== Operations ==========
 
   SO3_ inverse() const { return SO3_(rotation_.conjugate()); }
+
   Vector3 operator*(const Vector3& v) const { return rotation_ * v; }
+
   SO3_ operator*(const SO3_& other) const {
     return SO3_(rotation_ * other.rotation_);
   }
+
   SO3_& operator*=(const SO3_& other) {
     rotation_ = rotation_ * other.rotation_;
     return *this;
@@ -185,13 +124,8 @@ class SO3_ {
     return isApprox(SO3_::Identity(), tolerance);
   }
 
-  std::string toString() const {
-    std::stringstream ss;
-    Scalar roll, pitch, yaw;
-    getRPY(roll, pitch, yaw);
-    ss << "SO3(RPY: [" << roll << ", " << pitch << ", " << yaw << "])";
-    return ss.str();
-  }
+  /// String representation
+  std::string toString() const;
 };
 
 // ========== Type Aliases ==========
@@ -218,5 +152,8 @@ inline SO3_<Scalar> slerp(const SO3_<Scalar>& R_start,
 }
 
 }  // namespace nanopcl
+
+// Include implementation
+#include "nanopcl/transform/impl/so3_impl.hpp"
 
 #endif  // NANOPCL_TRANSFORM_SO3_HPP

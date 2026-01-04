@@ -61,30 +61,30 @@ class AxisAlignedBox {
 
   // ========== Accessors ==========
 
-  const Point& min() const { return min_; }
-  const Point& max() const { return max_; }
-  Point center() const { return (min_ + max_) / 2.0f; }
-  Vector3 size() const { return max_ - min_; }
-  Vector3 extent() const { return (max_ - min_) / 2.0f; }
+  const Point& min() const noexcept { return min_; }
+  const Point& max() const noexcept { return max_; }
+  Point center() const noexcept { return (min_ + max_) / 2.0f; }
+  Vector3 size() const noexcept { return max_ - min_; }
+  Vector3 extent() const noexcept { return (max_ - min_) / 2.0f; }
 
-  const std::string& frameId() const { return frame_id_; }
+  const std::string& frameId() const noexcept { return frame_id_; }
   void setFrameId(const std::string& id) { frame_id_ = id; }
-  Timestamp timestamp() const { return timestamp_ns_; }
-  void setTimestamp(Timestamp ts) { timestamp_ns_ = ts; }
+  Timestamp timestamp() const noexcept { return timestamp_ns_; }
+  void setTimestamp(Timestamp ts) noexcept { timestamp_ns_ = ts; }
 
   // ========== Query Methods ==========
 
-  bool isEmpty() const {
+  bool isEmpty() const noexcept {
     return min_.x() > max_.x() || min_.y() > max_.y() || min_.z() > max_.z();
   }
 
-  float volume() const {
+  float volume() const noexcept {
     if (isEmpty()) return 0.0f;
     Vector3 s = size();
     return s.x() * s.y() * s.z();
   }
 
-  bool contains(const Point& point) const {
+  bool contains(const Point& point) const noexcept {
     return (point.x() >= min_.x() && point.x() <= max_.x() &&
             point.y() >= min_.y() && point.y() <= max_.y() &&
             point.z() >= min_.z() && point.z() <= max_.z());
@@ -155,36 +155,36 @@ class OrientedBox {
 
   // ========== Accessors ==========
 
-  const Point& center() const { return center_; }
-  const Quaternion& orientation() const { return orientation_; }
-  Matrix3 rotationMatrix() const { return orientation_.toRotationMatrix(); }
-  const Vector3& extent() const { return extent_; }
-  Vector3 size() const { return extent_ * 2.0f; }
+  const Point& center() const noexcept { return center_; }
+  const Quaternion& orientation() const noexcept { return orientation_; }
+  Matrix3 rotationMatrix() const noexcept { return orientation_.toRotationMatrix(); }
+  const Vector3& extent() const noexcept { return extent_; }
+  Vector3 size() const noexcept { return extent_ * 2.0f; }
 
-  const std::string& frameId() const { return frame_id_; }
+  const std::string& frameId() const noexcept { return frame_id_; }
   void setFrameId(const std::string& id) { frame_id_ = id; }
-  Timestamp timestamp() const { return timestamp_ns_; }
-  void setTimestamp(Timestamp ts) { timestamp_ns_ = ts; }
+  Timestamp timestamp() const noexcept { return timestamp_ns_; }
+  void setTimestamp(Timestamp ts) noexcept { timestamp_ns_ = ts; }
 
-  void setCenter(const Point& center) { center_ = center; }
-  void setOrientation(const Quaternion& orientation) {
+  void setCenter(const Point& center) noexcept { center_ = center; }
+  void setOrientation(const Quaternion& orientation) noexcept {
     orientation_ = orientation.normalized();
   }
-  void setExtent(const Vector3& extent) { extent_ = extent; }
+  void setExtent(const Vector3& extent) noexcept { extent_ = extent; }
 
   // ========== Query Methods ==========
 
-  bool isEmpty() const {
+  bool isEmpty() const noexcept {
     return extent_.x() <= 0.0f || extent_.y() <= 0.0f || extent_.z() <= 0.0f;
   }
 
-  float volume() const {
+  float volume() const noexcept {
     if (isEmpty()) return 0.0f;
     Vector3 s = size();
     return s.x() * s.y() * s.z();
   }
 
-  bool contains(const Point& point) const {
+  bool contains(const Point& point) const noexcept {
     Vector3 local = orientation_.conjugate() * (point - center_);
     return (local.x() >= -extent_.x() && local.x() <= extent_.x() &&
             local.y() >= -extent_.y() && local.y() <= extent_.y() &&

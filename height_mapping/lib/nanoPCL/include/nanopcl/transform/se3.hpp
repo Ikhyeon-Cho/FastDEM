@@ -7,16 +7,11 @@
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include <sstream>
 #include <string>
 
 #include "nanopcl/transform/so3.hpp"
 
 namespace nanopcl {
-
-// ============================================================================
-// SE(3) - Special Euclidean Group (Rotation + Translation)
-// ============================================================================
 
 /**
  * @brief SE(3) rigid transformation (rotation + translation)
@@ -40,6 +35,11 @@ class SE3_ {
 
  private:
   Isometry transform_;
+
+  // Private helper functions
+  static Matrix3 skew(const Vector3& v);
+  static Matrix3 leftJacobian(const Vector3& omega);
+  static Matrix3 leftJacobianInverse(const Vector3& omega);
 
  public:
   // ========== Constructors ==========
@@ -82,104 +82,44 @@ class SE3_ {
     return tf;
   }
 
-  static SE3_ from2D(Scalar x, Scalar y, Scalar theta) {
-    SE3_ tf;
-    tf.transform_.translation() = Vector3(x, y, 0);
-    tf.transform_.rotate(Eigen::AngleAxis<Scalar>(theta, Vector3::UnitZ()));
-    return tf;
-  }
+  /// Create SE3 from 2D pose (x, y, theta)
+  static SE3_ from2D(Scalar x, Scalar y, Scalar theta);
 
-  static SE3_ fromRPY(Scalar roll, Scalar pitch, Scalar yaw) {
-    Eigen::AngleAxis<Scalar> rollAngle(roll, Vector3::UnitX());
-    Eigen::AngleAxis<Scalar> pitchAngle(pitch, Vector3::UnitY());
-    Eigen::AngleAxis<Scalar> yawAngle(yaw, Vector3::UnitZ());
+  /// Create SE3 from roll-pitch-yaw angles
+  static SE3_ fromRPY(Scalar roll, Scalar pitch, Scalar yaw);
 
-    Quaternion q = yawAngle * pitchAngle * rollAngle;
-    SE3_ tf;
-    tf.transform_.rotate(q);
-    return tf;
-  }
-
+  /// Create SE3 from quaternion components
   static SE3_ fromQuaternion(Scalar qx, Scalar qy, Scalar qz, Scalar qw,
-                             const Vector3& translation = Vector3::Zero()) {
-    Quaternion q(qw, qx, qy, qz);
-    return SE3_(translation, q);
-  }
+                             const Vector3& translation = Vector3::Zero());
 
+  /// Create SE3 from quaternion
   static SE3_ fromQuaternion(const Quaternion& q,
-                             const Vector3& translation = Vector3::Zero()) {
-    return SE3_(translation, q);
-  }
+                             const Vector3& translation = Vector3::Zero());
 
+  /// Create SE3 from SO3 rotation
   static SE3_ fromRotation(const SO3_<Scalar>& rotation,
-                           const Vector3& translation = Vector3::Zero()) {
-    return SE3_(translation, rotation.matrix());
-  }
+                           const Vector3& translation = Vector3::Zero());
 
   // ========== Lie Algebra Operations ==========
 
- private:
-  static Matrix3 skew(const Vector3& v) {
-    Matrix3 s;
-    s << Scalar(0), -v.z(), v.y(),
-         v.z(), Scalar(0), -v.x(),
-         -v.y(), v.x(), Scalar(0);
-    return s;
-  }
+  /// Exponential map: se(3) -> SE(3)
+  static SE3_ exp(const Vector6& xi);
 
-  static Matrix3 leftJacobian(const Vector3& omega) {
-    Scalar theta = omega.norm();
-    if (theta < Scalar(1e-10)) {
-      return Matrix3::Identity();
-    }
-    Vector3 axis = omega / theta;
-    Matrix3 omega_hat = skew(axis);
-    Scalar c1 = (Scalar(1) - std::cos(theta)) / (theta * theta);
-    Scalar c2 = (theta - std::sin(theta)) / (theta * theta * theta);
-    return Matrix3::Identity() + c1 * omega_hat + c2 * omega_hat * omega_hat;
-  }
-
-  static Matrix3 leftJacobianInverse(const Vector3& omega) {
-    Scalar theta = omega.norm();
-    if (theta < Scalar(1e-10)) {
-      return Matrix3::Identity();
-    }
-    Vector3 axis = omega / theta;
-    Matrix3 omega_hat = skew(axis);
-    Scalar half_theta = Scalar(0.5) * theta;
-    Scalar c = Scalar(1) / (theta * theta) -
-               (Scalar(1) + std::cos(theta)) / (Scalar(2) * theta * std::sin(theta));
-    return Matrix3::Identity() - half_theta * omega_hat + c * omega_hat * omega_hat;
-  }
-
- public:
-  static SE3_ exp(const Vector6& xi) {
-    Vector3 v = xi.template head<3>();
-    Vector3 omega = xi.template tail<3>();
-    SO3_<Scalar> R = SO3_<Scalar>::exp(omega);
-    Matrix3 V = leftJacobian(omega);
-    Vector3 t = V * v;
-    return SE3_(t, R);
-  }
-
-  Vector6 log() const {
-    SO3_<Scalar> R = rotation();
-    Vector3 omega = R.log();
-    Matrix3 V_inv = leftJacobianInverse(omega);
-    Vector3 v = V_inv * translation();
-    Vector6 xi;
-    xi << v, omega;
-    return xi;
-  }
+  /// Logarithmic map: SE(3) -> se(3)
+  Vector6 log() const;
 
   // ========== Accessors ==========
 
   Matrix4 matrix() const { return transform_.matrix(); }
+
   SO3_<Scalar> rotation() const {
     return SO3_<Scalar>::fromRotationMatrix(transform_.rotation());
   }
+
   Vector3 translation() const { return transform_.translation(); }
+
   Quaternion quaternion() const { return Quaternion(transform_.rotation()); }
+
   const Isometry& isometry() const { return transform_; }
   Isometry& isometry() { return transform_; }
 
@@ -187,17 +127,8 @@ class SE3_ {
   Scalar y() const { return transform_.translation().y(); }
   Scalar z() const { return transform_.translation().z(); }
 
-  void getRPY(Scalar& roll, Scalar& pitch, Scalar& yaw) const {
-    auto m = transform_.rotation();
-    pitch = std::asin(std::clamp(-m(2, 0), Scalar(-1), Scalar(1)));
-    if (std::abs(std::cos(pitch)) > Scalar(1e-6)) {
-      roll = std::atan2(m(2, 1), m(2, 2));
-      yaw = std::atan2(m(1, 0), m(0, 0));
-    } else {
-      roll = Scalar(0);
-      yaw = std::atan2(-m(0, 1), m(1, 1));
-    }
-  }
+  /// Get roll, pitch, yaw angles
+  void getRPY(Scalar& roll, Scalar& pitch, Scalar& yaw) const;
 
   Scalar yaw() const {
     auto m = transform_.rotation();
@@ -209,10 +140,13 @@ class SE3_ {
   void setTranslation(const Vector3& translation) {
     transform_.translation() = translation;
   }
+
   void setRotation(const SO3_<Scalar>& rotation) {
     transform_.linear() = rotation.matrix();
   }
+
   void setRotation(const Matrix3& rotation) { transform_.linear() = rotation; }
+
   void setRotation(const Quaternion& rotation) {
     transform_.linear() = rotation.toRotationMatrix();
   }
@@ -238,13 +172,17 @@ class SE3_ {
 
   SE3_ inverse() const { return SE3_(transform_.inverse()); }
 
+  // ========== Conversion ==========
+
+  template <typename NewScalar>
+  SE3_<NewScalar> cast() const {
+    return SE3_<NewScalar>(transform_.template cast<NewScalar>());
+  }
+
   // ========== Interpolation ==========
 
-  SE3_ slerp(const SE3_& other, Scalar t) const {
-    Vector3 trans = (Scalar(1) - t) * translation() + t * other.translation();
-    SO3_<Scalar> rot = rotation().slerp(other.rotation(), t);
-    return SE3_(trans, rot);
-  }
+  /// Spherical linear interpolation
+  SE3_ slerp(const SE3_& other, Scalar t) const;
 
   // ========== Comparison ==========
 
@@ -256,14 +194,8 @@ class SE3_ {
     return transform_.isApprox(Isometry::Identity(), tolerance);
   }
 
-  std::string toString() const {
-    std::stringstream ss;
-    ss << "SE3(t: [" << x() << ", " << y() << ", " << z() << "], ";
-    Scalar roll, pitch, yaw;
-    getRPY(roll, pitch, yaw);
-    ss << "RPY: [" << roll << ", " << pitch << ", " << yaw << "])";
-    return ss.str();
-  }
+  /// String representation
+  std::string toString() const;
 };
 
 // ========== Type Aliases ==========
@@ -272,5 +204,8 @@ using SE3f = SE3_<float>;
 using SE3 = SE3d;
 
 }  // namespace nanopcl
+
+// Include implementation
+#include "nanopcl/transform/impl/se3_impl.hpp"
 
 #endif  // NANOPCL_TRANSFORM_SE3_HPP

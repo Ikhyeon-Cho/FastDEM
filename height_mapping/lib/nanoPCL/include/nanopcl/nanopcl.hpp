@@ -27,8 +27,7 @@
  * cloud.push_back(Point(1.0f, 2.0f, 3.0f));
  *
  * // Filter
- * filters::VoxelGrid voxel({.voxel_size = 0.1f});
- * voxel.filterInPlace(cloud);
+ * cloud = filters::voxelGrid(cloud, 0.1f);
  *
  * // Transform
  * SE3d T = SE3d::from2D(1.0, 0.0, M_PI/4);
@@ -44,24 +43,31 @@
 #define NANOPCL_VERSION_MINOR 1
 #define NANOPCL_VERSION_PATCH 0
 
-// Core types
-#include "nanopcl/core/timestamp.hpp"
-#include "nanopcl/core/point.hpp"
+// Core (includes: Point, PointCloud, Timestamp, Label, Color)
 #include "nanopcl/core/point_cloud.hpp"
 
-// Transform types
-#include "nanopcl/transform/so3.hpp"
-#include "nanopcl/transform/se3.hpp"
+// Transform (includes: SO3, SE3, Transform)
 #include "nanopcl/transform/transform.hpp"
 #include "nanopcl/transform/provider.hpp"
-#include "nanopcl/transform/operations.hpp"
+#include "nanopcl/transform/transform_ops.hpp"
 
 // Filters
-#include "nanopcl/filters/voxel_grid.hpp"
-#include "nanopcl/filters/passthrough.hpp"
+#include "nanopcl/filters/filters.hpp"
 
 // Geometry
 #include "nanopcl/geometry/bbox.hpp"
+#include "nanopcl/geometry/normal_estimation.hpp"
+
+// Search
+#include "nanopcl/search/voxel_hash_map.hpp"
+
+// I/O
+#include "nanopcl/io/pcd_io.hpp"
+#include "nanopcl/io/bin_io.hpp"
+#include "nanopcl/io/pose_io.hpp"
+
+// Utils
+#include "nanopcl/utils/deskew.hpp"
 
 namespace nanopcl {
 

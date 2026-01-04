@@ -5,609 +5,253 @@
 #ifndef NANOPCL_CORE_POINT_CLOUD_HPP
 #define NANOPCL_CORE_POINT_CLOUD_HPP
 
-#include <array>
-#include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "nanopcl/core/point.hpp"
+#include "nanopcl/core/point_accessors.hpp"
 #include "nanopcl/core/timestamp.hpp"
 
 namespace nanopcl {
 
-/// RGB color type (3 bytes)
-using Color = std::array<uint8_t, 3>;
-
 /**
- * @brief Point Cloud with metadata (frame_id, timestamp)
+ * @brief Point Cloud with metadata and optional attribute channels
  *
- * Container for 3D points with associated timestamp and coordinate frame.
- * Common in robotics for sensor data (LiDAR, depth cameras, etc.).
- *
- * Design follows PCL convention: public 'points' member for direct access.
- * Usage: cloud.points[i], cloud.points.push_back(pt)
+ * Container for 3D points with timestamp, coordinate frame, and optional
+ * per-point attributes (intensity, time, ring, color, label).
  *
  * @note Uses float precision for memory efficiency and cache performance.
- *       Sufficient for typical robotics sensors (LiDAR ~3cm precision).
  */
 class PointCloud {
  public:
-  // ========== Data Members (Public) ==========
+  static constexpr size_t DEFAULT_CAPACITY = 65536;
 
-  /**
-   * @brief Point data storage (public for direct access)
-   *
-   * Following PCL convention, points are directly accessible.
-   * Use cloud.points[i] to access individual points.
-   */
-  std::vector<Point> points;
+  // ==========================================================================
+  // Type Aliases (from point_accessors.hpp)
+  // ==========================================================================
+  using PointRef = nanopcl::PointRef;
+  using ConstPointRef = nanopcl::ConstPointRef;
 
-  /**
-   * @brief Default initial capacity for point clouds
-   *
-   * 1000 points is a reasonable default:
-   * - Small enough to not waste memory for small clouds
-   * - Large enough to avoid frequent reallocations
-   * - Typical for filtered/clustered results
-   */
-  static constexpr size_t DEFAULT_CAPACITY = 10000;
+  using iterator = nanopcl::PointRefIterator;
+  using const_iterator = nanopcl::ConstPointRefIterator;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  // ========== Constructors ==========
+  // ==========================================================================
+  // Lifecycle
+  // ==========================================================================
 
-  /**
-   * @brief Default constructor with default capacity
-   */
-  PointCloud() { points.reserve(DEFAULT_CAPACITY); }
-
-  /**
-   * @brief Construct with explicit capacity
-   * @param reserve_size Initial capacity to reserve
-   *
-   * Example: PointCloud(10000)  // Reserve for 10000 points
-   */
-  explicit PointCloud(size_t reserve_size) { points.reserve(reserve_size); }
-
-  /**
-   * @brief Construct with frame ID and optional capacity
-   * @param frame_id Coordinate frame (required for meaningful sensor data)
-   * @param reserve_size Initial capacity (default: DEFAULT_CAPACITY)
-   *
-   * Examples:
-   *   PointCloud cloud("laser");        // frame="laser", capacity=1000
-   *   PointCloud cloud("laser", 5000);  // frame="laser", capacity=5000
-   *   cloud.setTimestamp(ts);           // Set timestamp later as needed
-   */
+  PointCloud();
+  explicit PointCloud(size_t reserve_size);
   explicit PointCloud(const std::string& frame_id,
-                      size_t reserve_size = DEFAULT_CAPACITY)
-      : frame_id_(frame_id) {
-    points.reserve(reserve_size);
-  }
+                      size_t reserve_size = DEFAULT_CAPACITY);
 
-  // ========== Rule of 5 (for optional channels deep copy) ==========
-
-  /**
-   * @brief Copy constructor (deep copy of all channels)
-   */
-  PointCloud(const PointCloud& other)
-      : points(other.points),
-        frame_id_(other.frame_id_),
-        timestamp_ns_(other.timestamp_ns_) {
-    if (other.intensity_) {
-      intensity_ = std::make_unique<std::vector<float>>(*other.intensity_);
-    }
-    if (other.time_) {
-      time_ = std::make_unique<std::vector<float>>(*other.time_);
-    }
-    if (other.ring_) {
-      ring_ = std::make_unique<std::vector<uint16_t>>(*other.ring_);
-    }
-    if (other.color_) {
-      color_ = std::make_unique<std::vector<Color>>(*other.color_);
-    }
-    if (other.label_) {
-      label_ = std::make_unique<std::vector<uint32_t>>(*other.label_);
-    }
-  }
-
-  /**
-   * @brief Copy assignment operator (deep copy of all channels)
-   */
-  PointCloud& operator=(const PointCloud& other) {
-    if (this != &other) {
-      points = other.points;
-      frame_id_ = other.frame_id_;
-      timestamp_ns_ = other.timestamp_ns_;
-      // Deep copy optional channels
-      intensity_ = other.intensity_
-          ? std::make_unique<std::vector<float>>(*other.intensity_) : nullptr;
-      time_ = other.time_
-          ? std::make_unique<std::vector<float>>(*other.time_) : nullptr;
-      ring_ = other.ring_
-          ? std::make_unique<std::vector<uint16_t>>(*other.ring_) : nullptr;
-      color_ = other.color_
-          ? std::make_unique<std::vector<Color>>(*other.color_) : nullptr;
-      label_ = other.label_
-          ? std::make_unique<std::vector<uint32_t>>(*other.label_) : nullptr;
-    }
-    return *this;
-  }
-
-  /**
-   * @brief Move constructor
-   */
+  PointCloud(const PointCloud& other);
+  PointCloud& operator=(const PointCloud& other);
   PointCloud(PointCloud&& other) noexcept = default;
-
-  /**
-   * @brief Move assignment operator
-   */
   PointCloud& operator=(PointCloud&& other) noexcept = default;
-
-  /**
-   * @brief Destructor
-   */
   ~PointCloud() = default;
 
-  // ========== Merge Operator ==========
+  // ==========================================================================
+  // Metadata & Global Operations
+  // ==========================================================================
 
-  /**
-   * @brief Merge another point cloud into this one (Strict & Fast)
-   *
-   * Policy: Only channels already enabled in *this* are preserved.
-   * - Uses vector::insert for bulk copy (memcpy-level performance)
-   * - Does NOT auto-enable channels from other (schema immutability)
-   * - If this has a channel but other doesn't, pads with default values
-   *
-   * @param other Point cloud to merge from
-   * @return Reference to this cloud
-   */
-  PointCloud& operator+=(const PointCloud& other) {
-    if (other.empty()) return *this;
-
-    // 1. Points: bulk insert (high-speed copy via vector::insert)
-    points.insert(points.end(), other.points.begin(), other.points.end());
-
-    // 2. Channels: only process channels that *this* already has enabled
-    if (intensity_) {
-      if (other.intensity_) {
-        intensity_->insert(intensity_->end(),
-                           other.intensity_->begin(), other.intensity_->end());
-      } else {
-        intensity_->resize(points.size(), 0.0f);
-      }
-    }
-
-    if (time_) {
-      if (other.time_) {
-        time_->insert(time_->end(),
-                      other.time_->begin(), other.time_->end());
-      } else {
-        time_->resize(points.size(), 0.0f);
-      }
-    }
-
-    if (ring_) {
-      if (other.ring_) {
-        ring_->insert(ring_->end(),
-                      other.ring_->begin(), other.ring_->end());
-      } else {
-        ring_->resize(points.size(), 0);
-      }
-    }
-
-    if (color_) {
-      if (other.color_) {
-        color_->insert(color_->end(),
-                       other.color_->begin(), other.color_->end());
-      } else {
-        color_->resize(points.size(), Color{0, 0, 0});
-      }
-    }
-
-    if (label_) {
-      if (other.label_) {
-        label_->insert(label_->end(),
-                       other.label_->begin(), other.label_->end());
-      } else {
-        label_->resize(points.size(), 0);
-      }
-    }
-
-    return *this;
-  }
-
-  // ========== Metadata Access ==========
-
-  /**
-   * @brief Get timestamp in nanoseconds
-   */
-  Timestamp timestamp() const { return timestamp_ns_; }
-
-  /**
-   * @brief Set timestamp in nanoseconds
-   */
+  [[nodiscard]] Timestamp timestamp() const { return timestamp_ns_; }
   void setTimestamp(Timestamp ts) { timestamp_ns_ = ts; }
 
-  /**
-   * @brief Get frame ID (coordinate frame)
-   */
-  const std::string& frameId() const { return frame_id_; }
-
-  /**
-   * @brief Set frame ID (coordinate frame)
-   */
+  [[nodiscard]] const std::string& frameId() const { return frame_id_; }
   void setFrameId(const std::string& id) { frame_id_ = id; }
 
-  // ========== Intensity Channel (Optional) ==========
+  /// Merge another point cloud (only preserved channels are copied)
+  PointCloud& operator+=(const PointCloud& other);
 
-  /**
-   * @brief Check if intensity channel is enabled
-   */
-  bool hasIntensity() const { return intensity_ != nullptr; }
+  /// Merge two point clouds and return a new one
+  [[nodiscard]] PointCloud operator+(const PointCloud& other) const;
 
-  /**
-   * @brief Enable intensity channel (lazy initialization)
-   *
-   * Allocates intensity storage and resizes to match current points size.
-   * Safe to call multiple times (no-op if already enabled).
-   */
-  void enableIntensity() {
-    if (!intensity_) {
-      intensity_ = std::make_unique<std::vector<float>>();
-      intensity_->reserve(points.capacity());
-      intensity_->resize(points.size(), 0.0f);
-    }
-  }
+  // ==========================================================================
+  // Attribute Channels
+  // ==========================================================================
 
-  /**
-   * @brief Get mutable reference to intensity vector
-   * @throws std::runtime_error if intensity not enabled
-   */
-  std::vector<float>& intensity() {
-    if (!intensity_) {
-      throw std::runtime_error("Intensity channel not enabled. Call enableIntensity() first.");
-    }
-    return *intensity_;
-  }
-
-  /**
-   * @brief Get const reference to intensity vector
-   * @throws std::runtime_error if intensity not enabled
-   */
-  const std::vector<float>& intensity() const {
-    if (!intensity_) {
-      throw std::runtime_error("Intensity channel not enabled. Call enableIntensity() first.");
-    }
-    return *intensity_;
-  }
-
-  /**
-   * @brief Disable intensity channel and free memory
-   */
+  // --- Intensity (Reflectivity) ---
+  [[nodiscard]] bool hasIntensity() const { return intensity_ != nullptr; }
+  void enableIntensity();
+  std::vector<float>& intensity();
+  const std::vector<float>& intensity() const;
   void disableIntensity() { intensity_.reset(); }
 
-  // ========== Time Channel (Optional) ==========
-  // Relative timestamp per point for motion compensation (deskewing)
-
-  bool hasTime() const { return time_ != nullptr; }
-
-  void enableTime() {
-    if (!time_) {
-      time_ = std::make_unique<std::vector<float>>();
-      time_->reserve(points.capacity());
-      time_->resize(points.size(), 0.0f);
-    }
-  }
-
-  std::vector<float>& time() {
-    if (!time_) {
-      throw std::runtime_error("Time channel not enabled. Call enableTime() first.");
-    }
-    return *time_;
-  }
-
-  const std::vector<float>& time() const {
-    if (!time_) {
-      throw std::runtime_error("Time channel not enabled. Call enableTime() first.");
-    }
-    return *time_;
-  }
-
+  // --- Time (Relative timestamp) ---
+  [[nodiscard]] bool hasTime() const { return time_ != nullptr; }
+  void enableTime();
+  std::vector<float>& time();
+  const std::vector<float>& time() const;
   void disableTime() { time_.reset(); }
 
-  // ========== Ring Channel (Optional) ==========
-  // Laser channel index for multi-layer LiDARs (ground segmentation)
-
-  bool hasRing() const { return ring_ != nullptr; }
-
-  void enableRing() {
-    if (!ring_) {
-      ring_ = std::make_unique<std::vector<uint16_t>>();
-      ring_->reserve(points.capacity());
-      ring_->resize(points.size(), 0);
-    }
-  }
-
-  std::vector<uint16_t>& ring() {
-    if (!ring_) {
-      throw std::runtime_error("Ring channel not enabled. Call enableRing() first.");
-    }
-    return *ring_;
-  }
-
-  const std::vector<uint16_t>& ring() const {
-    if (!ring_) {
-      throw std::runtime_error("Ring channel not enabled. Call enableRing() first.");
-    }
-    return *ring_;
-  }
-
+  // --- Ring (Laser channel index) ---
+  [[nodiscard]] bool hasRing() const { return ring_ != nullptr; }
+  void enableRing();
+  std::vector<uint16_t>& ring();
+  const std::vector<uint16_t>& ring() const;
   void disableRing() { ring_.reset(); }
 
-  // ========== Color Channel (Optional) ==========
-  // RGB color for camera-LiDAR fusion or visualization
-
-  bool hasColor() const { return color_ != nullptr; }
-
-  void enableColor() {
-    if (!color_) {
-      color_ = std::make_unique<std::vector<Color>>();
-      color_->reserve(points.capacity());
-      color_->resize(points.size(), Color{0, 0, 0});
-    }
-  }
-
-  std::vector<Color>& color() {
-    if (!color_) {
-      throw std::runtime_error("Color channel not enabled. Call enableColor() first.");
-    }
-    return *color_;
-  }
-
-  const std::vector<Color>& color() const {
-    if (!color_) {
-      throw std::runtime_error("Color channel not enabled. Call enableColor() first.");
-    }
-    return *color_;
-  }
-
+  // --- Color (RGB storage) ---
+  [[nodiscard]] bool hasColor() const { return color_ != nullptr; }
+  void enableColor();
+  std::vector<Color>& color();
+  const std::vector<Color>& color() const;
   void disableColor() { color_.reset(); }
 
-  // ========== Label Channel (Optional) ==========
-  // Semantic label for semantic SLAM (SemanticKITTI/NuScenes format)
-  // Lower 16 bits: semantic class, Upper 16 bits: instance ID
+  // --- Normal (Surface normal vector) ---
+  [[nodiscard]] bool hasNormal() const { return normal_ != nullptr; }
+  void enableNormal();
+  std::vector<Eigen::Vector3f>& normal();
+  const std::vector<Eigen::Vector3f>& normal() const;
+  void disableNormal() { normal_.reset(); }
 
-  bool hasLabel() const { return label_ != nullptr; }
-
-  void enableLabel() {
-    if (!label_) {
-      label_ = std::make_unique<std::vector<uint32_t>>();
-      label_->reserve(points.capacity());
-      label_->resize(points.size(), 0);
-    }
-  }
-
-  std::vector<uint32_t>& label() {
-    if (!label_) {
-      throw std::runtime_error("Label channel not enabled. Call enableLabel() first.");
-    }
-    return *label_;
-  }
-
-  const std::vector<uint32_t>& label() const {
-    if (!label_) {
-      throw std::runtime_error("Label channel not enabled. Call enableLabel() first.");
-    }
-    return *label_;
-  }
-
+  // --- Label (Semantic segmentation) ---
+  [[nodiscard]] bool hasLabel() const { return label_ != nullptr; }
+  void enableLabel();
+  std::vector<Label>& label();
+  const std::vector<Label>& label() const;
   void disableLabel() { label_.reset(); }
 
-  // ========== Label Helper Functions ==========
+  // ==========================================================================
+  // Data Access & Storage
+  // ==========================================================================
 
-  /// Extract semantic class from label (lower 16 bits)
-  static uint16_t semanticClass(uint32_t label) {
-    return static_cast<uint16_t>(label & 0xFFFF);
+  // --- Container Info ---
+  [[nodiscard]] size_t size() const { return points_.size(); }
+  [[nodiscard]] bool empty() const { return points_.empty(); }
+  [[nodiscard]] size_t capacity() const { return points_.capacity(); }
+  void reserve(size_t n);
+  void resize(size_t n);
+  void shrink_to_fit();
+  void clear();
+  void swap(PointCloud& other) noexcept;
+
+  // --- Point Addition ---
+  void push_back(const Point& p);
+  void push_back(Point&& p);
+  void pop_back();
+
+  /**
+   * @brief Add point with attributes (variadic, type-safe)
+   * Channels are auto-enabled when attributes are provided.
+   * Usage: cloud.push_back(pt, Intensity(0.5f), Ring(3));
+   */
+  template <typename... Attrs>
+  void push_back(const Point& p, Attrs&&... attrs) {
+    push_back(p);
+    (applyAttribute(std::forward<Attrs>(attrs)), ...);
   }
 
-  /// Extract instance ID from label (upper 16 bits)
-  static uint16_t instanceId(uint32_t label) {
-    return static_cast<uint16_t>(label >> 16);
+  // --- XYZ (Coordinates) ---
+  std::vector<Point>& xyz() { return points_; }
+  const std::vector<Point>& xyz() const { return points_; }
+
+  // --- Data Access (STL-compatible) ---
+  Point& operator[](size_t i) { return points_[i]; }
+  const Point& operator[](size_t i) const { return points_[i]; }
+
+  /// @brief Extract subset by indices (Fancy Indexing)
+  /// @param indices Vector of point indices to extract
+  /// @return New PointCloud containing only the specified points with all
+  /// attributes
+  [[nodiscard]] PointCloud operator[](const std::vector<size_t>& indices) const;
+
+  Point* data() { return points_.data(); }
+  const Point* data() const { return points_.data(); }
+
+  Point& at(size_t i) { return points_.at(i); }
+  const Point& at(size_t i) const { return points_.at(i); }
+
+  Point& front() { return points_.front(); }
+  const Point& front() const { return points_.front(); }
+  Point& back() { return points_.back(); }
+  const Point& back() const { return points_.back(); }
+
+  // --- Iterators ---
+  iterator begin() { return iterator(*this, 0); }
+  iterator end() { return iterator(*this, size()); }
+  const_iterator begin() const { return const_iterator(*this, 0); }
+  const_iterator end() const { return const_iterator(*this, size()); }
+  const_iterator cbegin() const { return const_iterator(*this, 0); }
+  const_iterator cend() const { return const_iterator(*this, size()); }
+  reverse_iterator rbegin() { return reverse_iterator(end()); }
+  reverse_iterator rend() { return reverse_iterator(begin()); }
+  const_reverse_iterator rbegin() const {
+    return const_reverse_iterator(end());
+  }
+  const_reverse_iterator rend() const {
+    return const_reverse_iterator(begin());
+  }
+  const_reverse_iterator crbegin() const {
+    return const_reverse_iterator(cend());
+  }
+  const_reverse_iterator crend() const {
+    return const_reverse_iterator(cbegin());
   }
 
-  /// Create label from semantic class and instance ID
-  static uint32_t makeLabel(uint16_t semantic_class, uint16_t instance_id = 0) {
-    return static_cast<uint32_t>(instance_id) << 16 | semantic_class;
-  }
+  // --- Erase Operations ---
+  iterator erase(iterator pos);
+  iterator erase(iterator first, iterator last);
+  void erase(size_t index);
+  void erase(size_t first, size_t last);
 
-  // ========== Convenience Methods (Wrappers) ==========
-
-  /**
-   * @brief Number of points in the cloud
-   */
-  size_t size() const { return points.size(); }
-
-  /**
-   * @brief Check if cloud is empty
-   */
-  bool empty() const { return points.empty(); }
-
-  /**
-   * @brief Reserve memory for n points (and all enabled channels)
-   */
-  void reserve(size_t n) {
-    points.reserve(n);
-    if (intensity_) intensity_->reserve(n);
-    if (time_) time_->reserve(n);
-    if (ring_) ring_->reserve(n);
-    if (color_) color_->reserve(n);
-    if (label_) label_->reserve(n);
-  }
-
-  /**
-   * @brief Get allocated capacity
-   */
-  size_t capacity() const { return points.capacity(); }
-
-  /**
-   * @brief Resize cloud to n points (and all enabled channels)
-   */
-  void resize(size_t n) {
-    points.resize(n);
-    if (intensity_) intensity_->resize(n, 0.0f);
-    if (time_) time_->resize(n, 0.0f);
-    if (ring_) ring_->resize(n, 0);
-    if (color_) color_->resize(n, Color{0, 0, 0});
-    if (label_) label_->resize(n, 0);
-  }
-
-  /**
-   * @brief Clear all points (and all enabled channels)
-   */
-  void clear() {
-    points.clear();
-    if (intensity_) intensity_->clear();
-    if (time_) time_->clear();
-    if (ring_) ring_->clear();
-    if (color_) color_->clear();
-    if (label_) label_->clear();
-  }
-
-  /**
-   * @brief Add point to cloud (copy)
-   * @note Enabled channels get default values (0)
-   */
-  void push_back(const Point& p) {
-    points.push_back(p);
-    if (intensity_) intensity_->push_back(0.0f);
-    if (time_) time_->push_back(0.0f);
-    if (ring_) ring_->push_back(0);
-    if (color_) color_->push_back(Color{0, 0, 0});
-    if (label_) label_->push_back(0);
-  }
-
-  /**
-   * @brief Add point to cloud (move)
-   * @note Enabled channels get default values (0)
-   */
-  void push_back(Point&& p) {
-    points.push_back(std::move(p));
-    if (intensity_) intensity_->push_back(0.0f);
-    if (time_) time_->push_back(0.0f);
-    if (ring_) ring_->push_back(0);
-    if (color_) color_->push_back(Color{0, 0, 0});
-    if (label_) label_->push_back(0);
-  }
-
-  /**
-   * @brief Add point with intensity (synchronized)
-   * @param p Point to add
-   * @param intensity_val Intensity value (ignored if intensity not enabled)
-   * @note Other channels get default values (0)
-   */
-  void push_back(const Point& p, float intensity_val) {
-    points.push_back(p);
-    if (intensity_) intensity_->push_back(intensity_val);
-    if (time_) time_->push_back(0.0f);
-    if (ring_) ring_->push_back(0);
-    if (color_) color_->push_back(Color{0, 0, 0});
-    if (label_) label_->push_back(0);
-  }
-
-  /**
-   * @brief Construct point in-place
-   * @note Enabled channels get default values (0)
-   */
-  template <typename... Args>
-  void emplace_back(Args&&... args) {
-    points.emplace_back(std::forward<Args>(args)...);
-    if (intensity_) intensity_->push_back(0.0f);
-    if (time_) time_->push_back(0.0f);
-    if (ring_) ring_->push_back(0);
-    if (color_) color_->push_back(Color{0, 0, 0});
-    if (label_) label_->push_back(0);
-  }
-
-  /**
-   * @brief Remove last point (and all enabled channels)
-   */
-  void pop_back() {
-    points.pop_back();
-    if (intensity_) intensity_->pop_back();
-    if (time_) time_->pop_back();
-    if (ring_) ring_->pop_back();
-    if (color_) color_->pop_back();
-    if (label_) label_->pop_back();
-  }
-
-  /**
-   * @brief Access point by index
-   */
-  Point& operator[](size_t i) { return points[i]; }
-  const Point& operator[](size_t i) const { return points[i]; }
-
-  // ========== Iterators (for range-based for loops) ==========
-
-  using iterator = std::vector<Point>::iterator;
-  using const_iterator = std::vector<Point>::const_iterator;
-
-  iterator begin() { return points.begin(); }
-  iterator end() { return points.end(); }
-  const_iterator begin() const { return points.begin(); }
-  const_iterator end() const { return points.end(); }
-  const_iterator cbegin() const { return points.cbegin(); }
-  const_iterator cend() const { return points.cend(); }
-
-  /**
-   * @brief Erase single point (and all enabled channels)
-   */
-  iterator erase(iterator pos) {
-    auto idx = std::distance(points.begin(), pos);
-    if (intensity_) intensity_->erase(intensity_->begin() + idx);
-    if (time_) time_->erase(time_->begin() + idx);
-    if (ring_) ring_->erase(ring_->begin() + idx);
-    if (color_) color_->erase(color_->begin() + idx);
-    if (label_) label_->erase(label_->begin() + idx);
-    return points.erase(pos);
-  }
-
-  /**
-   * @brief Erase range of points (and all enabled channels)
-   */
-  iterator erase(iterator first, iterator last) {
-    auto first_idx = std::distance(points.begin(), first);
-    auto last_idx = std::distance(points.begin(), last);
-    if (intensity_) {
-      intensity_->erase(intensity_->begin() + first_idx,
-                        intensity_->begin() + last_idx);
-    }
-    if (time_) {
-      time_->erase(time_->begin() + first_idx, time_->begin() + last_idx);
-    }
-    if (ring_) {
-      ring_->erase(ring_->begin() + first_idx, ring_->begin() + last_idx);
-    }
-    if (color_) {
-      color_->erase(color_->begin() + first_idx, color_->begin() + last_idx);
-    }
-    if (label_) {
-      label_->erase(label_->begin() + first_idx, label_->begin() + last_idx);
-    }
-    return points.erase(first, last);
-  }
+  // --- Point-Centric Access (xyz + all attributes) ---
+  PointRef point(size_t i) { return PointRef(*this, i); }
+  ConstPointRef point(size_t i) const { return ConstPointRef(*this, i); }
 
  private:
+  // Friend declarations for accessor classes
+  template <bool>
+  friend class PointRefImpl;
+  template <bool>
+  friend class PointRefIteratorImpl;
+
+  // Attribute Application Helpers
+  void applyAttribute(const Intensity& v) {
+    if (!intensity_) enableIntensity();
+    intensity_->back() = v.val;
+  }
+  void applyAttribute(const Time& v) {
+    if (!time_) enableTime();
+    time_->back() = v.val;
+  }
+  void applyAttribute(const Ring& v) {
+    if (!ring_) enableRing();
+    ring_->back() = v.val;
+  }
+  void applyAttribute(const Color& v) {
+    if (!color_) enableColor();
+    color_->back() = v;
+  }
+  void applyAttribute(const Label& v) {
+    if (!label_) enableLabel();
+    label_->back() = v;
+  }
+  void applyAttribute(const Normal& v) {
+    if (!normal_) enableNormal();
+    normal_->back() = v.val;
+  }
+
+  // Data Members
+  std::vector<Point> points_;
   std::string frame_id_;
   Timestamp timestamp_ns_{0};
 
-  // Optional attribute channels (SoA layout for cache efficiency)
-  std::unique_ptr<std::vector<float>> intensity_;    // Reflectivity
-  std::unique_ptr<std::vector<float>> time_;         // Relative timestamp (deskewing)
-  std::unique_ptr<std::vector<uint16_t>> ring_;      // Laser channel index
-  std::unique_ptr<std::vector<Color>> color_;        // RGB color
-  std::unique_ptr<std::vector<uint32_t>> label_;     // Semantic label (SemanticKITTI format)
+  std::unique_ptr<std::vector<float>> intensity_;
+  std::unique_ptr<std::vector<float>> time_;
+  std::unique_ptr<std::vector<uint16_t>> ring_;
+  std::unique_ptr<std::vector<Color>> color_;
+  std::unique_ptr<std::vector<Label>> label_;
+  std::unique_ptr<std::vector<Eigen::Vector3f>> normal_;
 };
 
 }  // namespace nanopcl
+
+#include "nanopcl/core/impl/point_accessors_impl.hpp"
+#include "nanopcl/core/impl/point_cloud_impl.hpp"
 
 #endif  // NANOPCL_CORE_POINT_CLOUD_HPP
