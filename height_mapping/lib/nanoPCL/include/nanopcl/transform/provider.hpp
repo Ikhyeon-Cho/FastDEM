@@ -11,7 +11,7 @@
 #include "nanopcl/core/timestamp.hpp"
 #include "nanopcl/transform/transform.hpp"
 
-namespace nanopcl {
+namespace npcl {
 
 /**
  * @brief Interface for providing transforms between coordinate frames
@@ -45,8 +45,8 @@ class TransformProvider {
    * @throws std::runtime_error if transform is not available
    */
   virtual Transform getTransform(const std::string& target_frame,
-                                  const std::string& source_frame,
-                                  Timestamp time) = 0;
+                                 const std::string& source_frame,
+                                 Timestamp time) = 0;
 
   /**
    * @brief Get the latest available transform between frames
@@ -77,6 +77,6 @@ class TransformProvider {
   }
 };
 
-}  // namespace nanopcl
+}  // namespace npcl
 
 #endif  // NANOPCL_TRANSFORM_PROVIDER_HPP

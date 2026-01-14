@@ -12,7 +12,6 @@
 
 #include <memory>
 
-#include "height_mapping/height_map.h"
 #include "height_mapping/types.h"
 
 namespace height_mapping::ppl {
@@ -21,14 +20,15 @@ namespace height_mapping::ppl {
 
 struct MappingFrame {
   using Ptr = std::shared_ptr<MappingFrame>;
-  std::shared_ptr<PointCloud> cloud;
-  std::shared_ptr<HeightMap> map;
 
-  Transformf pose;       // Robot pose in map frame (T_map_base)
-  Transformf extrinsic;  // Sensor extrinsic (T_base_sensor)
+  std::shared_ptr<PointCloud> cloud;
+  std::shared_ptr<HeightMap> height_map;
+
+  Transformf robot_pose;   // Robot pose in map frame (T_map_base)
+  Transformf extrinsic;    // Sensor extrinsic (T_base_sensor)
 
   MappingFrame(std::shared_ptr<PointCloud> c, std::shared_ptr<HeightMap> m)
-      : cloud(std::move(c)), map(std::move(m)) {}
+      : cloud(std::move(c)), height_map(std::move(m)) {}
 };
 
 }  // namespace height_mapping::ppl

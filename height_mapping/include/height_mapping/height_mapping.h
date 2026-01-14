@@ -14,7 +14,6 @@
 
 // Core Types
 #include "height_mapping/types.h"
-#include "height_mapping/height_map.h"
 
 // Interfaces
 #include "height_mapping/interfaces/mapper.h"
@@ -23,6 +22,7 @@
 
 // Mappers
 #include "height_mapping/height_mapper.h"
+#include "height_mapping/height_mapper_config.h"
 #include "height_mapping/ppl/height_mapper.h"
 
 #endif  // HEIGHT_MAPPING_H

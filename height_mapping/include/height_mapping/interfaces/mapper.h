@@ -10,7 +10,6 @@
 #ifndef HEIGHT_MAPPING_CORE_INTERFACES_MAPPER_H
 #define HEIGHT_MAPPING_CORE_INTERFACES_MAPPER_H
 
-#include "height_mapping/height_map.h"
 #include "height_mapping/types.h"
 
 namespace height_mapping {

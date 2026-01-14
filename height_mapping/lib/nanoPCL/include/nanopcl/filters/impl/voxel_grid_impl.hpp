@@ -13,7 +13,7 @@
 #include <limits>
 #include <stdexcept>
 
-namespace nanopcl {
+namespace npcl {
 namespace filters {
 namespace detail {
 
@@ -25,6 +25,9 @@ constexpr int32_t VOXEL_COORD_OFFSET = 1 << 20;  // 1048576
 constexpr int32_t VOXEL_COORD_MIN = -VOXEL_COORD_OFFSET;
 constexpr int32_t VOXEL_COORD_MAX = VOXEL_COORD_OFFSET - 1;
 constexpr uint64_t VOXEL_COORD_MASK = 0x1FFFFF;  // 21 bits
+
+/// @brief Minimum supported voxel size (1mm) to ensure spatial range safety
+constexpr float MIN_VOXEL_SIZE = 0.001f;
 
 // Packed voxel key with original index
 struct IndexedPoint {
@@ -133,7 +136,7 @@ inline void addRepresentativePoint(
       for (size_t i = group_start; i < group_end; ++i) {
         centroid += input[indexed_points[i].index];
       }
-      output.push_back(centroid / static_cast<float>(group_size));
+      output.add(centroid / static_cast<float>(group_size));
       addAveragedAttributes(input, indexed_points, group_start, group_end,
                             output, has_intensity, has_time, has_ring,
                             has_color, has_label);
@@ -142,7 +145,7 @@ inline void addRepresentativePoint(
 
     case VoxelMethod::FIRST: {
       uint32_t idx = indexed_points[group_start].index;
-      output.push_back(input[idx]);
+      output.add(input[idx]);
       copyAttributes(input, idx, output, has_intensity, has_time, has_ring,
                      has_color, has_label);
       break;
@@ -152,14 +155,15 @@ inline void addRepresentativePoint(
       // Deterministic selection (reproducible, not truly random)
       size_t offset = (group_size * 7 + group_start * 13) % group_size;
       uint32_t idx = indexed_points[group_start + offset].index;
-      output.push_back(input[idx]);
+      output.add(input[idx]);
       copyAttributes(input, idx, output, has_intensity, has_time, has_ring,
                      has_color, has_label);
       break;
     }
 
     case VoxelMethod::CLOSEST: {
-      Point center = keyToVoxelCenter(indexed_points[group_start].key, voxel_size);
+      Point center =
+          keyToVoxelCenter(indexed_points[group_start].key, voxel_size);
       float min_dist_sq = std::numeric_limits<float>::max();
       uint32_t closest_idx = indexed_points[group_start].index;
 
@@ -171,15 +175,14 @@ inline void addRepresentativePoint(
           closest_idx = idx;
         }
       }
-      output.push_back(input[closest_idx]);
+      output.add(input[closest_idx]);
       copyAttributes(input, closest_idx, output, has_intensity, has_time,
                      has_ring, has_color, has_label);
       break;
     }
 
     case VoxelMethod::VOXEL_CENTER: {
-      output.push_back(
-          keyToVoxelCenter(indexed_points[group_start].key, voxel_size));
+      output.add(keyToVoxelCenter(indexed_points[group_start].key, voxel_size));
       addAveragedAttributes(input, indexed_points, group_start, group_end,
                             output, has_intensity, has_time, has_ring,
                             has_color, has_label);
@@ -218,8 +221,10 @@ inline PointCloud voxelGrid(const PointCloud& cloud, float voxel_size) {
 
 inline PointCloud voxelGrid(const PointCloud& cloud, float voxel_size,
                             VoxelMethod method) {
-  if (voxel_size <= 0 || voxel_size > 100.0f) {
-    throw std::invalid_argument("voxel_size must be in (0, 100]");
+  if (voxel_size < detail::MIN_VOXEL_SIZE || voxel_size > 100.0f) {
+    throw std::invalid_argument(
+        "voxel_size must be in [0.001, 100]. "
+        "Spatial range is limited to +/- 1,048,576 * voxel_size meters.");
   }
 
   PointCloud output;
@@ -283,10 +288,9 @@ inline PointCloud voxelGrid(const PointCloud& cloud, float voxel_size,
       ++group_end;
     }
 
-    detail::addRepresentativePoint(cloud, indexed_points, group_start,
-                                   group_end, output, method, voxel_size,
-                                   has_intensity, has_time, has_ring,
-                                   has_color, has_label);
+    detail::addRepresentativePoint(
+        cloud, indexed_points, group_start, group_end, output, method,
+        voxel_size, has_intensity, has_time, has_ring, has_color, has_label);
 
     group_start = group_end;
   }
@@ -304,8 +308,10 @@ inline PointCloud voxelGrid(PointCloud&& cloud, float voxel_size) {
 
 inline PointCloud voxelGrid(PointCloud&& cloud, float voxel_size,
                             VoxelMethod method) {
-  if (voxel_size <= 0 || voxel_size > 100.0f) {
-    throw std::invalid_argument("voxel_size must be in (0, 100]");
+  if (voxel_size < detail::MIN_VOXEL_SIZE || voxel_size > 100.0f) {
+    throw std::invalid_argument(
+        "voxel_size must be in [0.001, 100]. "
+        "Spatial range is limited to +/- 1,048,576 * voxel_size meters.");
   }
 
   if (cloud.empty()) {
@@ -383,7 +389,8 @@ inline PointCloud voxelGrid(PointCloud&& cloud, float voxel_size,
         res.centroid = centroid / n;
         res.intensity = sum_intensity / n;
         res.time = sum_time / n;
-        res.ring = has_ring ? cloud.ring()[indexed_points[group_start].index] : 0;
+        res.ring =
+            has_ring ? cloud.ring()[indexed_points[group_start].index] : 0;
         res.color = has_color ? Color(static_cast<uint8_t>(sum_r / n),
                                       static_cast<uint8_t>(sum_g / n),
                                       static_cast<uint8_t>(sum_b / n))
@@ -417,8 +424,8 @@ inline PointCloud voxelGrid(PointCloud&& cloud, float voxel_size,
       }
 
       case VoxelMethod::CLOSEST: {
-        Point center =
-            detail::keyToVoxelCenter(indexed_points[group_start].key, voxel_size);
+        Point center = detail::keyToVoxelCenter(indexed_points[group_start].key,
+                                                voxel_size);
         float min_dist_sq = std::numeric_limits<float>::max();
         uint32_t closest_idx = indexed_points[group_start].index;
 
@@ -455,11 +462,12 @@ inline PointCloud voxelGrid(PointCloud&& cloud, float voxel_size,
           }
         }
 
-        res.centroid =
-            detail::keyToVoxelCenter(indexed_points[group_start].key, voxel_size);
+        res.centroid = detail::keyToVoxelCenter(indexed_points[group_start].key,
+                                                voxel_size);
         res.intensity = sum_intensity / n;
         res.time = sum_time / n;
-        res.ring = has_ring ? cloud.ring()[indexed_points[group_start].index] : 0;
+        res.ring =
+            has_ring ? cloud.ring()[indexed_points[group_start].index] : 0;
         res.color = has_color ? Color(static_cast<uint8_t>(sum_r / n),
                                       static_cast<uint8_t>(sum_g / n),
                                       static_cast<uint8_t>(sum_b / n))
@@ -496,6 +504,6 @@ inline PointCloud voxelGrid(PointCloud&& cloud, float voxel_size,
 }
 
 }  // namespace filters
-}  // namespace nanopcl
+}  // namespace npcl
 
 #endif  // NANOPCL_FILTERS_IMPL_VOXEL_GRID_IMPL_HPP

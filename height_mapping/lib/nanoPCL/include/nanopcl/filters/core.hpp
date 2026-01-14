@@ -1,4 +1,3 @@
-// nanopcl/filters/core.hpp
 // nanoPCL - Header-only C++17 point cloud library
 // Copyright (c) 2025 Ikhyeon Cho <tre0430@korea.ac.kr>
 // SPDX-License-Identifier: MIT
@@ -8,7 +7,7 @@
 
 #include "nanopcl/core/point_cloud.hpp"
 
-namespace nanopcl {
+namespace npcl {
 namespace filters {
 
 /// Filter mode for spatial filters
@@ -18,13 +17,13 @@ enum class FilterMode {
 };
 
 // =============================================================================
-// Generic Filter
+// Generic Filter (With Predicate)
 // =============================================================================
 
 /**
  * @brief Filter point cloud with user-defined predicate (copy version)
  *
- * @tparam Predicate Callable with signature: bool(ConstPointRef)
+ * @tparam Predicate Callable with signature: `bool(ConstPointRef)`
  * @param cloud Input point cloud (unchanged)
  * @param predicate Returns true for points to KEEP
  * @return New point cloud containing only points that pass the predicate
@@ -32,7 +31,8 @@ enum class FilterMode {
  * Example:
  * @code
  * auto filtered = filters::filter(cloud, [](auto p) {
- *   return p.point().z() > 0 && p.hasIntensity() && p.intensity() > 0.5f;
+ *   // p is a ConstPointRef, access XYZ or attributes directly
+ *   return p.z() > 0 && p.hasIntensity() && p.intensity() > 0.5f;
  * });
  * @endcode
  */
@@ -42,7 +42,7 @@ template <typename Predicate>
 /**
  * @brief Filter point cloud with user-defined predicate (move version)
  *
- * @tparam Predicate Callable with signature: bool(ConstPointRef)
+ * @tparam Predicate Callable with signature: `bool(ConstPointRef)`
  * @param cloud Input point cloud (consumed, do not use after call)
  * @param predicate Returns true for points to KEEP
  * @return Filtered point cloud (reuses input memory)
@@ -53,7 +53,7 @@ template <typename Predicate>
  * Example:
  * @code
  * cloud = filters::filter(std::move(cloud), [](auto p) {
- *   return p.point().z() > 0;
+ *   return p.z() > 0;
  * });
  * @endcode
  */
@@ -78,7 +78,7 @@ template <typename Predicate>
 [[nodiscard]] PointCloud removeInvalid(PointCloud&& cloud);
 
 }  // namespace filters
-}  // namespace nanopcl
+}  // namespace npcl
 
 #include "nanopcl/filters/impl/core_impl.hpp"
 

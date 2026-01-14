@@ -8,7 +8,7 @@
 #include <chrono>
 #include <cstdint>
 
-namespace nanopcl {
+namespace npcl {
 
 /**
  * @brief Timestamp type for temporal metadata (nanoseconds since epoch)
@@ -91,6 +91,6 @@ inline double diff(Timestamp a, Timestamp b) {
 
 }  // namespace time
 
-}  // namespace nanopcl
+}  // namespace npcl
 
 #endif  // NANOPCL_CORE_TIMESTAMP_HPP

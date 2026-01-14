@@ -161,11 +161,12 @@ class TF2 : public IExtrinsicsProvider, public IRobotPoseProvider {
   }
 
   // Helper: Convert ROS transform to Transformf with frame info
+  // Note: Transformf constructor takes (parent, child, T) order
   Transformf convertToTransform(const geometry_msgs::TransformStamped& tf_msg,
-                                const std::string& source_frame,
-                                const std::string& target_frame) const {
+                                const std::string& child_frame,
+                                const std::string& parent_frame) const {
     Eigen::Isometry3f tf = tf2::transformToEigen(tf_msg).cast<float>();
-    return Transformf().from(source_frame).to(target_frame).with(tf);
+    return Transformf(parent_frame, child_frame, tf);
   }
 
  private:

@@ -9,7 +9,7 @@
 #include <array>
 #include <cstdint>
 
-namespace nanopcl {
+namespace npcl {
 
 /// 3D point with float precision
 using Point = Eigen::Vector3f;
@@ -18,7 +18,7 @@ using Point = Eigen::Vector3f;
  * @brief Strong Types for Point Attributes
  *
  * These structs serve two roles:
- * 1. Type-safe tags for variadic push_back (API)
+ * 1. Type-safe tags for variadic add() (API)
  * 2. Data storage types (Implementation) - Zero overhead wrappers
  */
 
@@ -119,13 +119,24 @@ struct InstanceId {
 };
 
 /**
- * @brief Semantic label for point cloud segmentation
+ * @brief Semantic label for point cloud segmentation (32-bit packed)
  *
- * Follows SemanticKITTI/NuScenes format:
- * - Lower 16 bits: semantic class (e.g., 10=car, 11=bicycle)
- * - Upper 16 bits: instance ID (distinguishes objects of same class)
+ * Efficiently stores both semantic class and instance ID in a single 32-bit integer.
+ * Compatible with SemanticKITTI and NuScenes formats.
+ *
+ * Bit Layout:
+ * - [0-15]  Lower 16 bits: Semantic Class (e.g., 10=Car, 40=Road)
+ * - [16-31] Upper 16 bits: Instance ID (distinguishes individual objects)
  *
  * @note sizeof(Label) == sizeof(uint32_t) for memory efficiency
+ *
+ * @code
+ *   // Create label for Car (class 10), instance 5
+ *   Label l(SemanticClass(10), InstanceId(5));
+ *   
+ *   uint16_t cls = l.semanticClass(); // 10
+ *   uint16_t id = l.instanceId();     // 5
+ * @endcode
  */
 struct Label {
   uint32_t val;
@@ -138,17 +149,25 @@ struct Label {
       : val((static_cast<uint32_t>(inst.val) << 16) | cls.val) {}
 
   // --- Accessors ---
+  
+  /// Get lower 16 bits (semantic class)
   constexpr uint16_t semanticClass() const {
     return static_cast<uint16_t>(val & 0xFFFF);
   }
+  
+  /// Get upper 16 bits (instance ID)
   constexpr uint16_t instanceId() const {
     return static_cast<uint16_t>(val >> 16);
   }
 
   // --- Mutators ---
+  
+  /// Set lower 16 bits (semantic class)
   constexpr void setSemanticClass(uint16_t cls) {
     val = (val & 0xFFFF0000) | cls;
   }
+  
+  /// Set upper 16 bits (instance ID)
   constexpr void setInstanceId(uint16_t inst) {
     val = (val & 0x0000FFFF) | (static_cast<uint32_t>(inst) << 16);
   }
@@ -164,6 +183,127 @@ struct Label {
 
 static_assert(sizeof(Label) == sizeof(uint32_t), "Label must be 4 bytes");
 
-}  // namespace nanopcl
+// =============================================================================
+// Point DTOs (Data Transfer Objects)
+// =============================================================================
+// PCL-style convenience types for add() operations.
+// These are for DATA TRANSFER only - internal storage remains SoA.
+//
+// Usage: cloud.add(PointXYZI{1.0f, 2.0f, 3.0f, 0.5f});
+
+/// Point with intensity (LiDAR basic)
+struct PointXYZI {
+  float x, y, z;
+  float intensity;
+
+  constexpr PointXYZI(float x_, float y_, float z_, float i_)
+      : x(x_), y(y_), z(z_), intensity(i_) {}
+};
+
+/// Point with intensity and ring (multi-beam LiDAR)
+struct PointXYZIR {
+  float x, y, z;
+  float intensity;
+  uint16_t ring;
+
+  constexpr PointXYZIR(float x_, float y_, float z_, float i_, uint16_t r_)
+      : x(x_), y(y_), z(z_), intensity(i_), ring(r_) {}
+};
+
+/// Point with intensity and time (for deskewing)
+struct PointXYZIT {
+  float x, y, z;
+  float intensity;
+  float time;
+
+  constexpr PointXYZIT(float x_, float y_, float z_, float i_, float t_)
+      : x(x_), y(y_), z(z_), intensity(i_), time(t_) {}
+};
+
+/// Point with intensity, ring, and time (full LiDAR)
+struct PointXYZIRT {
+  float x, y, z;
+  float intensity;
+  uint16_t ring;
+  float time;
+
+  constexpr PointXYZIRT(float x_, float y_, float z_, float i_, uint16_t r_,
+                        float t_)
+      : x(x_), y(y_), z(z_), intensity(i_), ring(r_), time(t_) {}
+};
+
+/// Point with RGB color (RGB-D cameras)
+struct PointXYZRGB {
+  float x, y, z;
+  uint8_t r, g, b;
+
+  constexpr PointXYZRGB(float x_, float y_, float z_, uint8_t r_, uint8_t g_,
+                        uint8_t b_)
+      : x(x_), y(y_), z(z_), r(r_), g(g_), b(b_) {}
+};
+
+/// Point with color and normal (RGB surface reconstruction)
+struct PointXYZRGBN {
+  float x, y, z;
+  uint8_t r, g, b;
+  float nx, ny, nz;
+
+  constexpr PointXYZRGBN(float x_, float y_, float z_, uint8_t r_, uint8_t g_,
+                         uint8_t b_, float nx_, float ny_, float nz_)
+      : x(x_), y(y_), z(z_), r(r_), g(g_), b(b_), nx(nx_), ny(ny_), nz(nz_) {}
+};
+
+/// Point with color and label (RGB segmentation)
+struct PointXYZRGBL {
+  float x, y, z;
+  uint8_t r, g, b;
+  uint32_t label;
+
+  constexpr PointXYZRGBL(float x_, float y_, float z_, uint8_t r_, uint8_t g_,
+                         uint8_t b_, uint32_t l_)
+      : x(x_), y(y_), z(z_), r(r_), g(g_), b(b_), label(l_) {}
+};
+
+/// Point with semantic label (segmentation)
+struct PointXYZL {
+  float x, y, z;
+  uint32_t label;
+
+  constexpr PointXYZL(float x_, float y_, float z_, uint32_t l_)
+      : x(x_), y(y_), z(z_), label(l_) {}
+};
+
+/// Point with intensity and label (segmentation + LiDAR)
+struct PointXYZIL {
+  float x, y, z;
+  float intensity;
+  uint32_t label;
+
+  constexpr PointXYZIL(float x_, float y_, float z_, float i_, uint32_t l_)
+      : x(x_), y(y_), z(z_), intensity(i_), label(l_) {}
+};
+
+/// Point with normal vector (surface reconstruction)
+struct PointXYZN {
+  float x, y, z;
+  float nx, ny, nz;
+
+  constexpr PointXYZN(float x_, float y_, float z_, float nx_, float ny_,
+                      float nz_)
+      : x(x_), y(y_), z(z_), nx(nx_), ny(ny_), nz(nz_) {}
+};
+
+/// Point with intensity and normal (feature extraction)
+struct PointXYZIN {
+  float x, y, z;
+  float intensity;
+  float nx, ny, nz;
+
+  constexpr PointXYZIN(float x_, float y_, float z_, float i_, float nx_,
+                       float ny_, float nz_)
+      : x(x_), y(y_), z(z_), intensity(i_), nx(nx_), ny(ny_), nz(nz_) {}
+};
+
+}  // namespace npcl
 
 #endif  // NANOPCL_CORE_POINT_HPP

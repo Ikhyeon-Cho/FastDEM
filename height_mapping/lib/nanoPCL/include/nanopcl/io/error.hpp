@@ -5,37 +5,24 @@
 #ifndef NANOPCL_IO_ERROR_HPP
 #define NANOPCL_IO_ERROR_HPP
 
+#include <stdexcept>
 #include <string>
 
-namespace nanopcl {
+namespace npcl {
 namespace io {
 
-namespace detail {
-/// Thread-local error message storage
-inline thread_local std::string g_last_error;
-}  // namespace detail
-
 /**
- * @brief Get the last I/O error message.
+ * @brief Exception thrown for I/O errors
  *
- * Returns the error message from the most recent failed I/O operation
- * in the current thread. Empty string if no error occurred.
- *
- * @return Reference to the last error message
+ * Used by loadPCD, savePCD, loadBIN, saveBIN, etc.
  */
-inline const std::string& lastError() noexcept { return detail::g_last_error; }
-
-/**
- * @brief Clear the last error message.
- */
-inline void clearError() noexcept { detail::g_last_error.clear(); }
-
-namespace detail {
-/// Internal: Set error message (used by I/O functions)
-inline void setLastError(const std::string& msg) { g_last_error = msg; }
-}  // namespace detail
+class IOError : public std::runtime_error {
+ public:
+  explicit IOError(const std::string& msg) : std::runtime_error(msg) {}
+  explicit IOError(const char* msg) : std::runtime_error(msg) {}
+};
 
 }  // namespace io
-}  // namespace nanopcl
+}  // namespace npcl
 
 #endif  // NANOPCL_IO_ERROR_HPP

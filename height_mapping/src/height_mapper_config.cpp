@@ -1,7 +1,7 @@
 /*
  * height_mapper_config.cpp
  *
- * YAML configuration loading for HeightMapper::Config.
+ * YAML configuration loading for HeightMapperConfig.
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -9,42 +9,111 @@
  *       Email: tre0430@korea.ac.kr
  */
 
+#include "height_mapping/height_mapper_config.h"
+
 #include <yaml-cpp/yaml.h>
 
-#include "height_mapping/height_mapper.h"
+#include "detail/yaml_utils.h"
 
 namespace height_mapping {
 
-namespace {
+using detail::loadIfExists;
 
-template <typename T>
-void loadIfExists(const YAML::Node& node, const std::string& key, T& value) {
-  if (node[key]) {
-    value = node[key].as<T>();
+// =============================================================================
+// VoxelFilterConfig
+// =============================================================================
+
+VoxelFilterConfig VoxelFilterConfig::fromYaml(const YAML::Node& node) {
+  VoxelFilterConfig config;
+  if (!node) return config;
+
+  loadIfExists(node, "voxel_size", config.voxel_size);
+
+  std::string method;
+  loadIfExists(node, "reduction_method", method);
+  if (method == "arbitrary") {
+    config.method = VoxelMethod::ARBITRARY;
+  } else if (method == "first") {
+    config.method = VoxelMethod::FIRST;
+  } else if (method == "centroid") {
+    config.method = VoxelMethod::CENTROID;
   }
+  return config;
 }
+
+// =============================================================================
+// SpatialFilterConfig
+// =============================================================================
+
+SpatialFilterConfig SpatialFilterConfig::fromYaml(const YAML::Node& node) {
+  SpatialFilterConfig config;
+  if (!node) return config;
+
+  loadIfExists(node, "z_min", config.z_min);
+  loadIfExists(node, "z_max", config.z_max);
+  loadIfExists(node, "range_min", config.range_min);
+  loadIfExists(node, "range_max", config.range_max);
+  return config;
+}
+
+// =============================================================================
+// GroundSegmentationConfig
+// =============================================================================
+
+GroundSegmentationConfig GroundSegmentationConfig::fromYaml(const YAML::Node& node) {
+  GroundSegmentationConfig config;
+  if (!node) return config;
+
+  loadIfExists(node, "enabled", config.enabled);
+  loadIfExists(node, "grid_resolution", config.params.grid_resolution);
+  loadIfExists(node, "cell_percentile", config.params.cell_percentile);
+  loadIfExists(node, "ground_thickness", config.params.ground_thickness);
+  loadIfExists(node, "max_ground_height", config.params.max_ground_height);
+  loadIfExists(node, "min_points_per_cell", config.params.min_points_per_cell);
+  return config;
+}
+
+// =============================================================================
+// HeightEstimationConfig
+// =============================================================================
+
+HeightEstimationConfig HeightEstimationConfig::fromYaml(const YAML::Node& node) {
+  HeightEstimationConfig config;
+  if (!node) return config;
+
+  loadIfExists(node, "estimator_type", config.type);
+  // Kalman filter params
+  loadIfExists(node, "kalman_process_noise", config.kalman.process_noise);
+  loadIfExists(node, "kalman_measurement_noise", config.kalman.measurement_noise);
+  loadIfExists(node, "kalman_initial_variance", config.kalman.initial_variance);
+  // Moving average params
+  loadIfExists(node, "moving_average_alpha", config.moving_average.alpha);
+  return config;
+}
+
+// =============================================================================
+// HeightMapperConfig
+// =============================================================================
+
+namespace {
 
 MappingMode parseMappingMode(const std::string& mode) {
   if (mode == "map_centric") return MappingMode::MAP_CENTRIC;
-  return MappingMode::ROBOT_CENTRIC;  // default
+  return MappingMode::ROBOT_CENTRIC;
 }
 
-HeightMapper::Config loadFromYaml(const YAML::Node& root) {
-  HeightMapper::Config config;
+HeightMapperConfig loadFromYaml(const YAML::Node& root) {
+  HeightMapperConfig config;
 
   // Mapper section
-  if (root["mapper"]) {
-    const auto& mapper = root["mapper"];
-
-    if (mapper["map"]) {
-      const auto& m = mapper["map"];
-      loadIfExists(m, "width", config.map.width);
-      loadIfExists(m, "height", config.map.height);
-      loadIfExists(m, "resolution", config.map.resolution);
-      loadIfExists(m, "frame_id", config.map.frame_id);
+  if (auto mapper = root["mapper"]) {
+    if (auto map = mapper["map"]) {
+      loadIfExists(map, "width", config.map.width);
+      loadIfExists(map, "height", config.map.height);
+      loadIfExists(map, "resolution", config.map.resolution);
+      loadIfExists(map, "frame_id", config.map.frame_id);
     }
 
-    // Mapping mode
     std::string mode_str;
     loadIfExists(mapper, "mode", mode_str);
     if (!mode_str.empty()) {
@@ -52,89 +121,14 @@ HeightMapper::Config loadFromYaml(const YAML::Node& root) {
     }
   }
 
-  // Algorithms section
-  if (root["algorithms"]) {
-    const auto& alg = root["algorithms"];
-
-    // Voxel Filter
-    if (alg["voxel_filter"]) {
-      const auto& node = alg["voxel_filter"];
-      loadIfExists(node, "voxel_size", config.voxel_filter.voxel_size);
-      std::string method;
-      loadIfExists(node, "reduction_method", method);
-      if (method == "random") {
-        config.voxel_filter.method =
-            nanopcl::filters::VoxelGrid::Method::RANDOM;
-      } else if (method == "first") {
-        config.voxel_filter.method = nanopcl::filters::VoxelGrid::Method::FIRST;
-      }
-    }
-
-    // Passthrough Filter
-    if (alg["passthrough_filter"]) {
-      const auto& node = alg["passthrough_filter"];
-      loadIfExists(node, "x_min", config.passthrough_filter.x_min);
-      loadIfExists(node, "x_max", config.passthrough_filter.x_max);
-      loadIfExists(node, "y_min", config.passthrough_filter.y_min);
-      loadIfExists(node, "y_max", config.passthrough_filter.y_max);
-      loadIfExists(node, "z_min", config.passthrough_filter.z_min);
-      loadIfExists(node, "z_max", config.passthrough_filter.z_max);
-    }
-
-    // Ground Segmentation
-    if (alg["ground_segmentation"]) {
-      const auto& node = alg["ground_segmentation"];
-      loadIfExists(node, "method", config.ground_segmentation.method);
-      // Grid params
-      loadIfExists(node, "grid_resolution",
-                   config.ground_segmentation.grid.grid_resolution);
-      loadIfExists(node, "cell_percentile",
-                   config.ground_segmentation.grid.cell_percentile);
-      loadIfExists(node, "ground_thickness",
-                   config.ground_segmentation.grid.ground_thickness);
-      loadIfExists(node, "max_ground_height",
-                   config.ground_segmentation.grid.max_ground_height);
-      loadIfExists(node, "min_points_per_cell",
-                   config.ground_segmentation.grid.min_points_per_cell);
-      // Statistical params
-      loadIfExists(node, "ground_percentile",
-                   config.ground_segmentation.statistical.ground_percentile);
-      loadIfExists(node, "noise_threshold",
-                   config.ground_segmentation.statistical.noise_threshold);
-      // Shared param
-      if (node["ground_thickness"]) {
-        config.ground_segmentation.statistical.ground_thickness =
-            node["ground_thickness"].as<float>();
-      }
-    }
-
-    // Raycasting
-    if (alg["raycasting"]) {
-      const auto& node = alg["raycasting"];
-      float angle_deg = 0;
-      if (node["max_ground_angle"]) {
-        angle_deg = node["max_ground_angle"].as<float>();
-        config.raycasting.max_ground_angle = angle_deg * M_PI / 180.0f;
-      }
-      loadIfExists(node, "correction_threshold",
-                   config.raycasting.correction_threshold);
-    }
-
-    // Height Estimation
-    if (alg["height_estimation"]) {
-      const auto& node = alg["height_estimation"];
-      loadIfExists(node, "estimator_type", config.height_estimation.type);
-      // Kalman filter params
-      loadIfExists(node, "kalman_process_noise",
-                   config.height_estimation.kalman.process_noise);
-      loadIfExists(node, "kalman_measurement_noise",
-                   config.height_estimation.kalman.measurement_noise);
-      loadIfExists(node, "kalman_initial_variance",
-                   config.height_estimation.kalman.initial_variance);
-      // Moving average params
-      loadIfExists(node, "moving_average_alpha",
-                   config.height_estimation.moving_average.alpha);
-    }
+  // Algorithms section - delegate to each Config's fromYaml()
+  if (auto alg = root["algorithms"]) {
+    config.voxel_filter = VoxelFilterConfig::fromYaml(alg["VoxelFilter"]);
+    config.spatial_filter = SpatialFilterConfig::fromYaml(alg["PassthroughFilter"]);
+    config.ground_segmentation = GroundSegmentationConfig::fromYaml(alg["GroundSegmentation"]);
+    config.raycasting = algorithms::RaycastingConfig::fromYaml(alg["Raycasting"]);
+    config.inpainting = algorithms::InpaintingConfig::fromYaml(alg["Inpainting"]);
+    config.height_estimation = HeightEstimationConfig::fromYaml(alg["HeightEstimation"]);
   }
 
   return config;
@@ -142,7 +136,7 @@ HeightMapper::Config loadFromYaml(const YAML::Node& root) {
 
 }  // namespace
 
-HeightMapper::Config HeightMapper::Config::load(const std::string& path) {
+HeightMapperConfig HeightMapperConfig::load(const std::string& path) {
   try {
     return loadFromYaml(YAML::LoadFile(path));
   } catch (const YAML::Exception& e) {

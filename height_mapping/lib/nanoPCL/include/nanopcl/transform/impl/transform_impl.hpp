@@ -2,66 +2,82 @@
 // Copyright (c) 2025 Ikhyeon Cho <tre0430@korea.ac.kr>
 // SPDX-License-Identifier: MIT
 //
-// This file contains implementation details for Transform.
-// Do not include this file directly; include <nanopcl/transform/transform.hpp>
+// Implementation of Transform_ member functions.
+// Do not include directly; included by transform.hpp.
 
 #ifndef NANOPCL_TRANSFORM_IMPL_TRANSFORM_IMPL_HPP
 #define NANOPCL_TRANSFORM_IMPL_TRANSFORM_IMPL_HPP
 
-namespace nanopcl {
+#include "nanopcl/transform/math.hpp"
 
-// ========== Operations ==========
+namespace npcl {
+
+// =============================================================================
+// Factory Methods
+// =============================================================================
 
 template <typename Scalar>
-Transform_<Scalar> Transform_<Scalar>::operator*(const Transform_& other) const {
-  if (!isValid()) {
-    throw std::runtime_error("Transform composition: left operand not initialized");
-  }
-  if (!other.isValid()) {
-    throw std::runtime_error("Transform composition: right operand not initialized");
-  }
-  if (source_ != other.target_) {
-    throw std::runtime_error("Transform composition frame mismatch: '" +
-                             source_ + "' != '" + other.target_ + "'");
-  }
-  return Transform_(T_ * other.T_, other.source_, target_);
+Transform_<Scalar> Transform_<Scalar>::fromRPY(const std::string& parent,
+                                               const std::string& child,
+                                               Scalar roll, Scalar pitch,
+                                               Scalar yaw,
+                                               const Vector3& translation) {
+  Isometry T = math::isometryFromRPY(roll, pitch, yaw, translation);
+  return Transform_(parent, child, T);
 }
 
 template <typename Scalar>
-Transform_<Scalar>& Transform_<Scalar>::operator*=(const Transform_& other) {
-  if (!isValid()) {
-    throw std::runtime_error("Transform composition: left operand not initialized");
-  }
-  if (!other.isValid()) {
-    throw std::runtime_error("Transform composition: right operand not initialized");
-  }
-  if (source_ != other.target_) {
-    throw std::runtime_error("Transform composition frame mismatch: '" +
-                             source_ + "' != '" + other.target_ + "'");
-  }
-  T_ = T_ * other.T_;
-  source_ = other.source_;
-  return *this;
+Transform_<Scalar> Transform_<Scalar>::from2D(const std::string& parent,
+                                              const std::string& child,
+                                              Scalar x, Scalar y, Scalar yaw) {
+  Isometry T = math::isometryFrom2D(x, y, yaw);
+  return Transform_(parent, child, T);
 }
 
-// ========== Interpolation ==========
+// =============================================================================
+// Accessors
+// =============================================================================
+
+template <typename Scalar>
+Scalar Transform_<Scalar>::roll() const {
+  return math::getRoll(T_.rotation());
+}
+
+template <typename Scalar>
+Scalar Transform_<Scalar>::pitch() const {
+  return math::getPitch(T_.rotation());
+}
+
+template <typename Scalar>
+Scalar Transform_<Scalar>::yaw() const {
+  return math::getYaw(T_.rotation());
+}
+
+template <typename Scalar>
+void Transform_<Scalar>::getRPY(Scalar& roll, Scalar& pitch,
+                                Scalar& yaw_out) const {
+  math::getRPY(T_.rotation(), roll, pitch, yaw_out);
+}
+
+// =============================================================================
+// Interpolation
+// =============================================================================
 
 template <typename Scalar>
 Transform_<Scalar> Transform_<Scalar>::slerp(const Transform_& other,
-                                              Scalar t) const {
-  if (source_ != other.source_ || target_ != other.target_) {
+                                             Scalar t) const {
+  if (child_ != other.child_ || parent_ != other.parent_) {
     throw std::runtime_error("slerp requires matching frames");
   }
-  return Transform_(T_.slerp(other.T_, t), source_, target_);
+  Isometry interp = math::slerp(T_, other.T_, t);
+  Transform_ result(parent_, child_, interp);
+
+  // Linearly interpolate timestamp
+  auto dt = static_cast<Scalar>(other.stamp_) - static_cast<Scalar>(stamp_);
+  result.setTimestamp(stamp_ + static_cast<Timestamp>(dt * t));
+  return result;
 }
 
-// ========== Utilities ==========
-
-template <typename Scalar>
-std::string Transform_<Scalar>::toString() const {
-  return "Transform [" + source_ + " -> " + target_ + "]";
-}
-
-}  // namespace nanopcl
+}  // namespace npcl
 
 #endif  // NANOPCL_TRANSFORM_IMPL_TRANSFORM_IMPL_HPP

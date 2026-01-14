@@ -15,7 +15,35 @@
 #include <stdexcept>
 #include <string>
 
+// Forward declaration for YAML loading
+namespace YAML { class Node; }
+
 namespace height_mapping::algorithms {
+
+// =============================================================================
+// Persistence (Obstacle Durability)
+// =============================================================================
+
+struct PersistenceConfig {
+  float max_count = 30.0f;  // Max durability (3 sec @ 10Hz)
+  float step_add = 3.0f;    // Hit: increment per observation
+  float step_sub = 1.0f;    // Miss: decrement per ray pass
+
+  /// Create from YAML node (implementation in configs.cpp)
+  static PersistenceConfig fromYaml(const YAML::Node& node);
+
+  void validate() const {
+    if (max_count <= 0) {
+      throw std::invalid_argument("max_count must be positive");
+    }
+    if (step_add <= 0) {
+      throw std::invalid_argument("step_add must be positive");
+    }
+    if (step_sub <= 0) {
+      throw std::invalid_argument("step_sub must be positive");
+    }
+  }
+};
 
 // =============================================================================
 // Raycasting
@@ -23,77 +51,44 @@ namespace height_mapping::algorithms {
 
 struct RaycastingConfig {
   bool enable_correction = true;
-  float max_ground_angle = -5.0f * 3.14159265f / 180.0f;  // [rad]
-  float correction_threshold = 0.05f;  // [m]
-  float ray_step_size = 0.1f;          // [m]
+  float correction_threshold = 0.05f;  // [m] Ghost clearing threshold
+  float min_ray_distance = 0.5f;       // [m] Skip rays shorter than this
+  PersistenceConfig persistence;       // Obstacle durability settings
+
+  /// Create from YAML node (implementation in configs.cpp)
+  static RaycastingConfig fromYaml(const YAML::Node& node);
 
   void validate() const {
     if (correction_threshold <= 0) {
       throw std::invalid_argument("correction_threshold must be positive");
     }
-    if (ray_step_size <= 0) {
-      throw std::invalid_argument("ray_step_size must be positive");
+    if (min_ray_distance <= 0) {
+      throw std::invalid_argument("min_ray_distance must be positive");
     }
+    persistence.validate();
   }
 };
 
 // =============================================================================
-// Grid Ground Segmentation
+// Inpainting
 // =============================================================================
 
-struct GridGroundSegmentationConfig {
-  float grid_resolution = 0.5f;     // Grid cell size in meters
-  float cell_percentile = 0.2f;     // Percentile for robust minimum (0-1)
-  float ground_thickness = 0.3f;    // Thickness of ground layer in meters
-  float max_ground_height = 0.5f;   // Maximum height to consider as ground
-  size_t min_points_per_cell = 2;   // Minimum points to process a cell
-  bool keep_only_ground = true;     // Filter output to ground points only
+struct InpaintingConfig {
+  bool enabled = false;
+  int max_iterations = 3;       // Usually 1-3 sufficient for small holes
+  int min_valid_neighbors = 2;  // Minimum neighbors to interpolate
+
+  /// Create from YAML node (implementation in configs.cpp)
+  static InpaintingConfig fromYaml(const YAML::Node& node);
 
   void validate() const {
-    if (grid_resolution <= 0) {
-      throw std::invalid_argument("grid_resolution must be positive");
+    if (max_iterations < 1) {
+      throw std::invalid_argument("max_iterations must be at least 1");
     }
-    if (cell_percentile < 0 || cell_percentile > 1) {
-      throw std::invalid_argument("cell_percentile must be in [0, 1]");
-    }
-    if (ground_thickness <= 0) {
-      throw std::invalid_argument("ground_thickness must be positive");
-    }
-    if (max_ground_height <= 0) {
-      throw std::invalid_argument("max_ground_height must be positive");
+    if (min_valid_neighbors < 1 || min_valid_neighbors > 8) {
+      throw std::invalid_argument("min_valid_neighbors must be in [1, 8]");
     }
   }
-};
-
-// =============================================================================
-// Statistical Ground Segmentation
-// =============================================================================
-
-struct StatisticalGroundSegmentationConfig {
-  float ground_percentile = 0.1f;  // Percentile for robust minimum (0-1)
-  float ground_thickness = 0.3f;   // Thickness of ground layer in meters
-  float noise_threshold = 0.5f;    // Threshold below percentile for noise
-  bool keep_only_ground = true;    // Filter output to ground points only
-
-  void validate() const {
-    if (ground_percentile < 0 || ground_percentile > 1) {
-      throw std::invalid_argument("ground_percentile must be in [0, 1]");
-    }
-    if (ground_thickness <= 0) {
-      throw std::invalid_argument("ground_thickness must be positive");
-    }
-    if (noise_threshold < 0) {
-      throw std::invalid_argument("noise_threshold must be non-negative");
-    }
-  }
-};
-
-struct GroundSegmentationStats {
-  size_t ground_count = 0;
-  size_t obstacle_count = 0;
-  size_t noise_count = 0;
-  float robust_min_z = 0;
-  float ground_threshold = 0;
 };
 
 }  // namespace height_mapping::algorithms

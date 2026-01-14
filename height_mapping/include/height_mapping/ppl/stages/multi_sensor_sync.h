@@ -31,7 +31,7 @@ namespace height_mapping::ppl::stages {
  */
 class MultiSensorSync : public ::ppl::Stage<MappingFrame> {
   struct SensorBuffer {
-    std::deque<std::shared_ptr<height_mapping::PointCloud>> clouds;
+    std::deque<std::shared_ptr<PointCloud>> clouds;
     std::deque<uint64_t> timestamps;
     std::mutex mutex;
   };
@@ -76,7 +76,7 @@ class MultiSensorSync : public ::ppl::Stage<MappingFrame> {
 
       // Add cloud to buffer
       auto cloud_ptr =
-          std::make_shared<height_mapping::PointCloud>(*frame->cloud);
+          std::make_shared<PointCloud>(*frame->cloud);
       buffer.clouds.push_back(cloud_ptr);
       buffer.timestamps.push_back(timestamp);
 
@@ -121,7 +121,7 @@ class MultiSensorSync : public ::ppl::Stage<MappingFrame> {
       return false;  // Need at least 2 sensors for sync
     }
 
-    height_mapping::PointCloud merged_cloud;
+    PointCloud merged_cloud;
     uint64_t tolerance_ns = static_cast<uint64_t>(sync_tolerance_ms_ * 1e6);
 
     for (auto& [sensor_id, buffer] : sensor_buffers_) {
@@ -152,7 +152,7 @@ class MultiSensorSync : public ::ppl::Stage<MappingFrame> {
   }
 
   void mergeLatest(const std::shared_ptr<MappingFrame>& frame) {
-    height_mapping::PointCloud merged_cloud = *frame->cloud;
+    PointCloud merged_cloud = *frame->cloud;
 
     for (auto& [sensor_id, buffer] : sensor_buffers_) {
       if (sensor_id == "default") continue;  // Skip current sensor

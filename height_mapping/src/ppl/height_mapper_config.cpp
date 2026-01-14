@@ -9,23 +9,18 @@
  *       Email: tre0430@korea.ac.kr
  */
 
-#include "height_mapping/ppl/height_mapper.h"
-
 #include <yaml-cpp/yaml.h>
+
+#include "height_mapping/ppl/height_mapper.h"
+#include "detail/yaml_utils.h"
 
 namespace height_mapping::ppl {
 
+using detail::loadIfExists;
+
 namespace {
 
-template <typename T>
-void loadIfExists(const YAML::Node& node, const std::string& key, T& value) {
-  if (node[key]) {
-    value = node[key].as<T>();
-  }
-}
-
-HeightMapper::Config loadFromYaml(const YAML::Node& yaml,
-                                  const std::string& file_path) {
+HeightMapper::Config loadFromYaml(const YAML::Node& yaml) {
   HeightMapper::Config config;
 
   // Parse mapper-specific settings
@@ -40,8 +35,14 @@ HeightMapper::Config loadFromYaml(const YAML::Node& yaml,
     loadIfExists(mapper, "enable_debug", config.enable_debug);
   }
 
-  // Store the file path for pipeline loading
-  config.pipeline_config_path = file_path;
+  // Parse pipeline profiling settings
+  if (auto pipeline = yaml["pipeline"]) {
+    loadIfExists(pipeline, "enable_profiling", config.enable_profiling);
+    loadIfExists(pipeline, "profile_interval", config.profile_interval);
+  }
+
+  // Store loaded YAML for pipeline loading
+  config.pipeline = yaml;
 
   return config;
 }
@@ -50,7 +51,7 @@ HeightMapper::Config loadFromYaml(const YAML::Node& yaml,
 
 HeightMapper::Config HeightMapper::Config::load(const std::string& path) {
   try {
-    return loadFromYaml(YAML::LoadFile(path), path);
+    return loadFromYaml(YAML::LoadFile(path));
   } catch (const YAML::Exception& e) {
     throw std::runtime_error("Failed to load ppl config file '" + path +
                              "': " + e.what());

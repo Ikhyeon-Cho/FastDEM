@@ -1,4 +1,3 @@
-// nanopcl/filters/impl/core_impl.hpp
 // nanoPCL - Header-only C++17 point cloud library
 // Copyright (c) 2025 Ikhyeon Cho <tre0430@korea.ac.kr>
 // SPDX-License-Identifier: MIT
@@ -12,7 +11,7 @@
 #include <cmath>
 #include <utility>
 
-namespace nanopcl {
+namespace npcl {
 namespace filters {
 namespace detail {
 
@@ -54,7 +53,8 @@ inline void filterInPlace(PointCloud& cloud, Predicate predicate) {
 }
 
 // =============================================================================
-// Internal helper: In-place filter with Point& predicate (no ConstPointRef overhead)
+// Internal helper: In-place filter with Point& predicate (no ConstPointRef
+// overhead)
 // =============================================================================
 template <typename PointPredicate>
 inline void filterByPointInPlace(PointCloud& cloud, PointPredicate pred) {
@@ -203,6 +203,6 @@ inline PointCloud removeInvalid(const PointCloud& cloud) {
 }
 
 }  // namespace filters
-}  // namespace nanopcl
+}  // namespace npcl
 
 #endif  // NANOPCL_FILTERS_IMPL_CORE_IMPL_HPP

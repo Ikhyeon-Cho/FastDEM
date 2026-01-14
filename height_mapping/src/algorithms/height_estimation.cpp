@@ -29,7 +29,7 @@ void updateHeightMap(HeightMap& map, const PointCloud& cloud,
   auto& count_mat = map.get(layer::count);
 
   // Update each cell with new measurements
-  for (const auto& point : cloud.points) {
+  for (const auto& point : cloud) {
     grid_map::Index index;
     if (!map.getIndex(grid_map::Position(point.x(), point.y()), index)) {
       continue;
@@ -39,6 +39,7 @@ void updateHeightMap(HeightMap& map, const PointCloud& cloud,
     float& variance = variance_mat(index(0), index(1));
     float& count = count_mat(index(0), index(1));
 
+    // Height estimation update
     estimator.update(elevation, variance, count, point.z());
   }
 

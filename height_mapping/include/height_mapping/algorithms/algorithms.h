@@ -16,52 +16,30 @@
 
 #include "height_mapping/algorithms/configs.h"
 #include "height_mapping/estimators/height_estimator_base.h"
-#include "height_mapping/height_map.h"
 #include "height_mapping/types.h"
 
 namespace height_mapping::algorithms {
 
 /**
- * @brief Clears obstacles in free space by raycasting from sensor to points.
- *
- * @param map Height map to update (modified in-place).
- * @param cloud Input point cloud (in map frame).
- * @param sensor_origin Sensor position (in map frame).
- * @param config Raycasting parameters.
+ * @brief Raycasting for ghost obstacle removal and persistence management.
+ * Handles both Hit (observation) and Miss (ray pass-through) logic.
  */
-void applyRaycasting(HeightMap& map, const PointCloud& cloud,
+void applyRaycasting(HeightMap& map, const PointCloud& scan,
                      const Eigen::Vector3f& sensor_origin,
                      const RaycastingConfig& config);
 
 /**
  * @brief Updates the height map using point cloud data and a specific
- * estimator.
- *
- * @param map Height map to update (modified in-place).
- * @param cloud Input point cloud.
- * @param estimator The estimation algorithm to use for cell updates.
+ * estimator. Pure height estimation only.
  */
 void updateHeightMap(HeightMap& map, const PointCloud& cloud,
                      estimators::HeightEstimatorBase& estimator);
 
 /**
- * @brief Segments ground points using a grid-based approach.
- *
- * @param cloud Input point cloud (modified in-place).
- * @param config Segmentation parameters.
+ * @brief Fills NaN holes in elevation using neighbor averaging.
+ * Results stored in elevation_inpainted layer (original unchanged).
  */
-void segmentGroundGrid(PointCloud& cloud,
-                       const GridGroundSegmentationConfig& config);
-
-/**
- * @brief Segments ground points using statistical percentile analysis.
- *
- * @param cloud Input point cloud (modified in-place).
- * @param config Segmentation parameters.
- * @return Statistics from the segmentation operation.
- */
-GroundSegmentationStats segmentGroundStatistical(
-    PointCloud& cloud, const StatisticalGroundSegmentationConfig& config);
+void applyInpainting(HeightMap& map, const InpaintingConfig& config);
 
 }  // namespace height_mapping::algorithms
 

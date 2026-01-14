@@ -15,8 +15,8 @@
 #include <memory>
 #include <string>
 
-#include <nanopcl/transform/operations.hpp>
-#include "height_mapping/height_map.h"
+#include <nanopcl/transform/transform_ops.hpp>
+
 #include "height_mapping/algorithms/algorithms.h"
 #include "height_mapping/estimators/height_estimator_base.h"
 #include "height_mapping/estimators/incremental_mean.h"
@@ -71,7 +71,7 @@ class HeightEstimation : public ::ppl::Stage<MappingFrame> {
 
   bool process(const std::shared_ptr<MappingFrame>& frame) override {
     auto& cloud = *frame->cloud;
-    auto& map = frame->map;
+    auto& map = frame->height_map;
 
     if (!map) {
       throw std::runtime_error("[HeightEstimation] HeightMap not available");
@@ -81,9 +81,11 @@ class HeightEstimation : public ::ppl::Stage<MappingFrame> {
       return true;
     }
 
-    // Transform to map frame (height estimation operates in map frame)
-    const auto& T_map_base = frame->pose;
-    nanopcl::transformInPlace(cloud, T_map_base);
+    // Transform to map frame if needed
+    if (frame->robot_pose.isValid() &&
+        cloud.frameId() != frame->robot_pose.parentFrame()) {
+      cloud = npcl::transformCloud(std::move(cloud), frame->robot_pose);
+    }
 
     if (!estimator_) {
       estimator_ = std::make_unique<estimators::IncrementalMean>();

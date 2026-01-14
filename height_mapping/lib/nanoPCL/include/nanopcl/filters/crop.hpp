@@ -1,4 +1,3 @@
-// nanopcl/filters/crop.hpp
 // nanoPCL - Header-only C++17 point cloud library
 // Copyright (c) 2025 Ikhyeon Cho <tre0430@korea.ac.kr>
 // SPDX-License-Identifier: MIT
@@ -8,21 +7,29 @@
 
 #include "nanopcl/filters/core.hpp"
 
-namespace nanopcl {
+namespace npcl {
 namespace filters {
 
 // =============================================================================
-// Box Cropping (AABB)
+// Box Cropping (Axis-aligned Bounding Box)
 // =============================================================================
 
 /**
- * @brief Crop points by axis-aligned bounding box (copy version)
+ * @brief Crop points by axis-aligned bounding box (AABB)
  *
- * @param cloud Input point cloud (unchanged)
+ * Keeps or removes points based on whether their XYZ coordinates are within
+ * the box defined by [min, max].
+ *
+ * @param cloud Input point cloud
  * @param min Minimum corner (x_min, y_min, z_min)
  * @param max Maximum corner (x_max, y_max, z_max)
- * @param mode INSIDE: keep points in box, OUTSIDE: keep points outside box
- * @return New point cloud containing only points in/outside the box
+ * @param mode Filter mode (default: INSIDE)
+ * @return New point cloud with filtered points
+ *
+ * @code
+ *   Point min(-10, -10, -2), max(10, 10, 2);
+ *   auto filtered = filters::cropBox(cloud, min, max);
+ * @endcode
  */
 [[nodiscard]] PointCloud cropBox(const PointCloud& cloud, const Point& min,
                                  const Point& max,
@@ -40,14 +47,14 @@ namespace filters {
 // =============================================================================
 
 /**
- * @brief Crop points by range (distance) from a center point (copy version)
+ * @brief Crop points by Euclidean distance from a center point
  *
- * @param cloud Input point cloud (unchanged)
- * @param min_range Minimum range (inclusive)
- * @param max_range Maximum range (inclusive)
- * @param center Center point for range calculation (default: origin)
- * @param mode INSIDE: keep points in range, OUTSIDE: keep points outside range
- * @return New point cloud containing only points in/outside the range
+ * @param cloud Input point cloud
+ * @param min_range Minimum distance (meters, inclusive)
+ * @param max_range Maximum distance (meters, inclusive)
+ * @param center Center point for distance calculation (default: origin)
+ * @param mode Filter mode
+ * @return New point cloud with filtered points
  */
 [[nodiscard]] PointCloud cropRange(const PointCloud& cloud, float min_range,
                                    float max_range,
@@ -55,15 +62,27 @@ namespace filters {
                                    FilterMode mode = FilterMode::INSIDE);
 
 /**
- * @brief Crop points by range (distance) from a center point (move version)
+ * @brief Crop points by Euclidean distance (move version)
  */
 [[nodiscard]] PointCloud cropRange(PointCloud&& cloud, float min_range,
                                    float max_range,
                                    const Point& center = Point::Zero(),
                                    FilterMode mode = FilterMode::INSIDE);
 
+/**
+ * @brief Crop points by range with mode (center defaults to origin) (copy)
+ */
+[[nodiscard]] PointCloud cropRange(const PointCloud& cloud, float min_range,
+                                   float max_range, FilterMode mode);
+
+/**
+ * @brief Crop points by range with mode (center defaults to origin) (move)
+ */
+[[nodiscard]] PointCloud cropRange(PointCloud&& cloud, float min_range,
+                                   float max_range, FilterMode mode);
+
 // =============================================================================
-// Axis Cropping (Passthrough)
+// Single Axis Cropping (Passthrough)
 // =============================================================================
 
 /**
@@ -119,29 +138,38 @@ namespace filters {
 // =============================================================================
 
 /**
- * @brief Crop points by azimuth angle (horizontal FOV) (copy version)
+ * @brief Crop points by azimuth angle (horizontal Field of View)
  *
- * @param cloud Input point cloud (unchanged)
- * @param min_angle Minimum angle in radians (inclusive)
- * @param max_angle Maximum angle in radians (inclusive)
- * @param mode INSIDE: keep points in range, OUTSIDE: keep points outside
+ * Filters points based on their horizontal yaw angle in the range [-PI, PI].
+ *
+ * @param cloud Input point cloud
+ * @param min_angle Start angle in radians (inclusive)
+ * @param max_angle End angle in radians (inclusive)
+ * @param mode Filter mode
  * @return New point cloud containing filtered points
  *
- * @note Angle is computed as atan2(y, x), range [-PI, PI]
- *       Supports wrap-around: cropAngle(cloud, 3π/4, -3π/4) keeps rear 90°
- *       Uses cross-product for ~56x faster performance than atan2
+ * @note **Wrap-around Support**: If `min_angle > max_angle`, the filter automatically
+ *       crops the sector that crosses the -PI/PI boundary.
+ *       Example: `min=3.0, max=-3.0` keeps a small sector (approx. 16 degrees) 
+ *       centered at the back.
+ *
+ * @note **Performance**: Implements a cross-product based approach to determine
+ *       angular orientation, completely avoiding expensive `atan2()` calls.
+ *       Benchmarked to be ~56x faster than naive implementations.
  */
 [[nodiscard]] PointCloud cropAngle(const PointCloud& cloud, float min_angle,
                                    float max_angle,
                                    FilterMode mode = FilterMode::INSIDE);
 
-/// @brief Crop points by azimuth angle (horizontal FOV) (move version)
+/**
+ * @brief Crop points by azimuth angle (move version)
+ */
 [[nodiscard]] PointCloud cropAngle(PointCloud&& cloud, float min_angle,
                                    float max_angle,
                                    FilterMode mode = FilterMode::INSIDE);
 
 }  // namespace filters
-}  // namespace nanopcl
+}  // namespace npcl
 
 #include "nanopcl/filters/impl/crop_impl.hpp"
 

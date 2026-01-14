@@ -13,8 +13,8 @@
 #include <spdlog/spdlog.h>
 
 #include <memory>
+#include <nanopcl/filters/downsample.hpp>
 
-#include <nanopcl/filters/voxel_grid.hpp>
 #include "height_mapping/ppl/types.h"
 
 namespace height_mapping::ppl::stages {
@@ -23,37 +23,34 @@ namespace height_mapping::ppl::stages {
  * @brief Pipeline stage adapter for voxel filter (header-only)
  */
 class VoxelFilter : public ::ppl::Stage<MappingFrame> {
+  using VoxelMethod = npcl::filters::VoxelMethod;
+
  public:
-  VoxelFilter() : filter_(std::make_unique<nanopcl::filters::VoxelGrid>()) {}
+  VoxelFilter() = default;
 
   void configure(const YAML::Node& config) override {
-    nanopcl::filters::VoxelGrid::Config cfg;
-
-    // Parse voxel size
     if (config["voxel_size"]) {
-      cfg.voxel_size = config["voxel_size"].as<float>();
+      voxel_size_ = config["voxel_size"].as<float>();
     }
 
-    // Parse reduction method
     if (config["reduction_method"]) {
       std::string method = config["reduction_method"].as<std::string>();
       if (method == "centroid") {
-        cfg.method = nanopcl::filters::VoxelGrid::Method::CENTROID;
-      } else if (method == "random") {
-        cfg.method = nanopcl::filters::VoxelGrid::Method::RANDOM;
+        method_ = VoxelMethod::CENTROID;
+      } else if (method == "arbitrary") {
+        method_ = VoxelMethod::ARBITRARY;
       } else if (method == "first") {
-        cfg.method = nanopcl::filters::VoxelGrid::Method::FIRST;
+        method_ = VoxelMethod::FIRST;
       } else if (method == "closest") {
-        cfg.method = nanopcl::filters::VoxelGrid::Method::CLOSEST;
+        method_ = VoxelMethod::CLOSEST;
       } else if (method == "center" || method == "voxel_center") {
-        cfg.method = nanopcl::filters::VoxelGrid::Method::VOXEL_CENTER;
+        method_ = VoxelMethod::VOXEL_CENTER;
       } else {
         spdlog::error("[VoxelFilter] Unknown reduction method: {}", method);
       }
     }
 
-    filter_->setConfig(cfg);
-    spdlog::debug("[VoxelFilter] voxel_size={}m", cfg.voxel_size);
+    spdlog::debug("[VoxelFilter] voxel_size={}m", voxel_size_);
   }
 
   bool process(const std::shared_ptr<MappingFrame>& frame) override {
@@ -63,16 +60,16 @@ class VoxelFilter : public ::ppl::Stage<MappingFrame> {
       return true;
     }
 
-    // Run the core algorithm in-place
-    auto stats = filter_->filterInPlace(cloud);
+    size_t before = cloud.size();
+    cloud = npcl::filters::voxelGrid(std::move(cloud), voxel_size_, method_);
 
-    spdlog::debug("[VoxelFilter] Downsampled from {} to {} points ({} voxels)",
-                  stats.input_size, stats.output_size, stats.voxel_count);
+    spdlog::debug("[VoxelFilter] {} -> {} points", before, cloud.size());
     return true;
   }
 
  private:
-  std::unique_ptr<nanopcl::filters::VoxelGrid> filter_;
+  float voxel_size_ = 0.1f;
+  VoxelMethod method_ = VoxelMethod::CENTROID;
 };
 
 }  // namespace height_mapping::ppl::stages

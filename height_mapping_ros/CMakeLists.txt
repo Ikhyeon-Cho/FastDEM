@@ -13,12 +13,16 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf2_ros
   tf2_eigen
-  grid_map_ros
+  grid_map_msgs
   message_generation
+  rosbag
 )
 
 # Pure CMake dependency (our core library)
 find_package(height_mapping REQUIRED)
+
+# OpenMP (required by height_mapping)
+find_package(OpenMP REQUIRED)
 message(STATUS "height_mapping_INCLUDE_DIRS: ${height_mapping_INCLUDE_DIRS}")
 message(STATUS "height_mapping_LIBRARIES: ${height_mapping_LIBRARIES}")
 message(STATUS "height_mapping_LIBRARY_DIRS: ${height_mapping_LIBRARY_DIRS}")
@@ -43,7 +47,7 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     tf2_ros
-    grid_map_ros
+    grid_map_msgs
     message_runtime
 )
 
@@ -80,3 +84,4 @@ add_dependencies(height_mapping_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )
+

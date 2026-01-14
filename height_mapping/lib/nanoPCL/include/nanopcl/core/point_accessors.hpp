@@ -14,7 +14,7 @@
 
 #include "nanopcl/core/point.hpp"
 
-namespace nanopcl {
+namespace npcl {
 
 // Forward declaration
 class PointCloud;
@@ -22,6 +22,19 @@ class PointCloud;
 // =============================================================================
 // PointRefImpl - Unified reference proxy for point access (mutable/const)
 // =============================================================================
+
+/**
+ * @brief Proxy object representing a reference to a single point in the SoA layout
+ *
+ * This class acts like a reference to a struct (e.g., PointXYZI&), but internally
+ * it holds pointers to the underlying parallel arrays (SoA).
+ *
+ * - Behaving like a reference: Modifications through this object affect the original PointCloud.
+ * - Lightweight: Contains only a pointer to the cloud and an index.
+ * - Unified: Handles both const and mutable access via template parameter.
+ *
+ * @tparam IsConst true for ConstPointRef (read-only), false for PointRef (read-write)
+ */
 template <bool IsConst>
 class PointRefImpl {
  public:
@@ -38,57 +51,67 @@ class PointRefImpl {
   [[nodiscard]] size_t index() const { return idx_; }
   [[nodiscard]] CloudType& cloud() const { return cloud_; }
 
-  // --- Point access (const) ---
-  const Point& point() const;
-  float x() const;
-  float y() const;
-  float z() const;
-
-  // --- Point access (mutable, only when IsConst=false) ---
+  // --- Coordinates (XYZ, X, Y, Z) ---
+  
+  /// Get reference to the underlying Point (Eigen::Vector3f)
+  const Point& xyz() const;
+  
+  /// Get mutable reference to the underlying Point
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
-  Point& point();
+  Point& xyz();
 
+  /// Get X coordinate
+  float x() const;
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
   float& x();
 
+  /// Get Y coordinate
+  float y() const;
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
   float& y();
 
+  /// Get Z coordinate
+  float z() const;
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
   float& z();
 
-  // --- Channel availability checks ---
+  // --- Intensity ---
   [[nodiscard]] bool hasIntensity() const;
-  [[nodiscard]] bool hasTime() const;
-  [[nodiscard]] bool hasRing() const;
-  [[nodiscard]] bool hasColor() const;
-  [[nodiscard]] bool hasLabel() const;
-  [[nodiscard]] bool hasNormal() const;
-
-  // --- Attribute access (const) ---
+  
+  /// Get intensity value
   float intensity() const;
-  float time() const;
-  uint16_t ring() const;
-  const Color& color() const;
-  const Label& label() const;
-  const Eigen::Vector3f& normal() const;
-
-  // --- Attribute access (mutable, only when IsConst=false) ---
+  
+  /// Get mutable reference to intensity
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
   float& intensity();
 
+  // --- Time ---
+  [[nodiscard]] bool hasTime() const;
+  float time() const;
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
   float& time();
 
+  // --- Ring ---
+  [[nodiscard]] bool hasRing() const;
+  uint16_t ring() const;
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
   uint16_t& ring();
 
+  // --- Color ---
+  [[nodiscard]] bool hasColor() const;
+  const Color& color() const;
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
   Color& color();
 
+  // --- Label ---
+  [[nodiscard]] bool hasLabel() const;
+  const Label& label() const;
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
   Label& label();
 
+  // --- Normal ---
+  [[nodiscard]] bool hasNormal() const;
+  const Eigen::Vector3f& normal() const;
   template <bool C = IsConst, typename = std::enable_if_t<!C>>
   Eigen::Vector3f& normal();
 
@@ -102,8 +125,11 @@ using PointRef = PointRefImpl<false>;
 using ConstPointRef = PointRefImpl<true>;
 
 // =============================================================================
-// ArrowProxyImpl - Proxy for iterator's operator-> support
+// Internal implementation details
 // =============================================================================
+namespace detail {
+
+/// Arrow proxy for iterator's operator-> support (internal use only)
 template <bool IsConst>
 class ArrowProxyImpl {
  public:
@@ -120,6 +146,8 @@ class ArrowProxyImpl {
   RefType ref_;
 };
 
+}  // namespace detail
+
 // =============================================================================
 // PointRefIteratorImpl - Unified random access iterator (mutable/const)
 // =============================================================================
@@ -133,7 +161,7 @@ class PointRefIteratorImpl {
   using iterator_category = std::random_access_iterator_tag;
   using value_type = RefType;
   using difference_type = std::ptrdiff_t;
-  using pointer = ArrowProxyImpl<IsConst>;
+  using pointer = detail::ArrowProxyImpl<IsConst>;
   using reference = RefType;
 
   // --- Constructors ---
@@ -152,7 +180,9 @@ class PointRefIteratorImpl {
 
   // --- Dereference ---
   RefType operator*() const { return RefType(*cloud_, idx_); }
-  pointer operator->() const { return ArrowProxyImpl<IsConst>(*cloud_, idx_); }
+  pointer operator->() const {
+    return detail::ArrowProxyImpl<IsConst>(*cloud_, idx_);
+  }
   RefType operator[](difference_type n) const {
     return RefType(*cloud_, idx_ + n);
   }
@@ -238,12 +268,6 @@ PointRefIteratorImpl<IsConst> operator+(
 using PointRefIterator = PointRefIteratorImpl<false>;
 using ConstPointRefIterator = PointRefIteratorImpl<true>;
 
-}  // namespace nanopcl
-
-// =============================================================================
-// Implementation of PointRefImpl methods (requires complete PointCloud)
-// =============================================================================
-// Note: These are defined after PointCloud is complete.
-// Include this file, then point_cloud.hpp, then the impl below will work.
+}  // namespace npcl
 
 #endif  // NANOPCL_CORE_POINT_ACCESSORS_HPP

@@ -7,7 +7,7 @@
         <rosparam file="$(find height_mapping_ros)/config/$(arg config)" command="load" subst_value="true" />
         <!-- Override parameters -->
         <param name="config_path" value="$(find height_mapping)/config/global_mapping.yaml" />
-        <param name="mapper/publish_rate" value="1.0" />
+        <param name="topics/publish_rate" value="1.0" />
     </node>
 
     <!-- Launch Rviz with height mapping configuration -->

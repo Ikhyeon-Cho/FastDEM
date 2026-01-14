@@ -14,78 +14,63 @@
 
 #include <limits>
 #include <memory>
+#include <nanopcl/filters/crop.hpp>
+#include <nanopcl/transform/transform_ops.hpp>
 
-#include <nanopcl/filters/passthrough.hpp>
-#include <nanopcl/transform/operations.hpp>
 #include "height_mapping/ppl/types.h"
 
 namespace height_mapping::ppl::stages {
 
 /**
- * @brief Pipeline stage adapter for passthrough filter (header-only)
+ * @brief Pipeline stage for spatial filtering (z-axis + range)
+ *
+ * Uses cropZ and cropRange from nanoPCL filter API.
  */
-class PassthroughFilter : public ::ppl::Stage<MappingFrame> {
+class PassthroughFilter : public MappingStage {
  public:
-  PassthroughFilter()
-      : filter_(std::make_unique<nanopcl::filters::Passthrough>()) {}
+  PassthroughFilter() = default;
 
   void configure(const YAML::Node& config) override {
-    nanopcl::filters::Passthrough::Config cfg;
+    if (config["z_min"]) z_min_ = config["z_min"].as<float>();
+    if (config["z_max"]) z_max_ = config["z_max"].as<float>();
+    if (config["range_min"]) range_min_ = config["range_min"].as<float>();
+    if (config["range_max"]) range_max_ = config["range_max"].as<float>();
 
-    // Parse axis-aligned bounds
-    if (config["x_min"]) cfg.x_min = config["x_min"].as<float>();
-    if (config["x_max"]) cfg.x_max = config["x_max"].as<float>();
-    if (config["y_min"]) cfg.y_min = config["y_min"].as<float>();
-    if (config["y_max"]) cfg.y_max = config["y_max"].as<float>();
-    if (config["z_min"]) cfg.z_min = config["z_min"].as<float>();
-    if (config["z_max"]) cfg.z_max = config["z_max"].as<float>();
-
-    // Parse distance bounds
-    if (config["distance_min"]) {
-      cfg.distance_min = config["distance_min"].as<float>();
-      cfg.use_distance_filter = true;
-    }
-    if (config["distance_max"]) {
-      cfg.distance_max = config["distance_max"].as<float>();
-      cfg.use_distance_filter = true;
-    }
-
-    filter_->setConfig(cfg);
-
-    // Format bounds for logging (show "inf" for limit values)
-    auto format_bound = [](float value) -> std::string {
-      if (value <= std::numeric_limits<float>::lowest()) return "-inf";
-      if (value >= std::numeric_limits<float>::max()) return "+inf";
-      return std::to_string(static_cast<int>(value));
-    };
-
-    spdlog::debug("[PassthroughFilter] bounds [{},{}] x [{},{}] x [{},{}]",
-                  format_bound(cfg.x_min), format_bound(cfg.x_max),
-                  format_bound(cfg.y_min), format_bound(cfg.y_max),
-                  format_bound(cfg.z_min), format_bound(cfg.z_max));
+    spdlog::debug("[PassthroughFilter] z=[{},{}], range=[{},{}]",
+                  z_min_, z_max_, range_min_, range_max_);
   }
 
   bool process(const std::shared_ptr<MappingFrame>& frame) override {
     auto& cloud = *frame->cloud;
+    const auto& T_base_sensor = frame->extrinsic;
 
     if (cloud.empty()) {
       return true;
     }
 
-    // Transform to base frame if needed (passthrough operates in base frame)
-    const auto& T_base_sensor = frame->extrinsic;
-    nanopcl::transformInPlace(cloud, T_base_sensor);
+    // Filter operates in base frame
+    if (T_base_sensor.isValid() &&
+        cloud.frameId() != T_base_sensor.parentFrame()) {
+      cloud = npcl::transformCloud(std::move(cloud), T_base_sensor);
+    }
 
-    // Run the core algorithm in-place
-    auto stats = filter_->filterInPlace(cloud);
+    size_t before = cloud.size();
 
-    spdlog::debug("[PassthroughFilter] Removed {} points ({} -> {})",
-                  stats.removed_count, stats.input_size, stats.output_size);
+    // Apply z-axis filter
+    cloud = npcl::filters::cropZ(std::move(cloud), z_min_, z_max_);
+
+    // Apply range filter
+    cloud = npcl::filters::cropRange(std::move(cloud), range_min_, range_max_);
+
+    spdlog::debug("[PassthroughFilter] {} -> {} points", before, cloud.size());
     return true;
   }
 
  private:
-  std::unique_ptr<nanopcl::filters::Passthrough> filter_;
+  float z_min_ = -std::numeric_limits<float>::max();
+  float z_max_ = std::numeric_limits<float>::max();
+  float range_min_ = 0.0f;
+  float range_max_ = std::numeric_limits<float>::max();
 };
 
 }  // namespace height_mapping::ppl::stages

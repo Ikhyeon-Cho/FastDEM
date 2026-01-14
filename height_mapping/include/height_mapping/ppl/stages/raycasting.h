@@ -12,10 +12,9 @@
 
 #include <spdlog/spdlog.h>
 
-#include <cmath>
 #include <memory>
+#include <nanopcl/transform/transform_ops.hpp>
 
-#include "height_mapping/interfaces/robot_pose_provider.h"
 #include "height_mapping/algorithms/algorithms.h"
 #include "height_mapping/ppl/types.h"
 
@@ -33,37 +32,44 @@ class Raycasting : public ::ppl::Stage<MappingFrame> {
   Raycasting() = default;
 
   void configure(const YAML::Node& config) override {
-    // Parse max ground angle (convert from degrees to radians)
-    if (config["max_ground_angle"]) {
-      float angle_degrees = config["max_ground_angle"].as<float>();
-      config_.max_ground_angle = angle_degrees * M_PI / 180.0f;
-    }
-
-    // Parse other parameters
     if (config["correction_threshold"])
       config_.correction_threshold = config["correction_threshold"].as<float>();
+    if (config["min_ray_distance"])
+      config_.min_ray_distance = config["min_ray_distance"].as<float>();
     if (config["enable_correction"])
       config_.enable_correction = config["enable_correction"].as<bool>();
-    if (config["ray_step_size"])
-      config_.ray_step_size = config["ray_step_size"].as<float>();
 
-    spdlog::debug("[Raycasting] max_ground_angle={} degrees, threshold={}m",
-                  config_.max_ground_angle * 180.0f / M_PI,
-                  config_.correction_threshold);
+    // Persistence parameters
+    if (config["persistence_max_count"])
+      config_.persistence.max_count =
+          config["persistence_max_count"].as<float>();
+    if (config["persistence_step_add"])
+      config_.persistence.step_add = config["persistence_step_add"].as<float>();
+    if (config["persistence_step_sub"])
+      config_.persistence.step_sub = config["persistence_step_sub"].as<float>();
+
+    spdlog::debug("[Raycasting] threshold={}m, persistence=[max:{}, +{}, -{}]",
+                  config_.correction_threshold, config_.persistence.max_count,
+                  config_.persistence.step_add, config_.persistence.step_sub);
   }
 
   bool process(const std::shared_ptr<MappingFrame>& frame) override {
     auto& cloud = *frame->cloud;
-    auto& map = frame->map;
+    auto& map = frame->height_map;
 
     if (!map || cloud.empty() || !config_.enable_correction) {
       return true;
     }
 
+    // Transform to map frame if needed
+    if (frame->robot_pose.isValid() &&
+        cloud.frameId() != frame->robot_pose.parentFrame()) {
+      cloud = npcl::transformCloud(std::move(cloud), frame->robot_pose);
+    }
+
     // Compute sensor origin in map frame
-    const auto& T_map_base = frame->pose;
-    const auto& T_base_sensor = frame->extrinsic;
-    Eigen::Vector3f sensor_origin = (T_map_base * T_base_sensor).translation();
+    Eigen::Vector3f sensor_origin =
+        (frame->robot_pose * frame->extrinsic).translation();
 
     // Run the core algorithm
     algorithms::applyRaycasting(*map, cloud, sensor_origin, config_);

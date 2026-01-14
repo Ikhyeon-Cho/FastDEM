@@ -14,7 +14,7 @@
 #include "nanopcl/core/point_accessors.hpp"
 #include "nanopcl/core/timestamp.hpp"
 
-namespace nanopcl {
+namespace npcl {
 
 /**
  * @brief Point Cloud with metadata and optional attribute channels
@@ -31,11 +31,12 @@ class PointCloud {
   // ==========================================================================
   // Type Aliases (from point_accessors.hpp)
   // ==========================================================================
-  using PointRef = nanopcl::PointRef;
-  using ConstPointRef = nanopcl::ConstPointRef;
 
-  using iterator = nanopcl::PointRefIterator;
-  using const_iterator = nanopcl::ConstPointRefIterator;
+  using PointRef = npcl::PointRef;
+  using ConstPointRef = npcl::ConstPointRef;
+
+  using iterator = npcl::PointRefIterator;
+  using const_iterator = npcl::ConstPointRefIterator;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
@@ -66,8 +67,6 @@ class PointCloud {
 
   /// Merge another point cloud (only preserved channels are copied)
   PointCloud& operator+=(const PointCloud& other);
-
-  /// Merge two point clouds and return a new one
   [[nodiscard]] PointCloud operator+(const PointCloud& other) const;
 
   // ==========================================================================
@@ -109,6 +108,13 @@ class PointCloud {
   const std::vector<Eigen::Vector3f>& normal() const;
   void disableNormal() { normal_.reset(); }
 
+  // --- Covariance (Local surface covariance matrix for GICP) ---
+  [[nodiscard]] bool hasCovariance() const { return covariance_ != nullptr; }
+  void enableCovariance();
+  std::vector<Eigen::Matrix3f>& covariance();
+  const std::vector<Eigen::Matrix3f>& covariance() const;
+  void disableCovariance() { covariance_.reset(); }
+
   // --- Label (Semantic segmentation) ---
   [[nodiscard]] bool hasLabel() const { return label_ != nullptr; }
   void enableLabel();
@@ -121,9 +127,9 @@ class PointCloud {
   // ==========================================================================
 
   // --- Container Info ---
-  [[nodiscard]] size_t size() const { return points_.size(); }
-  [[nodiscard]] bool empty() const { return points_.empty(); }
-  [[nodiscard]] size_t capacity() const { return points_.capacity(); }
+  [[nodiscard]] size_t size() const noexcept { return points_.size(); }
+  [[nodiscard]] bool empty() const noexcept { return points_.empty(); }
+  [[nodiscard]] size_t capacity() const noexcept { return points_.capacity(); }
   void reserve(size_t n);
   void resize(size_t n);
   void shrink_to_fit();
@@ -131,20 +137,50 @@ class PointCloud {
   void swap(PointCloud& other) noexcept;
 
   // --- Point Addition ---
-  void push_back(const Point& p);
-  void push_back(Point&& p);
+  void add(const Point& p);
+  void add(Point&& p);
   void pop_back();
 
   /**
    * @brief Add point with attributes (variadic, type-safe)
-   * Channels are auto-enabled when attributes are provided.
-   * Usage: cloud.push_back(pt, Intensity(0.5f), Ring(3));
+   *
+   * Automatically enables the required attribute channels if they don't exist.
+   * Efficiently appends data to respective SoA vectors.
+   *
+   * @tparam Attrs Variadic types (Intensity, Ring, Time, Color, Label, Normal)
+   * @param p Geometric point coordinates (x, y, z)
+   * @param attrs Attribute values wrapped in strong types
+   *
+   * @code
+   *   // Add point with Intensity and Ring
+   *   cloud.add(Point(1, 2, 3), Intensity(0.5f), Ring(3));
+   *
+   *   // Add point with Color and Label
+   *   cloud.add(Point(0, 0, 0), Color::Red(), Label(10, 2));
+   * @endcode
    */
   template <typename... Attrs>
-  void push_back(const Point& p, Attrs&&... attrs) {
-    push_back(p);
+  void add(const Point& p, Attrs&&... attrs) {
+    add(p);
     (applyAttribute(std::forward<Attrs>(attrs)), ...);
   }
+
+  // --- DTO-based Point Addition ---
+  /**
+   * @brief Add point using PCL-style struct (PointXYZI)
+   * @param p Point structure with x, y, z, intensity
+   */
+  void add(const PointXYZI& p);
+  void add(const PointXYZIR& p);
+  void add(const PointXYZIT& p);
+  void add(const PointXYZIRT& p);
+  void add(const PointXYZRGB& p);
+  void add(const PointXYZRGBN& p);
+  void add(const PointXYZRGBL& p);
+  void add(const PointXYZL& p);
+  void add(const PointXYZIL& p);
+  void add(const PointXYZN& p);
+  void add(const PointXYZIN& p);
 
   // --- XYZ (Coordinates) ---
   std::vector<Point>& xyz() { return points_; }
@@ -154,10 +190,20 @@ class PointCloud {
   Point& operator[](size_t i) { return points_[i]; }
   const Point& operator[](size_t i) const { return points_[i]; }
 
-  /// @brief Extract subset by indices (Fancy Indexing)
-  /// @param indices Vector of point indices to extract
-  /// @return New PointCloud containing only the specified points with all
-  /// attributes
+  /**
+   * @brief Extract subset of points by indices (Deep Copy)
+   *
+   * Creates a new PointCloud containing only the points specified by the indices.
+   * All active attribute channels are also copied/filtered.
+   *
+   * @param indices Vector of point indices to keep
+   * @return New PointCloud with subset of data
+   *
+   * @code
+   *   std::vector<size_t> inliers = {0, 2, 5};
+   *   PointCloud subset = cloud[inliers];
+   * @endcode
+   */
   [[nodiscard]] PointCloud operator[](const std::vector<size_t>& indices) const;
 
   Point* data() { return points_.data(); }
@@ -199,8 +245,37 @@ class PointCloud {
   void erase(size_t index);
   void erase(size_t first, size_t last);
 
+  /// @brief Batch erase by indices (O(n) single pass)
+  /// @param indices Vector of point indices to remove (will be sorted
+  /// internally)
+  void erase(std::vector<size_t> indices);
+
   // --- Point-Centric Access (xyz + all attributes) ---
+
+  /**
+   * @brief Access point and its attributes via a proxy object
+   *
+   * Returns a lightweight `PointRef` object that acts like a struct reference.
+   * Allows accessing/modifying XYZ and all active attributes (Intensity, Time, etc.)
+   * through a unified interface.
+   *
+   * @param i Point index
+   * @return PointRef proxy
+   *
+   * @code
+   *   auto pt = cloud.point(0);
+   *   pt.x() += 1.0f;          // Modify coordinate
+   *   if (pt.hasIntensity())
+   *     pt.intensity() *= 2.0f; // Modify attribute
+   * @endcode
+   */
   PointRef point(size_t i) { return PointRef(*this, i); }
+  
+  /**
+   * @brief Access point and its attributes via a const proxy object
+   * @param i Point index
+   * @return ConstPointRef read-only proxy
+   */
   ConstPointRef point(size_t i) const { return ConstPointRef(*this, i); }
 
  private:
@@ -247,9 +322,10 @@ class PointCloud {
   std::unique_ptr<std::vector<Color>> color_;
   std::unique_ptr<std::vector<Label>> label_;
   std::unique_ptr<std::vector<Eigen::Vector3f>> normal_;
+  std::unique_ptr<std::vector<Eigen::Matrix3f>> covariance_;
 };
 
-}  // namespace nanopcl
+}  // namespace npcl
 
 #include "nanopcl/core/impl/point_accessors_impl.hpp"
 #include "nanopcl/core/impl/point_cloud_impl.hpp"

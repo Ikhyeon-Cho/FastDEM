@@ -15,7 +15,6 @@
 
 #include <spdlog/spdlog.h>
 
-#include "height_mapping/height_map.h"
 #include "height_mapping/ppl/types.h"
 
 namespace height_mapping::ppl::stages {
@@ -34,15 +33,13 @@ class MoveOrigin : public ::ppl::Stage<MappingFrame> {
     spdlog::debug("[MoveOrigin] Stage configured (robot-centric mode)");
   }
 
-  bool process(const std::shared_ptr<MappingFrame>& frame) override {
-    auto& map = frame->map;
-    if (!map) {
-      return true;
-    }
+  bool process(const std::shared_ptr<MappingFrame>& dataframe) override {
+    auto& map = dataframe->height_map;
+    if (!map) return true;
 
     // Move map origin to robot position
-    grid_map::Position robot_pos(frame->pose.translation().x(),
-                                 frame->pose.translation().y());
+    grid_map::Position robot_pos(dataframe->robot_pose.translation().x(),
+                                 dataframe->robot_pose.translation().y());
     map->move(robot_pos);
 
     spdlog::debug("[MoveOrigin] Map origin moved to ({:.2f}, {:.2f})",

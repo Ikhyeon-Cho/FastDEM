@@ -224,7 +224,8 @@ public:
     fmt::print(
         "---------------------------------------------------------------"
         "------------------\n");
-    fmt::print("Total Pipeline:           {:>8.2f} ms\n\n", total_avg);
+    double hz = total_avg > 0 ? 1000.0 / total_avg : 0;
+    fmt::print("Total Pipeline:           {:>8.2f} ms ({:.0f} Hz)\n\n", total_avg, hz);
   }
 
   // Configuration

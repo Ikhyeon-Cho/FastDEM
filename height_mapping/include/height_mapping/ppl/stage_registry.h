@@ -1,28 +1,18 @@
-/*
- * stage_registry.h
- *
- * Explicit stage registration for height mapping pipeline.
- * This avoids Static Initialization Order Fiasco with ppl macros.
- *
- *  Created on: Dec 2024
- *      Author: Ikhyeon Cho
- *	 Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
- *       Email: tre0430@korea.ac.kr
- */
-
-#ifndef HEIGHT_MAPPING_PPL_STAGE_REGISTRY_H
-#define HEIGHT_MAPPING_PPL_STAGE_REGISTRY_H
+#pragma once
 
 namespace height_mapping::ppl {
 
 /**
- * @brief Register all pipeline stages with ppl::Registry
+ * Forces linker to include stage_registry.o (which contains PPL_REGISTER_STAGE
+ * macros). This empty function exists because:
  *
- * This function must be called before loading pipeline from YAML.
- * It ensures all stages are registered regardless of linker optimization.
+ * - PPL_REGISTER_STAGE uses static variable initialization for auto-registration
+ * - __attribute__((used)) only prevents compiler optimization, not linker stripping
+ * - Static library linking discards unreferenced .o files entirely
+ *
+ * Must be called once before Pipeline::load(). Typically called in HeightMapper
+ * constructor.
  */
 void registerAllStages();
 
 }  // namespace height_mapping::ppl
-
-#endif  // HEIGHT_MAPPING_PPL_STAGE_REGISTRY_H

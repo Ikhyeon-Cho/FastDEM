@@ -13,12 +13,13 @@
 #include <spdlog/spdlog.h>
 
 #include <filesystem>
-#include <grid_map_ros/GridMapRosConverter.hpp>
+#include "height_mapping_ros/adapters/grid_map_ros.h"
 #include <memory>
 
 #include "height_mapping/height_mapping.h"
-#include "height_mapping_ros/adapters/pointcloud2.h"
 #include "height_mapping_ros/adapters/tf2.h"
+
+#include <nanopcl/bridge/ros1.hpp>
 #include "height_mapping_ros/node_parameters.h"
 
 namespace fs = std::filesystem;
@@ -72,15 +73,15 @@ class MappingNode {
     try {
       if (params_.use_configurable_mapper) {
         // ppl::HeightMapper (experimental)
-        auto config = ppl::HeightMapper::Config::load(params_.config_path);
-        mapper_ = std::make_unique<ppl::HeightMapper>(config, extrinsics,
+        auto hm_config = ppl::HeightMapper::Config::load(params_.config_path);
+        mapper_ = std::make_unique<ppl::HeightMapper>(hm_config, extrinsics,
                                                       pose_provider);
         spdlog::info("ppl::HeightMapper initialized [OK]");
       } else {
         // HeightMapper (Standard)
-        auto config = HeightMapper::Config::load(params_.config_path);
-        mapper_ =
-            std::make_unique<HeightMapper>(config, extrinsics, pose_provider);
+        auto hm_config = HeightMapper::Config::load(params_.config_path);
+        mapper_ = std::make_unique<HeightMapper>(hm_config, extrinsics,
+                                                 pose_provider);
         spdlog::info("HeightMapper initialized [OK]");
       }
     } catch (const std::exception& e) {
@@ -91,17 +92,13 @@ class MappingNode {
   }
 
   void setupPublishersAndSubscribers() {
-    scan_sub_ = nh_.subscribe(params_.topics.input_scan, 10,
-                              &MappingNode::onScanReceived, this);
-
-    processed_cloud_pub_ =
-        nh_.advertise<sensor_msgs::PointCloud2>("scan/processed", 1);
-
-    height_map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("map/gridmap", 1);
-
-    map_publish_timer_ =
-        nh_.createTimer(ros::Duration(1.0 / params_.topics.publish_rate),
-                        &MappingNode::publishMap, this);
+    // clang-format off
+    scan_sub_ = nh_.subscribe(params_.topics.input_scan, 10, &MappingNode::onScanReceived, this);
+    scan_processed_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("scan/processed", 1);
+    map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("map/gridmap", 1);
+    map_pub_timer_ = nh_.createTimer(ros::Duration(1.0 / params_.topics.publish_rate),
+                                          &MappingNode::publishMap, this);
+    // clang-format on
   }
 
   // ==================== Callbacks ====================
@@ -113,26 +110,25 @@ class MappingNode {
       first_scan = false;
     }
 
-    // Zero-copy: adapter returns shared_ptr, integrate accepts shared_ptr
-    auto scan_cloud = adapters::fromPointCloud2(*msg);
-    mapper_->integrate(scan_cloud);
-    publishDebugData();
+    auto cloud = std::make_shared<PointCloud>(npcl::from(*msg));
+    mapper_->integrate(cloud);
+    publishProcessedScan(*cloud);
   }
+
+  // ==================== Publishers ====================
 
   void publishMap(const ros::TimerEvent&) {
     // Skip if no subscribers
-    if (height_map_pub_.getNumSubscribers() == 0) return;
+    if (map_pub_.getNumSubscribers() == 0) return;
 
     grid_map_msgs::GridMap msg;
-    grid_map::GridMapRosConverter::toMessage(mapper_->getHeightMap(), msg);
-    height_map_pub_.publish(msg);
+    adapters::toMessage(mapper_->getHeightMap(), msg);
+    map_pub_.publish(msg);
   }
 
-  // ==================== Helpers ====================
-
-  void publishDebugData() {
-    // TODO: Debug output functionality removed during ppl migration
-    // Re-implement if needed using new pipeline architecture
+  void publishProcessedScan(const PointCloud& cloud) {
+    if (scan_processed_pub_.getNumSubscribers() == 0) return;
+    scan_processed_pub_.publish(npcl::to<sensor_msgs::PointCloud2>(cloud));
   }
 
   void printNodeSummary() const {
@@ -145,7 +141,7 @@ class MappingNode {
     spdlog::info("  Mapper   : {}", mapper_type);
     spdlog::info("  Config   : {}", config_name);
     spdlog::info("  Input    : {}", scan_sub_.getTopic());
-    spdlog::info("  Output   : {}", height_map_pub_.getTopic());
+    spdlog::info("  Output   : {}", map_pub_.getTopic());
     spdlog::info("  Pub rate : {} Hz", params_.topics.publish_rate);
     spdlog::info("===============================");
     spdlog::info("");
@@ -160,9 +156,9 @@ class MappingNode {
 
   // ROS handles
   ros::Subscriber scan_sub_;
-  ros::Publisher processed_cloud_pub_;
-  ros::Publisher height_map_pub_;
-  ros::Timer map_publish_timer_;
+  ros::Publisher scan_processed_pub_;
+  ros::Publisher map_pub_;
+  ros::Timer map_pub_timer_;
 };
 
 }  // namespace height_mapping

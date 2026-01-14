@@ -10,17 +10,22 @@
 #ifndef HEIGHT_MAPPING_TYPES_H
 #define HEIGHT_MAPPING_TYPES_H
 
-#include <nanopcl/nanopcl.hpp>
+#include <nanopcl/core.hpp>
+#include <nanopcl/transform.hpp>
+
+#include "height_map/height_map.h"
 
 namespace height_mapping {
 
-// Core types from nanoPCL
-using Point = nanopcl::Point;
-using PointCloud = nanopcl::PointCloud;
-using Color = nanopcl::Color;
+// nanoPCL types
+using npcl::Point;
+using npcl::PointCloud;
+using npcl::Color;
+using npcl::Transformf;
 
-// Transform type
-using Transformf = nanopcl::Transformf;
+// height_map types
+using height_map::HeightMap;
+namespace layer = height_map::layer;
 
 }  // namespace height_mapping
 

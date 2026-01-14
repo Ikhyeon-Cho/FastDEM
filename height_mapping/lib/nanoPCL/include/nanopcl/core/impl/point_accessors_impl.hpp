@@ -9,14 +9,14 @@
 #ifndef NANOPCL_CORE_IMPL_POINT_ACCESSORS_IMPL_HPP
 #define NANOPCL_CORE_IMPL_POINT_ACCESSORS_IMPL_HPP
 
-namespace nanopcl {
+namespace npcl {
 
 // =============================================================================
 // PointRefImpl - Const accessors (available for both IsConst=true and false)
 // =============================================================================
 
 template <bool IsConst>
-const Point& PointRefImpl<IsConst>::point() const {
+const Point& PointRefImpl<IsConst>::xyz() const {
   return cloud_[idx_];
 }
 
@@ -105,7 +105,7 @@ const Eigen::Vector3f& PointRefImpl<IsConst>::normal() const {
 
 template <bool IsConst>
 template <bool C, typename>
-Point& PointRefImpl<IsConst>::point() {
+Point& PointRefImpl<IsConst>::xyz() {
   return cloud_[idx_];
 }
 
@@ -163,6 +163,6 @@ Eigen::Vector3f& PointRefImpl<IsConst>::normal() {
   return cloud_.normal()[idx_];
 }
 
-}  // namespace nanopcl
+}  // namespace npcl
 
 #endif  // NANOPCL_CORE_IMPL_POINT_ACCESSORS_IMPL_HPP
