@@ -10,18 +10,18 @@
 #ifndef HEIGHT_MAPPING_IO_SNAPSHOT_H
 #define HEIGHT_MAPPING_IO_SNAPSHOT_H
 
+#include <sys/stat.h>
+
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <chrono>
 #include <ctime>
 #include <iomanip>
-#include <sstream>
-#include <sys/stat.h>
-
 #include <nanopcl/io.hpp>
+#include <sstream>
 
-#include "height_map/io/io.h"
-#include "height_mapping/types.h"
+#include "height_mapping/core.h"
+#include "height_mapping/io.h"
 
 namespace height_mapping {
 namespace io {
@@ -32,8 +32,8 @@ inline bool createDirectory(const std::string& path) {
   return mkdir(path.c_str(), 0755) == 0 || errno == EEXIST;
 }
 
-inline std::string generateTimestampDir(const std::string& base_dir,
-                                        const std::string& prefix = "snapshot") {
+inline std::string generateTimestampDir(
+    const std::string& base_dir, const std::string& prefix = "snapshot") {
   auto now = std::chrono::system_clock::now();
   auto time_t = std::chrono::system_clock::to_time_t(now);
   auto tm = *std::localtime(&time_t);
@@ -99,24 +99,32 @@ inline std::string saveSnapshot(
 
   // Save point cloud
   std::string cloud_path = snapshot_dir + "/cloud.pcd";
-  if (!npcl::io::savePCD(cloud_path, cloud)) {
-    std::cerr << "[snapshot] Warning: Failed to save cloud.pcd" << std::endl;
+  try {
+    npcl::io::savePCD(cloud_path, cloud);
+  } catch (const std::exception& e) {
+    std::cerr << "[snapshot] Warning: Failed to save cloud.pcd: " << e.what()
+              << std::endl;
     success = false;
   }
 
   // Save height map
   std::string map_path = snapshot_dir + "/heightmap.hmap";
-  if (!height_map::io::saveHMap(map_path, map)) {
+  if (!io::saveHMap(map_path, map)) {
     std::cerr << "[snapshot] Warning: Failed to save heightmap.hmap"
               << std::endl;
     success = false;
   }
 
-  // Save robot pose
+  // Save robot pose as TUM format
   std::string pose_path = snapshot_dir + "/robot_pose.tum";
-  if (!npcl::io::savePoseTUM(pose_path, robot_pose, timestamp_sec)) {
-    std::cerr << "[snapshot] Warning: Failed to save robot_pose.tum"
-              << std::endl;
+  try {
+    // Convert Eigen::Isometry to npcl::Transform
+    npcl::Transform_<Scalar> tf("map", "base_link", robot_pose);
+    tf.setTimestamp(npcl::time::fromSec(timestamp_sec));
+    npcl::io::saveTransformTUM(pose_path, tf);
+  } catch (const std::exception& e) {
+    std::cerr << "[snapshot] Warning: Failed to save robot_pose.tum: "
+              << e.what() << std::endl;
     success = false;
   }
 
@@ -155,7 +163,7 @@ inline std::string saveSnapshotWithViz(
     const std::string& directory, const npcl::PointCloud& cloud,
     const HeightMap& map,
     const Eigen::Transform<Scalar, 3, Eigen::Isometry>& robot_pose,
-    const height_map::io::PpmExportConfig& viz_config = {},
+    const io::PpmExportConfig& viz_config = {},
     const std::vector<std::string>& viz_layers = {},
     double timestamp_sec = 0.0) {
   // First save the basic snapshot
@@ -177,7 +185,7 @@ inline std::string saveSnapshotWithViz(
   std::vector<std::string> layers = viz_layers;
   if (layers.empty()) {
     // Default: elevation and persistence
-    layers = {height_map::layer::elevation, height_map::layer::persistence};
+    layers = {layer::elevation, layer::persistence};
   }
 
   // Export each layer as PPM
@@ -187,7 +195,7 @@ inline std::string saveSnapshotWithViz(
     }
 
     std::string image_path = viz_dir + "/" + layer_name + ".ppm";
-    if (!height_map::io::savePpm(image_path, map, layer_name, viz_config)) {
+    if (!io::savePpm(image_path, map, layer_name, viz_config)) {
       std::cerr << "[snapshot] Warning: Failed to export " << layer_name
                 << ".ppm" << std::endl;
     }
@@ -212,22 +220,25 @@ inline std::string saveSnapshotWithViz(
  * @return true if all components loaded successfully
  */
 template <typename Scalar = double>
-inline bool loadSnapshot(const std::string& snapshot_dir,
-                         npcl::PointCloud& cloud, HeightMap& map,
-                         Eigen::Transform<Scalar, 3, Eigen::Isometry>& robot_pose,
-                         double& timestamp_sec) {
+inline bool loadSnapshot(
+    const std::string& snapshot_dir, npcl::PointCloud& cloud, HeightMap& map,
+    Eigen::Transform<Scalar, 3, Eigen::Isometry>& robot_pose,
+    double& timestamp_sec) {
   bool success = true;
 
   // Load point cloud
   std::string cloud_path = snapshot_dir + "/cloud.pcd";
-  if (!npcl::io::loadPCD(cloud_path, cloud)) {
-    std::cerr << "[snapshot] Warning: Failed to load cloud.pcd" << std::endl;
+  try {
+    cloud = npcl::io::loadPCD(cloud_path);
+  } catch (const std::exception& e) {
+    std::cerr << "[snapshot] Warning: Failed to load cloud.pcd: " << e.what()
+              << std::endl;
     success = false;
   }
 
   // Load height map
   std::string map_path = snapshot_dir + "/heightmap.hmap";
-  if (!height_map::io::loadHMap(map_path, map)) {
+  if (!io::loadHMap(map_path, map)) {
     std::cerr << "[snapshot] Warning: Failed to load heightmap.hmap"
               << std::endl;
     success = false;
@@ -235,9 +246,13 @@ inline bool loadSnapshot(const std::string& snapshot_dir,
 
   // Load robot pose
   std::string pose_path = snapshot_dir + "/robot_pose.tum";
-  if (!npcl::io::loadPoseTUM(pose_path, robot_pose, timestamp_sec)) {
-    std::cerr << "[snapshot] Warning: Failed to load robot_pose.tum"
-              << std::endl;
+  try {
+    auto tf = npcl::io::loadTransformTUM<Scalar>(pose_path, "map", "base_link");
+    robot_pose = tf.pose();
+    timestamp_sec = npcl::time::toSec(tf.timestamp());
+  } catch (const std::exception& e) {
+    std::cerr << "[snapshot] Warning: Failed to load robot_pose.tum: "
+              << e.what() << std::endl;
     success = false;
   }
 

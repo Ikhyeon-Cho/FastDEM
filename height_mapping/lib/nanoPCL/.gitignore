@@ -6,6 +6,7 @@ cmake-build-*/
 # IDE
 .idea/
 .vscode/
+.claude/
 *.swp
 *~
 
@@ -13,7 +14,17 @@ cmake-build-*/
 *.o
 *.a
 *.so
+benchmarks/profiling/bench_*
+benchmarks/profiling/test_*
 
-# Test outputs
+# Test data and outputs
+data/
 *.pcd
 *.bin
+*.tar.gz
+*.png
+*.jpg
+
+# AI assistant files
+CLAUDE.md
+GEMINI.md

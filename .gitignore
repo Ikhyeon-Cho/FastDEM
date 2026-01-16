@@ -1,48 +1,52 @@
 # IDE
-.vscode/**
-.idea/**
+.vscode/
+.idea/
 .claude/
-
-# Data
-data/**
-maps/
-
-# ROS bag files
-*.bag
-
-# Point cloud data
-*.pcd
-
-# Temporary and planning files
-*.txt
-implementation-plan.md
-*_ROADMAP.md
-*_SUMMARY.md
-*-plan.md
-*-integration-plan.md
-config-integration-plan.md
-chat.md
-FLOWPIPE_API_USAGE.md
+*.swp
+*.swo
+*~
 
 # Build artifacts
 build/
 devel/
+install/
 logs/
 .catkin_tools/
+*.o
+*.so
+*.a
+
+# Data and output files
+data/
+maps/
+*.bag
+*.pcd
+*.ppm
+*.bin
+*.hmap
+*.tar.gz
+
+# Temporary files
+*.txt
+*.tmp
+*.bak
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C++ build files
-*.o
-*.so
-*.a
+.venv/
+venv/
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# Documentation
+# Documentation (internal dev docs)
 docs/
+
+# Experimental headers (not implemented yet)
+height_mapping/include/height_mapping/ops/decay.h
+height_mapping/include/height_mapping/ops/morphology.h
+height_mapping/include/height_mapping/ops/outlier_removal.h
+height_mapping/include/height_mapping/ops/smoothing.h

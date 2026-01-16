@@ -1,5 +1,4 @@
-config_path: "$(find height_mapping)/config/local_mapping.yaml"
-use_configurable_mapper: true  # false: HeightMapper, true: ppl::HeightMapper
+config_path: "$(find height_mapping)/config/default.yaml"
 
 topics:
   input_scan: "/velodyne/points"

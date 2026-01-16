@@ -1,0 +1,57 @@
+# Height Mapping Configuration - Local Mapping (Robot-Centric)
+# Uses ppl (Pipeline Library) format
+
+# Mapper settings
+mapper:
+  map:
+    width: 15.0
+    height: 15.0
+    resolution: 0.1
+    frame_id: "map"
+
+# Pipeline configuration
+pipeline:
+  enable_profiling: true
+  profile_interval: 100
+  stages:
+    - MoveOrigin
+    - VoxelFilter
+    - PassthroughFilter
+    - Raycasting
+    - HeightEstimation
+    - Inpainting
+
+# Stage parameters
+params:
+  VoxelFilter:
+    voxel_size: 0.05
+    method: "centroid"
+
+  PassthroughFilter:
+    range_min: 0.5
+    range_max: 20.0
+    # z_min: -0.1
+    # z_max: 2.0
+
+  Raycasting:
+    enabled: false
+    threshold: 0.02
+    min_distance: 0.5
+    persistence:
+      max_count: 50.0
+      step_add: 10.0
+      step_sub: 5.0
+
+  HeightEstimation:
+    type: "incremental_mean"
+    kalman:
+      process_noise: 0.01
+      measurement_noise: 0.05
+      initial_variance: 1000.0
+    moving_average:
+      alpha: 0.3
+
+  Inpainting:
+    enabled: true
+    max_iterations: 3
+    min_valid_neighbors: 2

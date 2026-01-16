@@ -1,5 +1,0 @@
-<launch>
-  <node pkg="grid_map_visualization" type="grid_map_visualization" name="height_mapping_visualization" output="log">
-    <rosparam file="$(find height_mapping_ros)/config//grid_map_visualization/default.yaml" command="load" />
-  </node>
-</launch>

@@ -9,9 +9,8 @@
  *   PPL_REGISTER_STAGE(MyContext, MyStage, "MyStage")
  *
  *   // Then in YAML:
- *   algorithms:
- *     SomeInstance:
- *       type: MyStage
+ *   params:
+ *     MyStage:
  *       param1: value1
  *
  * Created on: Dec 2024

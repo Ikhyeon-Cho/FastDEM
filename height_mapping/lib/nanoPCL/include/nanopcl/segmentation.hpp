@@ -7,11 +7,13 @@
 // Available algorithms:
 //   - euclideanCluster():  BFS-based clustering with spatial hashing
 //   - segmentPlane():      RANSAC plane fitting
+//   - segmentGround():     Grid-based ground segmentation
 
 #ifndef NANOPCL_SEGMENTATION_HPP
 #define NANOPCL_SEGMENTATION_HPP
 
 #include "nanopcl/segmentation/euclidean_cluster.hpp"
+#include "nanopcl/segmentation/ground_seg.hpp"
 #include "nanopcl/segmentation/ransac_plane.hpp"
 
 #endif  // NANOPCL_SEGMENTATION_HPP

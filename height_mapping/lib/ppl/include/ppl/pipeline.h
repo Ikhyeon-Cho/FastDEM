@@ -2,7 +2,7 @@
  * pipeline.h - Pipeline engine for ppl (Pipeline Library)
  *
  * Loads pipeline configuration from YAML and executes stages sequentially.
- * Supports separated flow (pipeline.stages) and config (algorithms) sections.
+ * Supports separated flow (pipeline.stages) and config (params) sections.
  *
  * YAML Structure:
  *   pipeline:
@@ -11,12 +11,10 @@
  *       - PreVoxel
  *       - HeightEstimation
  *
- *   algorithms:
+ *   params:
  *     MoveOrigin:
- *       type: MoveOrigin    # optional if name == type
  *       z_offset: 1.5
  *     PreVoxel:
- *       type: VoxelFilter   # reuse same class with different params
  *       voxel_size: 0.1
  *
  * Created on: Dec 2024
@@ -72,7 +70,7 @@ public:
   /**
    * @brief Load pipeline from YAML node
    *
-   * @param root Root YAML node containing 'pipeline' and 'algorithms' sections
+   * @param root Root YAML node containing 'pipeline' and 'params' sections
    */
   void load(const YAML::Node& root) {
     stages_.clear();
@@ -90,23 +88,16 @@ public:
           "[ppl] 'pipeline.stages' must be a list (YAML sequence)");
     }
 
-    const auto& algorithms =
-        root["algorithms"];  // Optional: parameter storage
+    const auto& params = root["params"];  // Optional: parameter storage
 
     for (const auto& node : stage_names) {
       std::string instance_name = node.as<std::string>();
       std::string type_name = instance_name;  // Default: name is type
       YAML::Node config_node;
 
-      // Look up configuration in algorithms section
-      if (algorithms && algorithms[instance_name]) {
-        YAML::Node algo_config = algorithms[instance_name];
-
-        // Use 'type' field if specified, otherwise use instance_name
-        if (algo_config["type"]) {
-          type_name = algo_config["type"].as<std::string>();
-        }
-        config_node = algo_config;
+      // Look up configuration in params section
+      if (params && params[instance_name]) {
+        config_node = params[instance_name];
       }
 
       // Create stage via registry

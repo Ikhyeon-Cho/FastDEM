@@ -85,3 +85,18 @@ add_dependencies(height_mapping_node
   ${catkin_EXPORTED_TARGETS}
 )
 
+# Experimental: PPL mapping node (pipeline-based)
+add_executable(ppl_mapping_node
+  experimental/src/ppl_mapping_node.cpp
+)
+
+target_link_libraries(ppl_mapping_node
+  ${catkin_LIBRARIES}
+  height_mapping::height_mapping
+)
+
+add_dependencies(ppl_mapping_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+

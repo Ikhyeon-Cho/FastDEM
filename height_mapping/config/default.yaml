@@ -1,0 +1,47 @@
+# Height Mapping Configuration
+# Default preset: Local mapping (robot-centric, 15m x 15m)
+
+# Map geometry
+map:
+  width: 15.0
+  height: 15.0
+  resolution: 0.1
+  frame_id: "map"
+  mode: "local"  # local | global
+                 # local: map follows robot, global: fixed origin
+
+# Scan preprocessing
+voxel_filter:
+  voxel_size: 0.05
+  method: "centroid"
+
+spatial_filter:
+  z_min: -1.0
+  z_max: 2.0
+  range_min: 0.5
+  range_max: 20.0
+
+# Height estimation
+estimation:
+  type: "incremental_mean"  # incremental_mean | kalman_filter | moving_average
+  kalman:
+    process_noise: 0.01
+    measurement_noise: 0.1
+    initial_variance: 1.0
+  moving_average:
+    alpha: 0.3
+
+# Post-processing
+raycasting:
+  enabled: false
+  threshold: 0.05
+  min_distance: 0.5
+  persistence:
+    max_count: 30.0
+    step_add: 3.0
+    step_sub: 1.0
+
+inpainting:
+  enabled: false
+  max_iterations: 3
+  min_valid_neighbors: 2
