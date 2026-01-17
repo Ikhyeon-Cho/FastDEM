@@ -1,0 +1,14 @@
+config_path: "$(find height_mapping)/config/default.yaml"
+
+topics:
+  input_scan: "/velodyne/points"
+  publish_rate: 10.0  # [Hz]
+
+tf:
+  base_frame: "base_link"
+  map_frame: "map"
+  max_wait_time: 0.1  # [sec] Wait time for transform to arrive
+  max_stale_time: 0.1 # [sec] Max time difference between query and latest transform
+
+logger:
+  level: "info" # info, warn, error, debug

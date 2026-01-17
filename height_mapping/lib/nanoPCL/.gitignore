@@ -1,0 +1,30 @@
+# Build directories
+build/
+build_*/
+cmake-build-*/
+
+# IDE
+.idea/
+.vscode/
+.claude/
+*.swp
+*~
+
+# Compiled files
+*.o
+*.a
+*.so
+benchmarks/profiling/bench_*
+benchmarks/profiling/test_*
+
+# Test data and outputs
+data/
+*.pcd
+*.bin
+*.tar.gz
+*.png
+*.jpg
+
+# AI assistant files
+CLAUDE.md
+GEMINI.md

@@ -1,18 +1,24 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>height_mapping</name>
-  <version>0.0.0</version>
-  <description>The height_mapping package</description>
+  <name>height_mapping_ros</name>
+  <version>1.0.0</version>
+  <description>ROS wrapper for height mapping library</description>
   <maintainer email="tre0430@korea.ac.kr">Ikhyeon Cho</maintainer>
-  <license>.</license>
+  <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- ROS dependencies -->
   <depend>roscpp</depend>
   <depend>tf2_ros</depend>
-  <depend>grid_map_ros</depend>
-  <depend>pcl_conversions</depend>
-  <depend>height_mapping_core</depend>
-  <!-- <depend>height_mapping_io</depend> -->
+  <depend>tf2_eigen</depend>
+  <depend>grid_map_msgs</depend>
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
+
+  <!-- Core library (Pure CMake package) -->
+  <build_depend>height_mapping</build_depend>
+
   <export>
   </export>
 </package>

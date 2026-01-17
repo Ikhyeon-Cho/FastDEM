@@ -1,75 +1,102 @@
-cmake_minimum_required(VERSION 3.0.2)
-project(height_mapping)
-add_compile_options(-std=c++17)
+cmake_minimum_required(VERSION 3.10)
+project(height_mapping_ros)
 
-find_package(PCL REQUIRED)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+###############
+## Dependencies
+###############
+
+# ROS dependencies (catkin)
 find_package(catkin REQUIRED COMPONENTS
-    roscpp
-    tf2_ros
-    grid_map_ros
-    pcl_conversions
-    height_mapping_core
-    # height_mapping_io
-    message_generation
+  roscpp
+  tf2_ros
+  tf2_eigen
+  grid_map_msgs
+  message_generation
+  rosbag
 )
+
+# Pure CMake dependency (our core library)
+find_package(height_mapping REQUIRED)
+
+# OpenMP (required by height_mapping)
+find_package(OpenMP REQUIRED)
+message(STATUS "height_mapping_INCLUDE_DIRS: ${height_mapping_INCLUDE_DIRS}")
+message(STATUS "height_mapping_LIBRARIES: ${height_mapping_LIBRARIES}")
+message(STATUS "height_mapping_LIBRARY_DIRS: ${height_mapping_LIBRARY_DIRS}")
+
+###############
+## Messages  ##
+###############
 
 add_service_files(
   FILES
   save_map.srv
 )
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-)
+generate_messages()
+
+###############
+## Catkin    ##
+###############
 
 catkin_package(
-  INCLUDE_DIRS 
+  INCLUDE_DIRS
     include
-  CATKIN_DEPENDS 
+  CATKIN_DEPENDS
     roscpp
     tf2_ros
-    grid_map_ros
-    pcl_conversions
-    height_mapping_core
-    # height_mapping_io
+    grid_map_msgs
+    message_runtime
 )
 
 ###########
 ## Build ##
 ###########
-set(CMAKE_BUILD_TYPE Release)
+
+# Default to Release build
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+  message(STATUS "Setting build type to '${CMAKE_BUILD_TYPE}' as none was specified.")
+endif()
+
 include_directories(
   include
-  ${PCL_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
 
-# Node: Height mapping
-add_executable(height_mapping_node 
-  src/ros/height_mapping_node.cpp
-  src/core/HeightMapper.cpp)
+#############
+## Nodes   ##
+#############
+
+# Main height mapping node
+add_executable(height_mapping_node
+  src/height_mapping_node.cpp
+)
+
 target_link_libraries(height_mapping_node
-  ${PCL_LIBRARIES}
   ${catkin_LIBRARIES}
+  height_mapping::height_mapping
 )
 
-# Node: Global mapping
-add_executable(global_mapping_node 
-  src/ros/global_mapping_node.cpp
-  src/core/HeightMapper.cpp
-  src/core/GlobalMapper.cpp
-)
-target_link_libraries(global_mapping_node
-  ${PCL_LIBRARIES}
-  ${catkin_LIBRARIES}
-  ${YAML_CPP_LIBRARIES}
+add_dependencies(height_mapping_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
 )
 
-# Node: Sensor processor
-add_executable(sensor_processor_node 
-  src/ros/sensor_processor_node.cpp)
-target_link_libraries(sensor_processor_node
-  ${PCL_LIBRARIES}
-  ${catkin_LIBRARIES}
+# Experimental: PPL mapping node (pipeline-based)
+add_executable(ppl_mapping_node
+  experimental/src/ppl_mapping_node.cpp
 )
+
+target_link_libraries(ppl_mapping_node
+  ${catkin_LIBRARIES}
+  height_mapping::height_mapping
+)
+
+add_dependencies(ppl_mapping_node
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+)
+

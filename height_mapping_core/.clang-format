@@ -1,7 +1,0 @@
-SortIncludes: false
-ColumnLimit: 90
-BinPackArguments: false
-BinPackParameters: false
-AllowAllParametersOfDeclarationOnNextLine: false
-AllowAllArgumentsOnNextLine: false
-AlignAfterOpenBracket: Align

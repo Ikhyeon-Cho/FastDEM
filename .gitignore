@@ -1,6 +1,52 @@
-.vscode/**
-data/**
-maps/
+# IDE
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
 
+# Build artifacts
+build/
+devel/
+install/
+logs/
+.catkin_tools/
+*.o
+*.so
+*.a
+
+# Data and output files
+data/
+maps/
 *.bag
 *.pcd
+*.ppm
+*.bin
+*.hmap
+*.tar.gz
+
+# Temporary files
+*.txt
+*.tmp
+*.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (internal dev docs)
+docs/
+
+# Experimental headers (not implemented yet)
+height_mapping/include/height_mapping/ops/decay.h
+height_mapping/include/height_mapping/ops/morphology.h
+height_mapping/include/height_mapping/ops/outlier_removal.h
+height_mapping/include/height_mapping/ops/smoothing.h
