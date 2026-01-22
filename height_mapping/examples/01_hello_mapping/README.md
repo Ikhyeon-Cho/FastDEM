@@ -56,7 +56,7 @@ Basic Mapper usage example
 Configuration:
   Map size:    10 x 10 m
   Resolution:  0.1 m/cell
-  Estimator:   incremental_mean
+  Estimator:   kalman_filter
 
 Created Mapper
 Generating synthetic terrain...

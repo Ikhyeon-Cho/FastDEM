@@ -2,7 +2,7 @@
  * online_mapper.h
  *
  * Provider-based height mapping engine with real-time transform lookup.
- * For standalone use without providers, see Mapper.
+ * Internally delegates to Mapper for actual processing.
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -13,11 +13,11 @@
 #ifndef HEIGHT_MAPPING_ONLINE_MAPPER_H
 #define HEIGHT_MAPPING_ONLINE_MAPPER_H
 
+#include <functional>
 #include <memory>
-#include <shared_mutex>
 
 #include "height_mapping/api/config.h"
-#include "height_mapping/core.h"
+#include "height_mapping/api/mapper.h"
 
 namespace height_mapping {
 
@@ -25,15 +25,14 @@ namespace height_mapping {
 class IExtrinsicsProvider;
 class IRobotPoseProvider;
 
-namespace estimator {
-class Base;
-}
-
 /**
  * @brief Provider-based height mapper with real-time transform lookup.
  *
  * Uses IExtrinsicsProvider and IRobotPoseProvider for automatic transform
  * retrieval. Ideal for ROS integration where TF2 provides transforms.
+ *
+ * Internally uses Mapper for all processing logic (Composition pattern).
+ * OnlineMapper's responsibility is solely transform resolution.
  *
  * For direct transform input, use Mapper instead.
  *
@@ -45,6 +44,7 @@ class Base;
 class OnlineMapper {
  public:
   using Config = MappingConfig;
+  using ProcessedScanCallback = std::function<void(const PointCloud&)>;
 
   OnlineMapper(const Config& config,
                std::shared_ptr<IExtrinsicsProvider> extrinsics,
@@ -65,25 +65,38 @@ class OnlineMapper {
   void integrate(std::shared_ptr<PointCloud> cloud);
 
   /**
-   * @brief Get read-only access to the height map.
+   * @brief Get read-only access to the height map (thread-safe).
    */
   const HeightMap& map() const;
 
   /**
-   * @brief Reset the mapper (clear the map).
+   * @brief Reset the mapper, clearing all map data (thread-safe).
    */
   void reset();
 
- private:
-  void initializeHeightEstimator();
+  /**
+   * @brief Move the map origin to a new position (thread-safe).
+   */
+  void moveMapOrigin(const Eigen::Vector2f& position);
 
-  Config config_;
+  /**
+   * @brief Set callback to receive processed scan.
+   *
+   * The callback is invoked after processScan() (filtering, transforms,
+   * gridMaxZ) but before updateMap().
+   *
+   * @param callback Function to call with processed point cloud
+   */
+  void setProcessedScanCallback(ProcessedScanCallback callback);
+
+ private:
   std::shared_ptr<IExtrinsicsProvider> extrinsics_;
   std::shared_ptr<IRobotPoseProvider> pose_;
-  std::unique_ptr<HeightMap> map_;
-  std::unique_ptr<estimator::Base> height_estimator_;
 
-  mutable std::shared_mutex map_mutex_;
+  // Core mapper (Composition - delegates all processing)
+  std::unique_ptr<Mapper> mapper_;
+
+  ProcessedScanCallback processed_scan_callback_;
 };
 
 }  // namespace height_mapping

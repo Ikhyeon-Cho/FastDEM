@@ -34,21 +34,16 @@ params:
 
   Raycasting:
     enabled: true
-    threshold: 0.02
-    min_distance: 0.5
-    persistence:
-      max_count: 30.0
-      step_add: 3.0
-      step_sub: 1.0
+    endpoint_margin: 2
+    height_threshold: 0.05
+    vote_threshold: 10
 
   HeightEstimation:
-    type: "incremental_mean"
+    type: "kalman_filter"  # kalman_filter | welford | p2_quantile
     kalman:
-      process_noise: 0.01
-      measurement_noise: 0.05
-      initial_variance: 1000.0
-    moving_average:
-      alpha: 0.3
+      initial_variance: 0.05
+      min_variance: 0.0001
+      max_variance: 0.05
 
   Inpainting:
     enabled: false

@@ -70,8 +70,13 @@ class MappingNode {
 
     try {
       auto config = OnlineMapper::Config::load(params_.config_path);
-      mapper_ =
-          std::make_unique<OnlineMapper>(config, extrinsics, pose_provider);
+      mapper_ = std::make_unique<OnlineMapper>(config,  //
+                                               extrinsics, pose_provider);
+
+      // Register callback to publish processed cloud
+      mapper_->setProcessedScanCallback(
+          [this](const PointCloud& cloud) { publishProcessedScan(cloud); });
+
       spdlog::info("OnlineMapper initialized [OK]");
     } catch (const std::exception& e) {
       spdlog::error("OnlineMapper initialization failed: {}", e.what());
@@ -101,7 +106,8 @@ class MappingNode {
 
     auto cloud = std::make_shared<PointCloud>(npcl::from(*msg));
     mapper_->integrate(cloud);
-    publishProcessedScan(*cloud);
+    // Preprocessed cloud is published via callback registered in
+    // setupOnlineMapper
   }
 
   // ==================== Publishers ====================
@@ -109,7 +115,6 @@ class MappingNode {
   void publishMap(const ros::TimerEvent&) {
     // Skip if no subscribers
     if (map_pub_.getNumSubscribers() == 0) return;
-
     grid_map_msgs::GridMap msg;
     toMessage(mapper_->map(), msg);
     map_pub_.publish(msg);

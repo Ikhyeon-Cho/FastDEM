@@ -101,7 +101,7 @@ inline PointCloud cropRange(PointCloud&& cloud, float min_range,
 }
 
 // =============================================================================
-// Axis Filters: cropX, cropY, cropZ
+// Axis Filters: cropXaxis, cropYaxis, cropZaxis
 // =============================================================================
 namespace detail {
 
@@ -150,32 +150,32 @@ inline PointCloud cropAxisMove(PointCloud&& cloud, float min, float max,
 
 }  // namespace detail
 
-inline PointCloud cropX(const PointCloud& cloud, float min, float max,
+inline PointCloud cropXaxis(const PointCloud& cloud, float min, float max,
                         FilterMode mode) {
   return detail::cropAxisCopy<0>(cloud, min, max, mode);
 }
 
-inline PointCloud cropX(PointCloud&& cloud, float min, float max,
+inline PointCloud cropXaxis(PointCloud&& cloud, float min, float max,
                         FilterMode mode) {
   return detail::cropAxisMove<0>(std::move(cloud), min, max, mode);
 }
 
-inline PointCloud cropY(const PointCloud& cloud, float min, float max,
+inline PointCloud cropYaxis(const PointCloud& cloud, float min, float max,
                         FilterMode mode) {
   return detail::cropAxisCopy<1>(cloud, min, max, mode);
 }
 
-inline PointCloud cropY(PointCloud&& cloud, float min, float max,
+inline PointCloud cropYaxis(PointCloud&& cloud, float min, float max,
                         FilterMode mode) {
   return detail::cropAxisMove<1>(std::move(cloud), min, max, mode);
 }
 
-inline PointCloud cropZ(const PointCloud& cloud, float min, float max,
+inline PointCloud cropZaxis(const PointCloud& cloud, float min, float max,
                         FilterMode mode) {
   return detail::cropAxisCopy<2>(cloud, min, max, mode);
 }
 
-inline PointCloud cropZ(PointCloud&& cloud, float min, float max,
+inline PointCloud cropZaxis(PointCloud&& cloud, float min, float max,
                         FilterMode mode) {
   return detail::cropAxisMove<2>(std::move(cloud), min, max, mode);
 }

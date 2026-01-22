@@ -36,7 +36,7 @@ int main() {
   config.voxel_filter.voxel_size = 0.05f;
 
   // Height estimation algorithm
-  config.estimation.type = "incremental_mean";
+  config.estimation.type = "kalman_filter";
 
   std::cout << "Configuration:" << std::endl;
   std::cout << "  Map size:    " << config.map.width << " x "

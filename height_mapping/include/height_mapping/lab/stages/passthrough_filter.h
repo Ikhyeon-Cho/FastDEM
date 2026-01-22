@@ -24,7 +24,7 @@ namespace height_mapping::lab::stages {
 /**
  * @brief Pipeline stage for spatial filtering (z-axis + range)
  *
- * Uses cropZ and cropRange from nanoPCL filter API.
+ * Uses cropZaxis and cropRange from nanoPCL filter API.
  */
 class PassthroughFilter : public MappingStage {
  public:
@@ -57,7 +57,7 @@ class PassthroughFilter : public MappingStage {
     size_t before = cloud.size();
 
     // Apply z-axis filter
-    cloud = npcl::filters::cropZ(std::move(cloud), z_min_, z_max_);
+    cloud = npcl::filters::cropZaxis(std::move(cloud), z_min_, z_max_);
 
     // Apply range filter
     cloud = npcl::filters::cropRange(std::move(cloud), range_min_, range_max_);

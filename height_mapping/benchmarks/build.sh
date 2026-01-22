@@ -18,6 +18,8 @@ CXXFLAGS="-O2 -std=c++17 -fopenmp"
 EIGEN_CFLAGS=$(pkg-config --cflags eigen3 2>/dev/null || echo "-I/usr/include/eigen3")
 INCLUDES=(
     "-I../lib/nanoPCL/include"
+    "-I../lib/nanoPCL/thirdparty"
+    "-I../lib/grid_map_core/include"
     "-I../include"
     "$EIGEN_CFLAGS"
 )

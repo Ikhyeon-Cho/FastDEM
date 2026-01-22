@@ -12,7 +12,7 @@
 #ifndef HEIGHT_MAPPING_OPS_INPAINTING_H
 #define HEIGHT_MAPPING_OPS_INPAINTING_H
 
-#include "height_mapping/config/types.h"
+#include "height_mapping/config/inpainting.h"
 #include "height_mapping/core/map.h"
 
 namespace height_mapping::ops {

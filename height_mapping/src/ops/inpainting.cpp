@@ -21,8 +21,7 @@ namespace {
 constexpr int dx[] = {-1, 0, 1, -1, 1, -1, 0, 1};
 constexpr int dy[] = {-1, -1, -1, 0, 0, 1, 1, 1};
 
-float computeNeighborMean(const Eigen::MatrixXf& elevation,
-                          const Eigen::MatrixXf& count, int row, int col,
+float computeNeighborMean(const Eigen::MatrixXf& elevation, int row, int col,
                           int min_valid, int& valid_count) {
   const int rows = elevation.rows();
   const int cols = elevation.cols();
@@ -36,8 +35,7 @@ float computeNeighborMean(const Eigen::MatrixXf& elevation,
 
     if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
       float val = elevation(nr, nc);
-      // Only use cells that have been observed (count > 0)
-      if (std::isfinite(val) && count(nr, nc) > 0) {
+      if (std::isfinite(val)) {
         sum += val;
         valid_count++;
       }
@@ -53,9 +51,7 @@ float computeNeighborMean(const Eigen::MatrixXf& elevation,
 }  // namespace
 
 void applyInpainting(HeightMap& map, const config::Inpainting& config) {
-  if (!config.enabled) {
-    return;
-  }
+  if (!config.enabled) return;
 
   // Ensure inpainted layer exists
   if (!map.exists(layer::elevation_inpainted)) {
@@ -64,7 +60,6 @@ void applyInpainting(HeightMap& map, const config::Inpainting& config) {
 
   // Copy elevation to inpainted layer
   const auto& elevation = map.get(layer::elevation);
-  const auto& count_mat = map.get(layer::count);
   auto& inpainted = map.get(layer::elevation_inpainted);
   inpainted = elevation;
 
@@ -83,9 +78,8 @@ void applyInpainting(HeightMap& map, const config::Inpainting& config) {
         }
 
         int valid_count = 0;
-        float mean =
-            computeNeighborMean(inpainted, count_mat, r, c,
-                                config.min_valid_neighbors, valid_count);
+        float mean = computeNeighborMean(inpainted, r, c,
+                                         config.min_valid_neighbors, valid_count);
 
         if (std::isfinite(mean)) {
           buffer(r, c) = mean;

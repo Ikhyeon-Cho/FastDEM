@@ -15,7 +15,7 @@
 #include <memory>
 #include <nanopcl/transform/transform_ops.hpp>
 
-#include "height_mapping/config/types.h"
+#include "height_mapping/config/raycasting.h"
 #include "height_mapping/lab/frame.h"
 #include "height_mapping/ops/raycasting.h"
 
@@ -34,24 +34,16 @@ class Raycasting : public ::ppl::Stage<MappingFrame> {
 
   void configure(const YAML::Node& config) override {
     if (config["enabled"]) config_.enabled = config["enabled"].as<bool>();
-    if (config["threshold"])
-      config_.threshold = config["threshold"].as<float>();
-    if (config["min_distance"])
-      config_.min_distance = config["min_distance"].as<float>();
+    if (config["endpoint_margin"])
+      config_.endpoint_margin = config["endpoint_margin"].as<int>();
+    if (config["height_threshold"])
+      config_.height_threshold = config["height_threshold"].as<float>();
+    if (config["vote_threshold"])
+      config_.vote_threshold = config["vote_threshold"].as<int>();
 
-    // Persistence parameters (nested)
-    if (auto p = config["persistence"]) {
-      if (p["max_count"])
-        config_.persistence.max_count = p["max_count"].as<float>();
-      if (p["step_add"])
-        config_.persistence.step_add = p["step_add"].as<float>();
-      if (p["step_sub"])
-        config_.persistence.step_sub = p["step_sub"].as<float>();
-    }
-
-    spdlog::debug("[Raycasting] threshold={}m, persistence=[max:{}, +{}, -{}]",
-                  config_.threshold, config_.persistence.max_count,
-                  config_.persistence.step_add, config_.persistence.step_sub);
+    spdlog::debug(
+        "[Raycasting] height_threshold={}m, vote_threshold={}, endpoint_margin={}",
+        config_.height_threshold, config_.vote_threshold, config_.endpoint_margin);
   }
 
   bool process(const std::shared_ptr<MappingFrame>& frame) override {

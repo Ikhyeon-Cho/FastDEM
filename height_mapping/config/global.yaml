@@ -7,40 +7,64 @@ map:
   height: 200.0
   resolution: 0.1
   frame_id: "map"
-  mode: "global"
+  mode: "global"  # local | global
+                  # local: map follows robot, global: fixed origin
 
 # Scan preprocessing
-voxel_filter:
-  voxel_size: 0.05
-  method: "centroid"
-
 spatial_filter:
-  z_min: -0.1
+  z_min: -0.5
   z_max: 2.0
   range_min: 0.5
-  range_max: 10.0
+  range_max: 20.0
 
 # Height estimation
 estimation:
-  type: "incremental_mean"
+  type: "kalman_filter"  # kalman_filter | welford | p2_quantile
+  alpha: 0.5             # elevation = alpha * max_denoised + (1 - alpha) * state
+                         # 0: pure estimation, 0.5: balanced, 0.9: conservative
   kalman:
-    process_noise: 0.01
-    measurement_noise: 0.1
-    initial_variance: 1.0
-  moving_average:
-    alpha: 0.3
+    min_variance: 0.0001     # [m^2] minimum variance (prevents over-confidence)
+    max_variance: 0.01       # [m^2] maximum variance (caps uncertainty)
+    process_noise: 0.0       # [m^2] Q: maintains filter receptivity (0 = static terrain)
+  p2:
+    dn0: 0.0    # 0th percentile (min)
+    dn1: 0.16   # 16th percentile (≈ mean - 1σ)
+    dn2: 0.50   # 50th percentile (median)
+    dn3: 0.84   # 84th percentile (≈ mean + 1σ)
+    dn4: 1.0    # 100th percentile (max)
+    elevation_marker: 3  # which marker to use as elevation (0-4)
+    max_sample_count: 0  # fading memory limit (0 = disabled, 50-200 for dynamic scenes)
+
+# Sensor model for measurement uncertainty
+# Height uncertainty: σ_z² = (σ_r × z/d)² + (σ_θ × √(x² + y²))²
+sensor_model:
+  type: "lidar"              # constant | lidar
+  range_noise: 0.02          # [m] σ_r: range uncertainty (from LiDAR datasheet)
+  angular_noise: 0.001       # [rad] σ_θ: angular uncertainty (~0.06°)
+  default_uncertainty: 0.03   # [m] σ for constant model
+
+# Outlier rejection (pre-processing)
+outlier_rejection:
+  enabled: true
+  sigma_threshold: 3.0       # k-sigma threshold for rejection
+  min_uncertainty: 0.05      # [m] minimum σ floor
 
 # Post-processing
-raycasting:
+raycasting:                 # Ghost obstacle removal via temporal voting
   enabled: true
-  threshold: 0.02
-  min_distance: 0.5
-  persistence:
-    max_count: 30.0
-    step_add: 3.0
-    step_sub: 1.0
+  endpoint_margin: 2        # Skip N cells before target (protects curb edges)
+  height_threshold: 0.05    # [m] elevation > upper_bound + threshold = conflict
+  vote_threshold: 10        # Clear cell after N consecutive conflicts
 
-inpainting:
+inpainting:                 # Infill missing data using surrounding information
   enabled: false
   max_iterations: 3
   min_valid_neighbors: 2
+
+spatial_fusion:             # Computes neighborhood-aware uncertainty using weighted ECDF
+  enabled: true
+  search_radius: 0.15       # [m] neighbor search radius (1-2 cells)
+  spatial_sigma: 0.05       # [m] Gaussian decay for distance weight
+  quantile_lower: 0.01      # 1% lower quantile
+  quantile_upper: 0.99      # 99% upper quantile
+  min_valid_neighbors: 3    # minimum neighbors for fusion

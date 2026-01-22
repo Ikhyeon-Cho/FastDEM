@@ -12,7 +12,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include "height_mapping/config/types.h"
+#include "height_mapping/config/inpainting.h"
 #include "height_mapping/lab/frame.h"
 #include "height_mapping/ops/inpainting.h"
 

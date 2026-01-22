@@ -11,6 +11,8 @@
 
 #include <yaml-cpp/yaml.h>
 
+#include <cmath>
+
 #include "height_mapping/api/config.h"
 
 namespace height_mapping {
@@ -28,12 +30,6 @@ config::MappingMode parseMode(const std::string& mode) {
   return config::MappingMode::LOCAL;
 }
 
-config::VoxelMethod parseVoxelMethod(const std::string& method) {
-  if (method == "arbitrary") return config::VoxelMethod::ARBITRARY;
-  if (method == "first") return config::VoxelMethod::FIRST;
-  return config::VoxelMethod::CENTROID;
-}
-
 MappingConfig parseConfig(const YAML::Node& root) {
   MappingConfig cfg;
 
@@ -48,14 +44,6 @@ MappingConfig parseConfig(const YAML::Node& root) {
     if (!mode.empty()) cfg.map.mode = parseMode(mode);
   }
 
-  // Voxel filter
-  if (auto n = root["voxel_filter"]) {
-    load(n, "voxel_size", cfg.voxel_filter.voxel_size);
-    std::string method;
-    load(n, "method", method);
-    if (!method.empty()) cfg.voxel_filter.method = parseVoxelMethod(method);
-  }
-
   // Spatial filter
   if (auto n = root["spatial_filter"]) {
     load(n, "z_min", cfg.spatial_filter.z_min);
@@ -64,16 +52,12 @@ MappingConfig parseConfig(const YAML::Node& root) {
     load(n, "range_max", cfg.spatial_filter.range_max);
   }
 
-  // Raycasting
+  // Raycasting (temporal voting for ghost removal)
   if (auto n = root["raycasting"]) {
     load(n, "enabled", cfg.raycasting.enabled);
-    load(n, "threshold", cfg.raycasting.threshold);
-    load(n, "min_distance", cfg.raycasting.min_distance);
-    if (auto p = n["persistence"]) {
-      load(p, "max_count", cfg.raycasting.persistence.max_count);
-      load(p, "step_add", cfg.raycasting.persistence.step_add);
-      load(p, "step_sub", cfg.raycasting.persistence.step_sub);
-    }
+    load(n, "endpoint_margin", cfg.raycasting.endpoint_margin);
+    load(n, "height_threshold", cfg.raycasting.height_threshold);
+    load(n, "vote_threshold", cfg.raycasting.vote_threshold);
   }
 
   // Inpainting
@@ -86,14 +70,52 @@ MappingConfig parseConfig(const YAML::Node& root) {
   // Estimation
   if (auto n = root["estimation"]) {
     load(n, "type", cfg.estimation.type);
+    load(n, "alpha", cfg.estimation.alpha);
     if (auto k = n["kalman"]) {
+      load(k, "min_variance", cfg.estimation.kalman.min_variance);
+      load(k, "max_variance", cfg.estimation.kalman.max_variance);
       load(k, "process_noise", cfg.estimation.kalman.process_noise);
-      load(k, "measurement_noise", cfg.estimation.kalman.measurement_noise);
-      load(k, "initial_variance", cfg.estimation.kalman.initial_variance);
     }
-    if (auto m = n["moving_average"]) {
-      load(m, "alpha", cfg.estimation.moving_average.alpha);
+    if (auto p = n["p2"]) {
+      load(p, "dn0", cfg.estimation.p2.dn0);
+      load(p, "dn1", cfg.estimation.p2.dn1);
+      load(p, "dn2", cfg.estimation.p2.dn2);
+      load(p, "dn3", cfg.estimation.p2.dn3);
+      load(p, "dn4", cfg.estimation.p2.dn4);
+      load(p, "elevation_marker", cfg.estimation.p2.elevation_marker);
+      load(p, "max_sample_count", cfg.estimation.p2.max_sample_count);
     }
+  }
+
+  // Sensor model
+  if (auto n = root["sensor_model"]) {
+    load(n, "type", cfg.sensor_model.type);
+    // Treat deprecated aliases
+    if (cfg.sensor_model.type == "none") {
+      cfg.sensor_model.type = "constant";
+    } else if (cfg.sensor_model.type == "laser") {
+      cfg.sensor_model.type = "lidar";  // "laser" → "lidar"
+    }
+    load(n, "range_noise", cfg.sensor_model.range_noise);
+    load(n, "angular_noise", cfg.sensor_model.angular_noise);
+    load(n, "default_uncertainty", cfg.sensor_model.default_uncertainty);
+  }
+
+  // Outlier rejection
+  if (auto n = root["outlier_rejection"]) {
+    load(n, "enabled", cfg.outlier_rejection.enabled);
+    load(n, "sigma_threshold", cfg.outlier_rejection.sigma_threshold);
+    load(n, "min_uncertainty", cfg.outlier_rejection.min_uncertainty);
+  }
+
+  // Spatial fusion (bilateral filter + weighted ECDF)
+  if (auto n = root["spatial_fusion"]) {
+    load(n, "enabled", cfg.spatial_fusion.enabled);
+    load(n, "search_radius", cfg.spatial_fusion.search_radius);
+    load(n, "spatial_sigma", cfg.spatial_fusion.spatial_sigma);
+    load(n, "quantile_lower", cfg.spatial_fusion.quantile_lower);
+    load(n, "quantile_upper", cfg.spatial_fusion.quantile_upper);
+    load(n, "min_valid_neighbors", cfg.spatial_fusion.min_valid_neighbors);
   }
 
   return cfg;

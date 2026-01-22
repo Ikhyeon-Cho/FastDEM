@@ -146,15 +146,14 @@ inline std::string saveSnapshot(
  *   ├── heightmap.hmap
  *   ├── robot_pose.tum
  *   └── viz/
- *       ├── elevation.ppm
- *       └── persistence.ppm
+ *       └── elevation.ppm
  *
  * @param directory Base directory
  * @param cloud Point cloud to save
  * @param map Height map to save
  * @param robot_pose Robot pose (Eigen::Isometry)
  * @param viz_config Configuration for visualization export
- * @param viz_layers Layers to export as images (empty = elevation, persistence)
+ * @param viz_layers Layers to export as images (empty = elevation)
  * @param timestamp_sec Timestamp for TUM format (0 = use current time)
  * @return Path to created snapshot directory, or empty string on failure
  */
@@ -184,8 +183,8 @@ inline std::string saveSnapshotWithViz(
   // Determine which layers to visualize
   std::vector<std::string> layers = viz_layers;
   if (layers.empty()) {
-    // Default: elevation and persistence
-    layers = {layer::elevation, layer::persistence};
+    // Default: elevation only
+    layers = {layer::elevation};
   }
 
   // Export each layer as PPM

@@ -14,19 +14,7 @@
 
 // Core data structures
 #include "height_mapping/core/map.h"
-#include "height_mapping/core/update.h"
-
-// Height estimators
-#include "height_mapping/core/estimator/base.h"
-#include "height_mapping/core/estimator/incremental_mean.h"
-#include "height_mapping/core/estimator/kalman_filter.h"
-#include "height_mapping/core/estimator/moving_average.h"
-
-// Layer names
 #include "height_mapping/core/layers.h"
-
-// Updaters
-#include "height_mapping/core/updater/elevation.h"
 
 // nanoPCL types
 #include <nanopcl/core.hpp>

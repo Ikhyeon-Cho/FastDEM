@@ -19,6 +19,7 @@
 #include <shared_mutex>
 #include <string>
 
+#include "height_mapping/config/map.h"
 #include "height_mapping/lab/frame.h"
 
 namespace height_mapping {
@@ -35,7 +36,7 @@ namespace lab {
 class Mapper {
  public:
   struct Config {
-    HeightMap::Config map;
+    config::Map map;
     YAML::Node pipeline;  // Cached YAML for pipeline loading
     bool enable_debug{false};
 
