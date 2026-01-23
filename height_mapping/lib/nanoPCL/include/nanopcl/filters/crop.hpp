@@ -94,11 +94,11 @@ namespace filters {
  * @param mode INSIDE: keep points in range, OUTSIDE: keep points outside
  * @return New point cloud containing filtered points
  */
-[[nodiscard]] PointCloud cropX(const PointCloud& cloud, float min, float max,
+[[nodiscard]] PointCloud cropXaxis(const PointCloud& cloud, float min, float max,
                                FilterMode mode = FilterMode::INSIDE);
 
 /// @brief Crop points by X axis range (move version)
-[[nodiscard]] PointCloud cropX(PointCloud&& cloud, float min, float max,
+[[nodiscard]] PointCloud cropXaxis(PointCloud&& cloud, float min, float max,
                                FilterMode mode = FilterMode::INSIDE);
 
 /**
@@ -110,11 +110,11 @@ namespace filters {
  * @param mode INSIDE: keep points in range, OUTSIDE: keep points outside
  * @return New point cloud containing filtered points
  */
-[[nodiscard]] PointCloud cropY(const PointCloud& cloud, float min, float max,
+[[nodiscard]] PointCloud cropYaxis(const PointCloud& cloud, float min, float max,
                                FilterMode mode = FilterMode::INSIDE);
 
 /// @brief Crop points by Y axis range (move version)
-[[nodiscard]] PointCloud cropY(PointCloud&& cloud, float min, float max,
+[[nodiscard]] PointCloud cropYaxis(PointCloud&& cloud, float min, float max,
                                FilterMode mode = FilterMode::INSIDE);
 
 /**
@@ -126,11 +126,11 @@ namespace filters {
  * @param mode INSIDE: keep points in range, OUTSIDE: keep points outside
  * @return New point cloud containing filtered points
  */
-[[nodiscard]] PointCloud cropZ(const PointCloud& cloud, float min, float max,
+[[nodiscard]] PointCloud cropZaxis(const PointCloud& cloud, float min, float max,
                                FilterMode mode = FilterMode::INSIDE);
 
 /// @brief Crop points by Z axis range (move version)
-[[nodiscard]] PointCloud cropZ(PointCloud&& cloud, float min, float max,
+[[nodiscard]] PointCloud cropZaxis(PointCloud&& cloud, float min, float max,
                                FilterMode mode = FilterMode::INSIDE);
 
 // =============================================================================

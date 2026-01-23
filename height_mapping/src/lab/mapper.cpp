@@ -11,6 +11,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "height_mapping/api/factory.h"
 #include "height_mapping/api/transform_providers.h"
 #include "height_mapping/lab/stage_registry.h"
 
@@ -28,7 +29,7 @@ Mapper::Mapper(const Config& config, IExtrinsicsProvider::Ptr extrinsics,
         "[ppl::Mapper] Robot pose provider is required");
   }
 
-  map_ = std::make_shared<HeightMap>(config.map);
+  map_ = createHeightMap(config.map);
   loadPipeline(config.pipeline);
 
   // Initialize profiler if enabled

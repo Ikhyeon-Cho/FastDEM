@@ -69,6 +69,10 @@ class PointCloud {
   PointCloud& operator+=(const PointCloud& other);
   [[nodiscard]] PointCloud operator+(const PointCloud& other) const;
 
+  /// Translate all points by offset (returns copy)
+  [[nodiscard]] PointCloud operator+(const Eigen::Vector3f& offset) const;
+  [[nodiscard]] PointCloud operator-(const Eigen::Vector3f& offset) const;
+
   // ==========================================================================
   // Attribute Channels
   // ==========================================================================

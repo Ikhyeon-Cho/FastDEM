@@ -6,6 +6,17 @@
 *.swo
 *~
 
+# AI assistant files
+CLAUDE.md
+GEMINI.md
+**/CLAUDE.md
+**/GEMINI.md
+
+# Draft READMEs
+README copy.md
+README_new.md
+README_v2.md
+
 # Build artifacts
 build/
 devel/
@@ -15,6 +26,11 @@ logs/
 *.o
 *.so
 *.a
+
+# Benchmark binaries
+height_mapping/benchmarks/benchmark_*
+!height_mapping/benchmarks/benchmark_*.cpp
+repro_ray
 
 # Data and output files
 data/

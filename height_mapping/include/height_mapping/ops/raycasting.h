@@ -14,7 +14,7 @@
 
 #include <Eigen/Core>
 
-#include "height_mapping/config/types.h"
+#include "height_mapping/config/raycasting.h"
 #include "height_mapping/core.h"
 
 namespace height_mapping::ops {

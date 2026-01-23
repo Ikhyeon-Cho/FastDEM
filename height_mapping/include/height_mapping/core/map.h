@@ -14,6 +14,7 @@
 
 #include <cmath>
 #include <grid_map_core/grid_map_core.hpp>
+#include <memory>
 
 #include "height_mapping/core/layers.h"
 
@@ -23,14 +24,14 @@ namespace height_mapping {
  * @brief 2.5D elevation map for terrain representation.
  *
  * HeightMap extends grid_map::GridMap with predefined layers for elevation
- * mapping: elevation, variance, count, persistence, etc. It provides
+ * mapping: elevation, variance, count, etc. It provides
  * convenient methods for elevation access and map management.
  *
  * @note All elevation values are in meters. NaN indicates unmeasured cells.
  *
  * Example usage:
  * @code
- *   HeightMap map({20.0f, 20.0f, 0.1f, "map"});
+ *   HeightMap map(20.0f, 20.0f, 0.1f, "map");
  *   map.setElevation(1.0f, 2.0f, 0.5f);
  *   float z;
  *   if (map.getElevation(1.0f, 2.0f, z)) {
@@ -40,19 +41,6 @@ namespace height_mapping {
  */
 class HeightMap : public grid_map::GridMap {
  public:
-  /// Initial variance for unmeasured cells (high uncertainty)
-  static constexpr float initial_variance = 1000.0f;
-
-  /**
-   * @brief Configuration for HeightMap initialization.
-   */
-  struct Config {
-    float width = 10.0f;          ///< Map width in meters
-    float height = 10.0f;         ///< Map height in meters
-    float resolution = 0.1f;      ///< Cell size in meters
-    std::string frame_id{"map"};  ///< Coordinate frame ID
-  };
-
   /**
    * @brief Default constructor.
    *
@@ -62,17 +50,21 @@ class HeightMap : public grid_map::GridMap {
   HeightMap();
 
   /**
-   * @brief Construct with configuration.
+   * @brief Construct with geometry parameters.
    *
-   * @param config Map configuration (size, resolution, frame)
+   * @param width Map width in meters
+   * @param height Map height in meters
+   * @param resolution Cell size in meters
+   * @param frame_id Coordinate frame ID
    */
-  explicit HeightMap(const Config& config);
+  HeightMap(float width, float height, float resolution,
+            const std::string& frame_id);
 
   /**
    * @brief Initialize map geometry.
    *
    * Sets the map size and resolution, and clears all data.
-   * This resets variance to initial_variance and count/persistence to 0.
+   * All layers are reset to NaN.
    *
    * @param width Map width in meters
    * @param height Map height in meters
@@ -97,8 +89,7 @@ class HeightMap : public grid_map::GridMap {
   /**
    * @brief Clear all elevation data while keeping geometry.
    *
-   * Resets elevation to NaN, variance to initial_variance,
-   * and count/persistence to 0.
+   * Resets all layers to NaN.
    */
   void clear();
 
@@ -111,17 +102,6 @@ class HeightMap : public grid_map::GridMap {
    * @return true if position is inside map bounds
    */
   bool setElevation(float x, float y, float elevation);
-
-  /**
-   * @brief Set elevation with variance at a world position.
-   *
-   * @param x X coordinate in meters (map frame)
-   * @param y Y coordinate in meters (map frame)
-   * @param elevation Elevation value in meters
-   * @param variance Elevation variance (uncertainty)
-   * @return true if position is inside map bounds
-   */
-  bool setElevation(float x, float y, float elevation, float variance);
 
   /**
    * @brief Get elevation at a world position.
@@ -140,34 +120,35 @@ class HeightMap : public grid_map::GridMap {
    * @return true if cell is invalid or elevation is NaN
    */
   bool isEmptyAt(const grid_map::Index& index) const;
+
+  /**
+   * @brief Clear a single cell's data (all layers to NaN).
+   *
+   * Sets all layers at the given cell to NaN. Updaters will re-initialize
+   * the cell on the next measurement (they check for NaN in update()).
+   *
+   * @param index Grid cell index
+   */
+  void clearAt(const grid_map::Index& index);
 };
 
 // =============================================================================
 // Inline Implementation
 // =============================================================================
 
-inline HeightMap::HeightMap()
-    : grid_map::GridMap({layer::elevation, layer::variance,
-                         layer::elevation_min, layer::elevation_max,
-                         layer::count, layer::persistence}) {
-  get(layer::count).setConstant(0.0f);
-  get(layer::persistence).setConstant(0.0f);
-}
+inline HeightMap::HeightMap() : grid_map::GridMap({layer::elevation}) {}
 
-inline HeightMap::HeightMap(const Config& config) : HeightMap() {
-  setGeometry(config.width, config.height, config.resolution);
-  setFrameId(config.frame_id);
+inline HeightMap::HeightMap(float width, float height, float resolution,
+                            const std::string& frame_id)
+    : HeightMap() {
+  setGeometry(width, height, resolution);
+  setFrameId(frame_id);
 }
 
 inline void HeightMap::setGeometry(float width, float height,
                                    float resolution) {
   grid_map::GridMap::setGeometry(grid_map::Length(width, height), resolution);
-  clearAll();
-
-  // Reset statistics to defaults
-  get(layer::variance).setConstant(initial_variance);
-  get(layer::count).setConstant(0.0f);
-  get(layer::persistence).setConstant(0.0f);
+  clearAll();  // Sets all layers to NaN
 }
 
 inline bool HeightMap::isInitialized() const {
@@ -180,10 +161,7 @@ inline bool HeightMap::isEmpty() const {
 }
 
 inline void HeightMap::clear() {
-  clearAll();
-  get(layer::variance).setConstant(initial_variance);
-  get(layer::count).setConstant(0.0f);
-  get(layer::persistence).setConstant(0.0f);
+  clearAll();  // Sets all layers to NaN
 }
 
 inline bool HeightMap::setElevation(float x, float y, float elevation) {
@@ -191,16 +169,6 @@ inline bool HeightMap::setElevation(float x, float y, float elevation) {
   if (!isInside(pos)) return false;
 
   atPosition(layer::elevation, pos) = elevation;
-  return true;
-}
-
-inline bool HeightMap::setElevation(float x, float y, float elevation,
-                                    float variance) {
-  grid_map::Position pos(x, y);
-  if (!isInside(pos)) return false;
-
-  atPosition(layer::elevation, pos) = elevation;
-  atPosition(layer::variance, pos) = variance;
   return true;
 }
 
@@ -214,6 +182,12 @@ inline bool HeightMap::getElevation(float x, float y, float& elevation) const {
 
 inline bool HeightMap::isEmptyAt(const grid_map::Index& index) const {
   return !isValid(index) || std::isnan(at(layer::elevation, index));
+}
+
+inline void HeightMap::clearAt(const grid_map::Index& index) {
+  for (const auto& layer : getLayers()) {
+    at(layer, index) = NAN;
+  }
 }
 
 }  // namespace height_mapping

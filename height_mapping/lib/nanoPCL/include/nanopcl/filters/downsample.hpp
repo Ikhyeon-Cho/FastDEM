@@ -89,10 +89,51 @@ enum class VoxelMethod {
 [[nodiscard]] PointCloud voxelGrid(PointCloud&& cloud, float voxel_size,
                                    VoxelMethod method);
 
+// =============================================================================
+// 2D Grid Max-Z Selection
+// =============================================================================
+
+/**
+ * @brief Extract one point per 2D grid cell, keeping the maximum height (Z).
+ *
+ * Divides the XY plane into a 2D grid and selects the point with the highest
+ * Z value within each cell. This is useful for edge preservation in height
+ * mapping, where curbs and obstacles should not be smoothed away.
+ *
+ * @note **Spatial Limits (21-bit coordinate packing)**:
+ *   | grid_size  | Valid range (from origin) |
+ *   |------------|---------------------------|
+ *   | 0.1m       | ±104 km                   |
+ *   | 0.01m      | ±10 km                    |
+ *
+ * @param cloud Input point cloud
+ * @param grid_size Size of 2D grid cell in meters [0.001, 100.0]
+ * @return Point cloud with one point per cell (the one with max Z)
+ *
+ * @throws std::invalid_argument if grid_size is out of [0.001, 100.0] range.
+ *
+ * Example:
+ * @code
+ *   // Before height map update, preserve edges by keeping max Z per cell
+ *   cloud = npcl::filters::gridMaxZ(std::move(cloud), 0.1f);
+ * @endcode
+ */
+[[nodiscard]] PointCloud gridMaxZ(const PointCloud& cloud, float grid_size);
+
+/**
+ * @brief Extract one point per 2D grid cell, keeping the maximum height (move)
+ *
+ * @param cloud Input point cloud (consumed, do not use after call)
+ * @param grid_size Size of 2D grid cell in meters
+ * @return Point cloud with one point per cell (reuses input memory)
+ */
+[[nodiscard]] PointCloud gridMaxZ(PointCloud&& cloud, float grid_size);
+
 }  // namespace filters
 }  // namespace npcl
 
 // Include implementation
 #include "nanopcl/filters/impl/voxel_grid_impl.hpp"
+#include "nanopcl/filters/impl/grid_max_z_impl.hpp"
 
 #endif  // NANOPCL_FILTERS_DOWNSAMPLE_HPP

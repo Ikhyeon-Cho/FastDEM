@@ -222,7 +222,7 @@ int main() {
       printResult("[PCL] PassThrough", pcl_time, NUM_POINTS, pcl_out);
     }
 
-    // nanoPCL cropZ (copy)
+    // nanoPCL cropZaxis (copy)
     {
       double total = 0;
       for (int iter = 0; iter < ITERATIONS; ++iter) {
@@ -237,17 +237,17 @@ int main() {
         }
 
         Timer t;
-        auto filtered = npcl::filters::cropZ(cloud, Z_MIN, Z_MAX);
+        auto filtered = npcl::filters::cropZaxis(cloud, Z_MIN, Z_MAX);
         total += t.elapsed_ms();
         nano_out = filtered.size();
         doNotOptimize(nano_out);
       }
       double nano_time = total / ITERATIONS;
-      printResult("[nanoPCL] cropZ (copy)", nano_time, NUM_POINTS, nano_out,
+      printResult("[nanoPCL] cropZaxis (copy)", nano_time, NUM_POINTS, nano_out,
                   pcl_time);
     }
 
-    // nanoPCL cropZ (move)
+    // nanoPCL cropZaxis (move)
     {
       double total = 0;
       for (int iter = 0; iter < ITERATIONS; ++iter) {
@@ -263,13 +263,13 @@ int main() {
 
         Timer t;
         auto filtered =
-            npcl::filters::cropZ(std::move(cloud), Z_MIN, Z_MAX);
+            npcl::filters::cropZaxis(std::move(cloud), Z_MIN, Z_MAX);
         total += t.elapsed_ms();
         nano_out = filtered.size();
         doNotOptimize(nano_out);
       }
       double nano_time = total / ITERATIONS;
-      printResult("[nanoPCL] cropZ (move)", nano_time, NUM_POINTS, nano_out,
+      printResult("[nanoPCL] cropZaxis (move)", nano_time, NUM_POINTS, nano_out,
                   pcl_time);
     }
   }

@@ -2,7 +2,7 @@
     <!-- PPL Mapping Node (Experimental) -->
     <!-- For researchers using YAML-configurable pipeline -->
 
-    <arg name="config" default="$(find height_mapping)/config/presets/local_mapping.yaml" />
+    <arg name="config" default="$(find height_mapping)/config/experimental/pipeline/local.yaml" />
     <arg name="rviz" default="false" />
 
     <node name="ppl_mapping" pkg="height_mapping_ros" type="ppl_mapping_node" output="screen">

@@ -203,6 +203,26 @@ inline PointCloud PointCloud::operator+(const PointCloud& other) const {
 }
 
 // ============================================================================
+// Translation Operators
+// ============================================================================
+
+inline PointCloud PointCloud::operator+(const Eigen::Vector3f& offset) const {
+  PointCloud result(*this);
+  for (auto& p : result.xyz()) {
+    p += offset;
+  }
+  return result;
+}
+
+inline PointCloud PointCloud::operator-(const Eigen::Vector3f& offset) const {
+  PointCloud result(*this);
+  for (auto& p : result.xyz()) {
+    p -= offset;
+  }
+  return result;
+}
+
+// ============================================================================
 // Intensity Channel
 // ============================================================================
 

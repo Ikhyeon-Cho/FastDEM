@@ -14,7 +14,14 @@
 
 #include <string>
 
-#include "height_mapping/config/types.h"
+#include "height_mapping/config/estimation.h"
+#include "height_mapping/config/inpainting.h"
+#include "height_mapping/config/map.h"
+#include "height_mapping/config/outlier_rejection.h"
+#include "height_mapping/config/raycasting.h"
+#include "height_mapping/config/sensor_model.h"
+#include "height_mapping/config/spatial_filter.h"
+#include "height_mapping/config/spatial_fusion.h"
 
 namespace height_mapping {
 
@@ -31,11 +38,13 @@ namespace height_mapping {
  */
 struct MappingConfig {
   config::Map map;
-  config::VoxelFilter voxel_filter;
   config::SpatialFilter spatial_filter;
   config::Raycasting raycasting;
   config::Inpainting inpainting;
   config::Estimation estimation;
+  config::SensorModel sensor_model;
+  config::OutlierRejection outlier_rejection;
+  config::SpatialFusion spatial_fusion;
 
   /**
    * @brief Load configuration from YAML file.
