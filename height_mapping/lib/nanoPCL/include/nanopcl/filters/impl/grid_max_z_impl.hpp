@@ -132,8 +132,8 @@ inline PointCloud gridMaxZ(const PointCloud& cloud, float grid_size) {
       ++group_end;
     }
 
-    // Add the point with max Z
-    output.add(cloud[max_z_idx]);
+    // Add the point with max Z (xyz only, attributes added by copyAttributes)
+    output.xyz().push_back(cloud[max_z_idx]);
     detail::copyAttributes(cloud, max_z_idx, output, has_intensity, has_time,
                            has_ring, has_color, has_label);
 
@@ -224,7 +224,7 @@ inline PointCloud gridMaxZ(PointCloud&& cloud, float grid_size) {
   if (has_label) output.enableLabel();
 
   for (uint32_t idx : max_z_indices) {
-    output.add(cloud[idx]);
+    output.xyz().push_back(cloud[idx]);
     detail::copyAttributes(cloud, idx, output, has_intensity, has_time,
                            has_ring, has_color, has_label);
   }

@@ -148,6 +148,7 @@ void Mapper::updateLayers(const PointCloud& points,
         // 1. Initialize
         elev_updater.initialize(*map_);
         intensity_updater_.initialize(*map_);
+        color_updater_.initialize(*map_);
 
         // 2. Update each point
         for (const auto& point : points) {
@@ -160,6 +161,9 @@ void Mapper::updateLayers(const PointCloud& points,
           elev_updater.update(index, point.z(), var);
           if (point.hasIntensity()) {
             intensity_updater_.update(index, point.intensity());
+          }
+          if (point.hasColor()) {
+            color_updater_.update(index, point.color());
           }
         }
 

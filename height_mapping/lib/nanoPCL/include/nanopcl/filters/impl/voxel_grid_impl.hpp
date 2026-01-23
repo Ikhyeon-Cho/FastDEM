@@ -136,7 +136,7 @@ inline void addRepresentativePoint(
       for (size_t i = group_start; i < group_end; ++i) {
         centroid += input[indexed_points[i].index];
       }
-      output.add(centroid / static_cast<float>(group_size));
+      output.xyz().push_back(centroid / static_cast<float>(group_size));
       addAveragedAttributes(input, indexed_points, group_start, group_end,
                             output, has_intensity, has_time, has_ring,
                             has_color, has_label);
@@ -145,7 +145,7 @@ inline void addRepresentativePoint(
 
     case VoxelMethod::FIRST: {
       uint32_t idx = indexed_points[group_start].index;
-      output.add(input[idx]);
+      output.xyz().push_back(input[idx]);
       copyAttributes(input, idx, output, has_intensity, has_time, has_ring,
                      has_color, has_label);
       break;
@@ -155,7 +155,7 @@ inline void addRepresentativePoint(
       // Deterministic selection (reproducible, not truly random)
       size_t offset = (group_size * 7 + group_start * 13) % group_size;
       uint32_t idx = indexed_points[group_start + offset].index;
-      output.add(input[idx]);
+      output.xyz().push_back(input[idx]);
       copyAttributes(input, idx, output, has_intensity, has_time, has_ring,
                      has_color, has_label);
       break;
@@ -175,14 +175,14 @@ inline void addRepresentativePoint(
           closest_idx = idx;
         }
       }
-      output.add(input[closest_idx]);
+      output.xyz().push_back(input[closest_idx]);
       copyAttributes(input, closest_idx, output, has_intensity, has_time,
                      has_ring, has_color, has_label);
       break;
     }
 
     case VoxelMethod::VOXEL_CENTER: {
-      output.add(keyToVoxelCenter(indexed_points[group_start].key, voxel_size));
+      output.xyz().push_back(keyToVoxelCenter(indexed_points[group_start].key, voxel_size));
       addAveragedAttributes(input, indexed_points, group_start, group_end,
                             output, has_intensity, has_time, has_ring,
                             has_color, has_label);

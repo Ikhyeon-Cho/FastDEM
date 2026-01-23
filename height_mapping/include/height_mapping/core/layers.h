@@ -52,9 +52,7 @@ constexpr auto conflict_count = "conflict_count";  // Raycasting temporal voting
 
 // Extension layers (add at use site when needed)
 constexpr auto intensity = "intensity";
-constexpr auto r = "r";
-constexpr auto g = "g";
-constexpr auto b = "b";
+constexpr auto color = "color";  // Packed RGBA for grid_map_rviz_plugin
 constexpr auto label = "label";
 constexpr auto raycasting_upper_bound = "raycasting_upper_bound";
 constexpr auto traversability = "traversability";
