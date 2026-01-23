@@ -22,6 +22,7 @@
 #include "height_mapping/core/updater/elevation_kalman.h"
 #include "height_mapping/core/updater/elevation_quantile.h"
 #include "height_mapping/core/updater/elevation_welford.h"
+#include "height_mapping/core/updater/color.h"
 #include "height_mapping/core/updater/intensity.h"
 #include "height_mapping/sensors/uncertainty_model.h"
 
@@ -152,6 +153,7 @@ class Mapper {
   std::unique_ptr<UncertaintyModel> sensor_model_;
   ElevationUpdater elevation_updater_;
   updater::Intensity intensity_updater_;
+  updater::Color color_updater_;
 
   mutable std::shared_mutex map_mutex_;
 };

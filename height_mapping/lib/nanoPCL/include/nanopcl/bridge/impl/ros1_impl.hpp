@@ -412,7 +412,7 @@ struct Convert<sensor_msgs::PointCloud2> {
 
     // Optional fields
     uint32_t intensity_off = 0, time_off = 0, ring_off = 0;
-    uint32_t r_off = 0, g_off = 0, b_off = 0;
+    uint32_t rgb_off = 0;
     uint32_t nx_off = 0, ny_off = 0, nz_off = 0;
     uint32_t label_off = 0;
 
@@ -426,10 +426,7 @@ struct Convert<sensor_msgs::PointCloud2> {
       ring_off = addField("ring", PF::UINT16);
     }
     if (cloud.hasColor()) {
-      r_off = addField("r", PF::UINT8);
-      g_off = addField("g", PF::UINT8);
-      b_off = addField("b", PF::UINT8);
-      offset += 1;  // Padding
+      rgb_off = addField("rgb", PF::FLOAT32);  // Packed RGB for RViz compatibility
     }
     if (cloud.hasNormal()) {
       nx_off = addField("normal_x", PF::FLOAT32);
@@ -495,9 +492,11 @@ struct Convert<sensor_msgs::PointCloud2> {
         if (t_src) *reinterpret_cast<float*>(pt + time_off) = t_src[i];
         if (r_src) *reinterpret_cast<uint16_t*>(pt + ring_off) = r_src[i];
         if (c_src) {
-          *(pt + r_off) = c_src[i][0];
-          *(pt + g_off) = c_src[i][1];
-          *(pt + b_off) = c_src[i][2];
+          // Pack RGB as uint32 in float memory (PCL/RViz compatible format)
+          const uint32_t packed = (static_cast<uint32_t>(c_src[i][0]) << 16) |
+                                  (static_cast<uint32_t>(c_src[i][1]) << 8) |
+                                  static_cast<uint32_t>(c_src[i][2]);
+          std::memcpy(pt + rgb_off, &packed, sizeof(float));
         }
         if (n_src) {
           *reinterpret_cast<float*>(pt + nx_off) = n_src[i].x();
