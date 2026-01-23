@@ -86,12 +86,10 @@ class HeightMap : public grid_map::GridMap {
    */
   bool isEmpty() const;
 
-  /**
-   * @brief Clear all elevation data while keeping geometry.
-   *
-   * Resets all layers to NaN.
-   */
-  void clear();
+  // Inherited from GridMap:
+  // - clear(const std::string& layer)  // Clear specific layer
+  // - clearAll()                        // Clear all layers
+  // - clearBasic()                      // Clear basic layers
 
   /**
    * @brief Set elevation at a world position.
@@ -158,10 +156,6 @@ inline bool HeightMap::isInitialized() const {
 
 inline bool HeightMap::isEmpty() const {
   return get(layer::elevation).array().isNaN().all();
-}
-
-inline void HeightMap::clear() {
-  clearAll();  // Sets all layers to NaN
 }
 
 inline bool HeightMap::setElevation(float x, float y, float elevation) {

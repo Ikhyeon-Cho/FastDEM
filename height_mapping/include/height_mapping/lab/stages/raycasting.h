@@ -36,14 +36,14 @@ class Raycasting : public ::ppl::Stage<MappingFrame> {
     if (config["enabled"]) config_.enabled = config["enabled"].as<bool>();
     if (config["endpoint_margin"])
       config_.endpoint_margin = config["endpoint_margin"].as<int>();
-    if (config["height_threshold"])
-      config_.height_threshold = config["height_threshold"].as<float>();
+    if (config["ray_height_margin"])
+      config_.ray_height_margin = config["ray_height_margin"].as<float>();
     if (config["vote_threshold"])
       config_.vote_threshold = config["vote_threshold"].as<int>();
 
     spdlog::debug(
-        "[Raycasting] height_threshold={}m, vote_threshold={}, endpoint_margin={}",
-        config_.height_threshold, config_.vote_threshold, config_.endpoint_margin);
+        "[Raycasting] ray_height_margin={}m, vote_threshold={}, endpoint_margin={}",
+        config_.ray_height_margin, config_.vote_threshold, config_.endpoint_margin);
   }
 
   bool process(const std::shared_ptr<MappingFrame>& frame) override {

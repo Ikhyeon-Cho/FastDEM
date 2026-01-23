@@ -129,7 +129,7 @@ HeightMap& Mapper::map() {
 void Mapper::reset() {
   std::lock_guard<std::shared_mutex> lock(map_mutex_);
   if (map_) {
-    map_->clear();
+    map_->clearAll();
   }
 }
 

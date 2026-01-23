@@ -53,7 +53,8 @@ outlier_rejection:
 raycasting:                 # Ghost obstacle removal via temporal voting
   enabled: true
   endpoint_margin: 2        # Skip N cells before target (protects curb edges)
-  height_threshold: 0.05    # [m] elevation > upper_bound + threshold = conflict
+  ray_height_margin: 0.05   # [m] elevation > upper_bound + margin = conflict
+  dynamic_height_threshold: 0.5  # [m] Only raycasting where max-min > threshold (filters static obstacles)
   vote_threshold: 10        # Clear cell after N consecutive conflicts
 
 inpainting:                 # Infill missing data using surrounding information

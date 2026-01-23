@@ -56,7 +56,8 @@ MappingConfig parseConfig(const YAML::Node& root) {
   if (auto n = root["raycasting"]) {
     load(n, "enabled", cfg.raycasting.enabled);
     load(n, "endpoint_margin", cfg.raycasting.endpoint_margin);
-    load(n, "height_threshold", cfg.raycasting.height_threshold);
+    load(n, "ray_height_margin", cfg.raycasting.ray_height_margin);
+    load(n, "dynamic_height_threshold", cfg.raycasting.dynamic_height_threshold);
     load(n, "vote_threshold", cfg.raycasting.vote_threshold);
   }
 

@@ -118,7 +118,7 @@ const height_mapping::HeightMap& Mapper::map() const {
 
 void Mapper::reset() {
   std::lock_guard<std::shared_mutex> lock(map_mutex_);
-  if (map_) map_->clear();
+  if (map_) map_->clearAll();
 }
 
 }  // namespace height_mapping::lab

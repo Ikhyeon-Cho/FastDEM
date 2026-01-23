@@ -2,6 +2,7 @@ config_path: "$(find height_mapping)/config/default.yaml"
 
 topics:
   input_scan: "/velodyne/points"
+  # input_scan: "/camera_front/pointcloud/points"
   publish_rate: 10.0  # [Hz]
 
 tf:

@@ -35,7 +35,7 @@ params:
   Raycasting:
     enabled: true
     endpoint_margin: 2
-    height_threshold: 0.05
+    ray_height_margin: 0.05
     vote_threshold: 10
 
   HeightEstimation:

@@ -20,9 +20,8 @@ namespace height_mapping::config {
  * Uses temporal voting to remove ghost obstacles:
  * - Uses all downward rays (point.z < sensor.z) for maximum coverage
  * - Computes raycasting_upper_bound: maximum ray height at each cell
- * - Conflict: elevation > raycasting_upper_bound + height_threshold
+ * - Conflict: elevation > raycasting_upper_bound + ray_height_margin
  * - Clear cell when conflict_count >= vote_threshold
- * - Reset conflict_count when cell is measured (target)
  *
  * Using maximum ray height ensures conservative ghost detection:
  * "All rays passed below the recorded elevation" = confirmed ghost
@@ -34,7 +33,10 @@ struct Raycasting {
   int endpoint_margin = 2;  ///< Skip N cells before target (protects edges)
 
   // Conflict detection
-  float height_threshold = 0.05f;  ///< elevation > upper_bound + threshold = conflict
+  float ray_height_margin = 0.05f;  ///< elevation > upper_bound + margin = conflict
+
+  // Dynamic obstacle filtering
+  float dynamic_height_threshold = 0.5f;  ///< Only check cells where elevation_max - elevation_min > threshold
 
   // Temporal voting
   int vote_threshold = 10;  ///< Clear cell after N consecutive conflicts
