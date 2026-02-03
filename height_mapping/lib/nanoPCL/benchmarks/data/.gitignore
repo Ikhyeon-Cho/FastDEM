@@ -1,8 +1,0 @@
-# Ignore all binary data files in this directory
-*.bin
-*.pcd
-*.tar.gz
-
-# Do not ignore metadata
-!README.md
-!.gitkeep

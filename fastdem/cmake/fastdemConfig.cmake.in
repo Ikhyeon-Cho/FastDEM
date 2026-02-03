@@ -1,0 +1,15 @@
+@PACKAGE_INIT@
+
+# Find dependencies
+find_package(yaml-cpp REQUIRED)
+find_package(spdlog REQUIRED)
+find_package(Eigen3 REQUIRED)
+
+# Provide variables for legacy compatibility
+set(fastdem_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@/include")
+set(fastdem_LIBRARIES fastdem grid_map_core)
+
+# Include the targets file if it exists
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/fastdemTargets.cmake")
+  include("${CMAKE_CURRENT_LIST_DIR}/fastdemTargets.cmake")
+endif()

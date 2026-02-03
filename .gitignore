@@ -28,8 +28,11 @@ logs/
 *.a
 
 # Benchmark binaries
-height_mapping/benchmarks/benchmark_*
-!height_mapping/benchmarks/benchmark_*.cpp
+fastdem/benchmarks/benchmark_*
+!fastdem/benchmarks/benchmark_*.cpp
+fastdem/lib/nanoPCL/**/benchmark_*
+!fastdem/lib/nanoPCL/**/benchmark_*.cpp
+fastdem/lib/nanoPCL/**/*_bench
 repro_ray
 
 # Data and output files
@@ -41,9 +44,13 @@ maps/
 *.bin
 *.hmap
 *.tar.gz
+*.png
+!assets/*.png
+!fastdem/lib/grid_map_core/doc/**/*.png
 
 # Temporary files
 *.txt
+!CMakeLists.txt
 *.tmp
 *.bak
 

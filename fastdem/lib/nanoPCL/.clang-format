@@ -1,0 +1,44 @@
+BasedOnStyle: LLVM
+
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+
+# Keep brace style on same line
+BreakBeforeBraces: Attach
+
+# Keep namespace single-line open/close
+NamespaceIndentation: None
+
+# Do not aggressively pack args/params on single line
+BinPackParameters: false
+BinPackArguments: false
+
+# Do not enforce line width (preserve long expressions)
+ColumnLimit: 0
+
+# Do not insert namespace end comments
+FixNamespaceComments: false
+
+# Space rules
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInContainerLiterals: false
+
+# Language mode
+Standard: c++17
+
+# Alignment behavior
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignOperands: true
+AlignTrailingComments: true
+AllowShortIfStatementsOnASingleLine: true
+AllowShortBlocksOnASingleLine: true
+AllowShortFunctionsOnASingleLine: InlineOnly
+
+# Pointer/Reference alignment
+PointerAlignment: Left
+
