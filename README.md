@@ -1,45 +1,54 @@
 <div align="center">
 
-# FastDEM: Ultra-Fast 2.5D Terrain Reconstruction for Mobile Robots
-**A lightweight, C++ optimized elevation mapping engine designed for real-time perception and navigation**
+# FastDEM
 
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)
-[![C++](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus)](https://en.cppreference.com/w/cpp/17)
-[![ROS1](https://img.shields.io/badge/ROS1-Noetic-orange)](https://wiki.ros.org/noetic)
-[![ROS2](https://img.shields.io/badge/ROS2-Humble-blue)](https://wiki.ros.org/noetic)
-[![Build](https://img.shields.io/badge/Build-Passing-brightgreen)]()
+<a href="https://github.com/Ikhyeon-Cho/FastDEM/tree/main"><img src="https://img.shields.io/badge/C++17-00599C?logo=cplusplus&logoColor=white" /></a>
+<a href="https://github.com/Ikhyeon-Cho/FastDEM/tree/ros1"><img src="https://img.shields.io/badge/ROS1-Noetic-blue" /></a>
+<a href="https://github.com/Ikhyeon-Cho/FastDEM/tree/ros2"><img src="https://img.shields.io/badge/ROS2-Humble-blue" /></a>
+<a href=""><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" /></a>
+<br>
+<a href="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml"><img src="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml/badge.svg" /></a>
+<!-- <br>
+<a href=""><img src="https://img.shields.io/badge/YouTube-Demo-FF0000?logo=youtube&logoColor=white" /></a>
+<a href=""><img src="https://img.shields.io/badge/FastDEM-github.io-8B0029" /></a> -->
 
-> **10x Faster** than existing solutions — **3ms** per frame (CPU only)
+> ***Real-time elevation mapping** on **embedded** CPUs — **100+ Hz** on Jetson Orin*
 
-**The elevation mapping C++ library that just works with or without ROS.**
+**[Quick Start](#quick-start)** · **[ROS1](https://github.com/Ikhyeon-Cho/FastDEM/tree/ros1)** · **[ROS2](https://github.com/Ikhyeon-Cho/FastDEM/tree/ros2)**
 
 <br>
 
 <p align="center">
-  <img src="assets/height_mapping.gif" width="48.5%" />
-  <img src="assets/height_mapping.png" width="46%" />
+  <img src="assets/fastdem_laser_local.gif" width="49%" />
+  <img src="assets/fastdem_rgbd_local.gif" width="48.3%" />
+  <img src="assets/fastdem_rgbd_global.gif" width="97.5%" />
 </p>
 
 </div>
 
 ---
 
-## Why is it Fast?
+## Features
 
-
-*   **Cache-friendly** with optimized memory layout.
-*   **Lightweight:** Built-in `nanoPCL` headers (2-10x faster than standard PCL) and no heavy dependencies.
-
+* **Fast** — Real-time on embedded CPUs. Single thread, without GPU.
+* **Lightweight** — Minimal dependencies. No OpenCV, PCL, or Open3D.
+* **Library-First** — Clean C++ API, not a ROS node. Online (with TF) or offline (explicit transforms) support.
+* **Sensor-Aware** — Physics-based uncertainty models for LiDAR and RGB-D.
+* **Multiple Estimators** — Kalman Filter, Welford Mean, P² Quantile.
+* **Local + Global Mapping** — Robot-centric or map-centric modes.
+* **Post-processing functions** — Raycasting, Inpainting, Spike removal, Uncertainty fusion, etc.
 
 ---
 
-## Features
+## How Fast?
 
-*   **Extreme Performance:** Real-time mapping on embedded CPUs (Jetson, Raspberry Pi).
-*   **ROS-Agnostic Core:** Pure CMake architecture. Use it in **ROS 1**, **ROS 2**, or **Standalone C++**.
-*   **Robust Estimators:** Supports `Welford Mean`, `Kalman Filter`, and `P² Quantile`.
-*   **Smart Operations:** Raycasting (ghost obstacle removal), Inpainting (hole filling), and Uncertainty Fusion (spatial ECDF).
-*   **Minimalist:** Only requires `Eigen3`, `yaml-cpp`, and `spdlog`.
+<p align="center">The mapping itself runs at <b>~130 Hz</b> — fast enough to leave ample headroom for post-processing.</p>
+
+<p align="center">
+  <img src="assets/fastdem_jetson_benchmark.svg" width="95%" />
+</p>
+
+<p align="center"><i>Measured with Velodyne VLP-16 (~30K pts/scan) · 15×15 m map at 0.1 m resolution</i></p>
 
 ---
 
@@ -47,30 +56,23 @@
 
 ### 1. Installation
 
-**Prerequisites:** Ubuntu 20.04+, C++17, Eigen3, yaml-cpp, spdlog
+**Install dependencies**
 
 ```bash
-# Clone the repository
-git clone https://github.com/Ikhyeon-Cho/FastDEM.git
+sudo apt install libeigen3-dev libyaml-cpp-dev libspdlog-dev
+```
 
-# Build (Release mode is CRITICAL for performance)
+**Clone and build**
+
+```bash
+git clone https://github.com/Ikhyeon-Cho/FastDEM.git
 cd FastDEM/fastdem
 mkdir -p build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
 ```
 
-### 2. Run with ROS (Optional)
-
-```bash
-# Install ROS dependencies (for fastdem_ros wrapper only)
-sudo apt install ros-noetic-grid-map ros-noetic-grid-map-visualization
-
-# Start mapping with visualization
-roslaunch fast_dem mapping.launch rviz:=true
-```
-
-### 3. Standalone C++ Usage (No ROS)
+### 2. Standalone C++ Usage
 
 Ideal for custom SLAM pipelines or non-ROS systems.
 
@@ -87,6 +89,7 @@ int main() {
           .setDistanceRange(0.5f, 10.0f)
           .setEstimatorType(fastdem::EstimationType::Kalman)
           .setSensorModel(fastdem::SensorType::LiDAR);
+    // -- or: FastDEM mapper(map, MappingConfig::load("config/default.yaml"));
 
     // 2. Integration Loop
     while (true) {
@@ -100,91 +103,23 @@ int main() {
 }
 ```
 
----
+See [`fastdem/examples/`](fastdem/examples/) for more usage patterns.
 
-## Architecture
+### 3. Configuration
 
-The project is strictly decoupled: The **Core Library** has zero knowledge of ROS.
+All default settings are in [`config/default.yaml`](fastdem/config/default.yaml).
 
-```mermaid
-graph LR
-    A[Sensor Data] --> B(fastdem);
-    B -->|Core C++| C{Algorithms};
-    C -->|Update| D[ElevationMap];
-    B -->|Wrapper| E(fast_dem);
-    E -->|Publish| F[ROS Topics];
-```
+### 4. Run with ROS
 
-*   **`fastdem/`**: Core algorithms, map data structures, and spatial operations. **(Pure CMake)**
-*   **`fastdem_ros/`**: Thin interface layer handling ROS messages and TF2. **(Catkin, package name: fast_dem)**
-
-<details>
-<summary><b>See detailed folder structure</b></summary>
-
-```
-fastdem/
-├── include/fastdem/
-│   ├── fastdem.hpp              # Unified API (FastDEM class)
-│   ├── elevation_map.hpp        # ElevationMap + layer constants
-│   ├── point_types.hpp          # PointCloud, Point, Color aliases
-│   ├── transform_interface.hpp  # Calibration, Odometry interfaces
-│   ├── config/          # Configuration structs
-│   ├── mapping/         # Height estimation & rasterization
-│   ├── sensors/         # Uncertainty models (LiDAR, RGB-D)
-│   ├── postprocess/     # Raycasting, Inpainting, Uncertainty Fusion
-│   └── io/              # Binary snapshot & Image export
-└── lib/
-    ├── nanoPCL/         # High-performance point cloud processing
-    └── grid_map_core/   # Vendored grid_map core
-```
-</details>
-
----
-
-## Configuration
-
-Highly configurable via YAML. Performance can be tuned by enabling/disabling filters.
-
-<details>
-<summary><b>Click to view config/default.yaml</b></summary>
-
-```yaml
-map:
-  width: 15.0           # Local map width (meters)
-  height: 15.0          # Local map height (meters)
-  resolution: 0.1       # meters/cell
-  mode: "local"         # local (robot-centric) | global (fixed-origin)
-
-scan_filter:
-  z_min: -0.5
-  z_max: 2.0
-  range_min: 0.5
-  range_max: 20.0
-
-estimation:
-  type: "kalman_filter"  # kalman_filter | welford | p2_quantile
-
-sensor_model:
-  type: "lidar"          # constant | lidar | rgbd
-
-raycasting:
-  enabled: true          # Ghost obstacle removal via temporal voting
-
-inpainting:
-  enabled: true          # Infill missing data using neighbors
-
-uncertainty_fusion:
-  enabled: true          # Neighborhood-aware uncertainty (weighted ECDF)
-```
-</details>
+See [ros1](https://github.com/Ikhyeon-Cho/FastDEM/tree/ros1) and [ros2](https://github.com/Ikhyeon-Cho/FastDEM/tree/ros2) branches. These are just a thin ROS wrapper of core `fastdem::FastDEM` features.
 
 ---
 
 ## Citation
 
-If you use this project in your research, please cite our paper:
+FastDEM was originally developed for the following research:
 
-**['Learning Self-supervised Traversability with Navigation Experiences of Mobile Robots'](https://github.com/Ikhyeon-Cho/urban-terrain-dataset)**
+**['Learning Self-supervised Traversability with Navigation Experiences of Mobile Robots'](https://github.com/Ikhyeon-Cho/LeSTA)**
 *IEEE Robotics and Automation Letters (RA-L), 2024*
 
 ```bibtex
@@ -204,7 +139,7 @@ If you use this project in your research, please cite our paper:
 
 <div align="center">
 
-**[Examples](fastdem/examples/)** · **[Report Bug](https://github.com/Ikhyeon-Cho/FastDEM/issues)** · **[Korea University](https://reals.korea.ac.kr/)**
+**[Report Bug](https://github.com/Ikhyeon-Cho/FastDEM/issues)** · **[Pull Request](https://github.com/Ikhyeon-Cho/FastDEM/pulls)**
 
 BSD-3-Clause License © [Ikhyeon Cho](mailto:tre0430@korea.ac.kr)
 

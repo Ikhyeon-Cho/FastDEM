@@ -1,0 +1,13 @@
+name: build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt install -y libeigen3-dev libyaml-cpp-dev libspdlog-dev
+      - run: |
+          cd fastdem
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
