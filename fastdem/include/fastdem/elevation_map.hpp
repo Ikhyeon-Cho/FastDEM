@@ -70,6 +70,15 @@ constexpr auto label = "label";
 constexpr auto raycasting_upper_bound = "raycasting_upper_bound";
 constexpr auto traversability = "traversability";
 
+// Terrain feature layers
+constexpr auto step = "step";
+constexpr auto slope = "slope";
+constexpr auto roughness = "roughness";
+constexpr auto curvature = "curvature";
+constexpr auto normal_x = "normal_x";
+constexpr auto normal_y = "normal_y";
+constexpr auto normal_z = "normal_z";
+
 }  // namespace layer
 
 // ─── MapIndexer ─────────────────────────────────────────────────────────────

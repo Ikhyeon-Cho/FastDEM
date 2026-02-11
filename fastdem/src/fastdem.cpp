@@ -19,6 +19,7 @@
 #include "fastdem/postprocess/inpainting.hpp"
 #include "fastdem/postprocess/raycasting.hpp"
 #include "fastdem/postprocess/spatial_smoothing.hpp"
+#include "fastdem/postprocess/feature_extraction.hpp"
 #include "fastdem/postprocess/uncertainty_fusion.hpp"
 
 namespace fastdem {
@@ -75,6 +76,11 @@ FastDEM& FastDEM::enableInpainting(bool enabled) noexcept {
 
 FastDEM& FastDEM::enableUncertaintyFusion(bool enabled) noexcept {
   cfg_.uncertainty_fusion.enabled = enabled;
+  return *this;
+}
+
+FastDEM& FastDEM::enableFeatureExtraction(bool enabled) noexcept {
+  cfg_.feature_extraction.enabled = enabled;
   return *this;
 }
 
@@ -203,6 +209,9 @@ bool FastDEM::integrateImpl(const PointCloud& cloud,
     if (cfg_.inpainting.enabled) applyInpainting(map_, cfg_.inpainting);
     if (cfg_.uncertainty_fusion.enabled)
       applyUncertaintyFusion(map_, cfg_.uncertainty_fusion);
+    if (cfg_.feature_extraction.enabled)
+      applyFeatureExtraction(map_, cfg_.feature_extraction.analysis_radius,
+                             cfg_.feature_extraction.min_valid_neighbors);
   }
   return true;
 }

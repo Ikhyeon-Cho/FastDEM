@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "fastdem/config/feature_extraction.hpp"
 #include "fastdem/config/inpainting.hpp"
 #include "fastdem/config/mapping.hpp"
 #include "fastdem/config/rasterization.hpp"
@@ -38,6 +39,7 @@ struct MappingConfig {
   config::Inpainting inpainting;
   config::Sensor sensor;
   config::UncertaintyFusion uncertainty_fusion;
+  config::FeatureExtraction feature_extraction;
 
   static MappingConfig load(const std::string& path);
 };

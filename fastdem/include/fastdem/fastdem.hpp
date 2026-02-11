@@ -97,6 +97,10 @@ class FastDEM {
   /// Enable/disable spatial fusion (uncertainty smoothing)
   FastDEM& enableUncertaintyFusion(bool enabled = true) noexcept;
 
+  /// Enable/disable terrain feature extraction (step, slope, roughness,
+  /// curvature, normals)
+  FastDEM& enableFeatureExtraction(bool enabled = true) noexcept;
+
   /// Set calibration system (sensor → base static transform)
   FastDEM& setCalibrationSystem(std::shared_ptr<Calibration> calibration);
 

@@ -135,6 +135,13 @@ MappingConfig parseConfig(const YAML::Node& root) {
     load(n, "constant_uncertainty", cfg.sensor.constant_uncertainty);
   }
 
+  // Feature extraction (PCA-based terrain features)
+  if (auto n = root["feature_extraction"]) {
+    load(n, "enabled", cfg.feature_extraction.enabled);
+    load(n, "analysis_radius", cfg.feature_extraction.analysis_radius);
+    load(n, "min_valid_neighbors", cfg.feature_extraction.min_valid_neighbors);
+  }
+
   // Spatial fusion (bilateral filter + weighted ECDF)
   if (auto n = root["uncertainty_fusion"]) {
     load(n, "enabled", cfg.uncertainty_fusion.enabled);
@@ -264,6 +271,18 @@ void validateConfig(MappingConfig& cfg) {
         "clamping to 0.1",
         cfg.sensor.constant_uncertainty);
     cfg.sensor.constant_uncertainty = 0.1f;
+  }
+
+  if (cfg.feature_extraction.enabled) {
+    if (cfg.feature_extraction.analysis_radius <= 0.0f) {
+      spdlog::warn(
+          "[Config] feature_extraction.analysis_radius ({}) must be > 0, "
+          "clamping to 0.3",
+          cfg.feature_extraction.analysis_radius);
+      cfg.feature_extraction.analysis_radius = 0.3f;
+    }
+    warn_clamp("feature_extraction.min_valid_neighbors",
+               cfg.feature_extraction.min_valid_neighbors, 4, 100);
   }
 
   if (cfg.uncertainty_fusion.enabled) {
