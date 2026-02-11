@@ -41,9 +41,7 @@ class SimpleWeightedECDF {
     }
   }
 
-  void clear() {
-    samples_.clear();
-  }
+  void clear() { samples_.clear(); }
 
   size_t size() const { return samples_.size(); }
 
@@ -65,7 +63,9 @@ class SimpleWeightedECDF {
     // Sort by value (makes a copy for non-destructive operation)
     auto sorted = samples_;
     std::sort(sorted.begin(), sorted.end(),
-              [](const Sample& a, const Sample& b) { return a.value < b.value; });
+              [](const Sample& a, const Sample& b) {
+                return a.value < b.value;
+              });
 
     // Compute total weight
     float total_weight = 0.0f;
@@ -97,44 +97,10 @@ class SimpleWeightedECDF {
   std::vector<Sample> samples_;
 };
 
-/**
- * @brief Pre-computed neighbor offset with squared distance.
- */
-struct NeighborOffset {
-  int dr;
-  int dc;
-  float dist_sq;  ///< Pre-computed squared distance in meters
-};
-
-/**
- * @brief Pre-compute neighbor offsets within circular search radius.
- *
- * @param search_radius Search radius in meters
- * @param resolution Grid resolution in meters
- * @param offsets Output vector of neighbor offsets
- */
-void precomputeNeighborOffsets(float search_radius, float resolution,
-                               std::vector<NeighborOffset>& offsets) {
-  offsets.clear();
-  const int radius_cells = static_cast<int>(std::ceil(search_radius / resolution));
-  const float radius_sq = search_radius * search_radius;
-
-  for (int dr = -radius_cells; dr <= radius_cells; ++dr) {
-    for (int dc = -radius_cells; dc <= radius_cells; ++dc) {
-      const float dist_m =
-          resolution * std::sqrt(static_cast<float>(dr * dr + dc * dc));
-      const float dist_sq = dist_m * dist_m;
-
-      if (dist_sq <= radius_sq) {
-        offsets.push_back({dr, dc, dist_sq});
-      }
-    }
-  }
-}
-
 }  // namespace
 
-void applyUncertaintyFusion(ElevationMap& map, const config::UncertaintyFusion& config) {
+void applyUncertaintyFusion(ElevationMap& map,
+                            const config::UncertaintyFusion& config) {
   if (!config.enabled) return;
 
   // Validate required layers
@@ -156,16 +122,8 @@ void applyUncertaintyFusion(ElevationMap& map, const config::UncertaintyFusion& 
   auto& lower_mat = map.get(layer::lower_bound);
   auto& range_mat = map.get(layer::uncertainty_range);
 
-  const int rows = static_cast<int>(state_mat.rows());
-  const int cols = static_cast<int>(state_mat.cols());
-  const float resolution = map.getResolution();
-  const auto& startIdx = map.getStartIndex();
-  const int sr = startIdx(0);
-  const int sc = startIdx(1);
-
-  // Pre-compute neighbor offsets within search_radius
-  std::vector<NeighborOffset> neighbor_offsets;
-  precomputeNeighborOffsets(config.search_radius, resolution, neighbor_offsets);
+  const auto idx = map.indexer();
+  const auto neighbors = idx.circleNeighbors(config.search_radius);
 
   // Pre-compute Gaussian constant for spatial weight
   const float inv_2sigma_spatial_sq =
@@ -176,77 +134,56 @@ void applyUncertaintyFusion(ElevationMap& map, const config::UncertaintyFusion& 
   Eigen::MatrixXf lower_buffer = lower_mat;
   Eigen::MatrixXf range_buffer = range_mat;
 
-  // Two separate ECDFs for lower and upper bounds (elevation_mapping style)
+  // Two separate ECDFs for lower and upper bounds
   SimpleWeightedECDF lower_ecdf;
   SimpleWeightedECDF upper_ecdf;
-  lower_ecdf.reserve(neighbor_offsets.size());
-  upper_ecdf.reserve(neighbor_offsets.size());
+  lower_ecdf.reserve(neighbors.size());
+  upper_ecdf.reserve(neighbors.size());
 
-  // Process each cell (iterate in logical space for circular buffer safety)
-  for (int lr = 0; lr < rows; ++lr) {
-    for (int lc = 0; lc < cols; ++lc) {
-      // Logical → buffer index
-      int r = lr + sr;
-      if (r >= rows) r -= rows;
-      int c = lc + sc;
-      if (c >= cols) c -= cols;
+  for (int row = 0; row < idx.rows; ++row) {
+    for (int col = 0; col < idx.cols; ++col) {
+      auto [r, c] = idx(row, col);
 
       const float center_h = state_mat(r, c);
       const float center_var = variance_mat(r, c);
 
       // Skip invalid cells
-      if (!std::isfinite(center_h) || center_var <= 0.0f) {
-        continue;
-      }
+      if (!std::isfinite(center_h) || center_var <= 0.0f) continue;
 
       lower_ecdf.clear();
       upper_ecdf.clear();
       int valid_count = 0;
 
       // Gather weighted samples from neighbors
-      for (const auto& offset : neighbor_offsets) {
-        const int nlr = lr + offset.dr;
-        const int nlc = lc + offset.dc;
-
-        // Boundary check in logical (spatial) space
-        if (nlr < 0 || nlr >= rows || nlc < 0 || nlc >= cols) {
-          continue;
-        }
-
-        // Logical → buffer index
-        int nr = nlr + sr;
-        if (nr >= rows) nr -= rows;
-        int nc = nlc + sc;
-        if (nc >= cols) nc -= cols;
+      for (const auto& [dr, dc, dist_sq] : neighbors) {
+        if (!idx.contains(row + dr, col + dc)) continue;
+        auto [nr, nc] = idx(row + dr, col + dc);
 
         const float neighbor_h = state_mat(nr, nc);
         const float neighbor_var = variance_mat(nr, nc);
 
         // Skip invalid neighbors
-        if (!std::isfinite(neighbor_h) || neighbor_var <= 0.0f) {
-          continue;
-        }
+        if (!std::isfinite(neighbor_h) || neighbor_var <= 0.0f) continue;
 
-        // Weight computation
         // Spatial weight (Gaussian distance decay)
-        const float w_spatial = std::exp(-offset.dist_sq * inv_2sigma_spatial_sq);
+        const float w_spatial =
+            std::exp(-dist_sq * inv_2sigma_spatial_sq);
 
         // Inverse variance weight (confident cells dominate)
-        constexpr float epsilon = 1e-4f;  // Prevents division by zero
+        constexpr float epsilon = 1e-4f;
         const float w_variance = 1.0f / (neighbor_var + epsilon);
 
         const float weight = w_spatial * w_variance;
 
-        // Add to separate distributions (mean +/- 2*sigma)
+        // Add to separate distributions (mean ± 2σ)
         const float sigma = std::sqrt(neighbor_var);
         lower_ecdf.add(neighbor_h - 2.0f * sigma, weight);
         upper_ecdf.add(neighbor_h + 2.0f * sigma, weight);
 
-        valid_count++;
+        ++valid_count;
       }
 
       // Compute fused bounds if enough neighbors
-      // Otherwise, keep existing values from finalize()
       if (valid_count >= config.min_valid_neighbors) {
         const float lower = lower_ecdf.quantile(config.quantile_lower);
         const float upper = upper_ecdf.quantile(config.quantile_upper);
@@ -255,9 +192,7 @@ void applyUncertaintyFusion(ElevationMap& map, const config::UncertaintyFusion& 
           lower_buffer(r, c) = lower;
           range_buffer(r, c) = upper - lower;
         }
-        // else: keep existing values (already copied)
       }
-      // else: keep existing values (already copied)
     }
   }
 

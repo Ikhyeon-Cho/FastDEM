@@ -43,47 +43,24 @@ inline void applySpatialSmoothing(ElevationMap& map,
 
   const Eigen::MatrixXf input = map.get(layer_name);  // Copy (double buffer)
   auto& output = map.get(layer_name);                  // Reference (in-place)
-
   const int half = kernel_size / 2;
-  const int rows = input.rows();
-  const int cols = input.cols();
-  const auto& startIdx = map.getStartIndex();
-  const int sr = startIdx(0);
-  const int sc = startIdx(1);
 
+  const auto idx = map.indexer();
   std::vector<float> window;
   window.reserve(kernel_size * kernel_size);
 
-  // Iterate in logical (spatial) index space
-  for (int lr = 0; lr < rows; ++lr) {
-    for (int lc = 0; lc < cols; ++lc) {
-      // Logical → buffer index
-      int r = lr + sr;
-      if (r >= rows) r -= rows;
-      int c = lc + sc;
-      if (c >= cols) c -= cols;
-
+  for (int row = 0; row < idx.rows; ++row) {
+    for (int col = 0; col < idx.cols; ++col) {
+      auto [r, c] = idx(row, col);
       if (!std::isfinite(input(r, c))) continue;
 
       window.clear();
       for (int dr = -half; dr <= half; ++dr) {
         for (int dc = -half; dc <= half; ++dc) {
-          int nlr = lr + dr;
-          int nlc = lc + dc;
-
-          // Bounds check in logical space
-          if (nlr < 0 || nlr >= rows || nlc < 0 || nlc >= cols) continue;
-
-          // Logical → buffer index
-          int nr = nlr + sr;
-          if (nr >= rows) nr -= rows;
-          int nc = nlc + sc;
-          if (nc >= cols) nc -= cols;
-
+          if (!idx.contains(row + dr, col + dc)) continue;
+          auto [nr, nc] = idx(row + dr, col + dc);
           float val = input(nr, nc);
-          if (std::isfinite(val)) {
-            window.push_back(val);
-          }
+          if (std::isfinite(val)) window.push_back(val);
         }
       }
 
