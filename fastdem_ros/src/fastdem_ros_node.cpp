@@ -3,13 +3,16 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <visualization_msgs/Marker.h>
 #include <spdlog/spdlog.h>
+#include <visualization_msgs/Marker.h>
 
 #include <fastdem/fastdem.hpp>
+#include <fastdem/postprocess/feature_extraction.hpp>
+#include <fastdem/postprocess/inpainting.hpp>
 #include <filesystem>
 #include <memory>
 #include <nanopcl/bridge/ros1.hpp>
+#include <shared_mutex>
 
 #include "fastdem_ros/conversions.hpp"
 #include "fastdem_ros/parameters.hpp"
@@ -20,7 +23,6 @@ namespace fastdem::ros1 {
 namespace fs = std::filesystem;
 using fastdem::ElevationMap;
 using fastdem::FastDEM;
-using fastdem::MappingConfig;
 using fastdem::PointCloud;
 
 class MappingNode {
@@ -56,9 +58,12 @@ class MappingNode {
                        params_.map.resolution);
       map_.setFrameId(params_.tf.map_frame);
 
+      // Load configuration
+      auto cfg = fastdem::loadConfig(params_.mapping_config);
+      post_cfg_ = cfg.postprocess;
+
       // Initialize FastDEM
-      mapper_ = std::make_unique<FastDEM>(
-          map_, MappingConfig::load(params_.mapping_config));
+      mapper_ = std::make_unique<FastDEM>(map_, cfg.core);
 
       // Override mapping mode if specified in ROS params
       if (params_.mapping_mode == "global")
@@ -107,7 +112,16 @@ class MappingNode {
     }
 
     auto cloud = std::make_shared<PointCloud>(nanopcl::from(*msg));
+    std::unique_lock lock(map_mutex_);
     mapper_->integrate(cloud);
+
+    // Post-processing (user-side, map-only operations)
+    const auto& inp = post_cfg_.inpainting;
+    if (inp.enabled)
+      applyInpainting(map_, inp.max_iterations, inp.min_valid_neighbors);
+    const auto& fe = post_cfg_.feature_extraction;
+    if (fe.enabled)
+      applyFeatureExtraction(map_, fe.analysis_radius, fe.min_valid_neighbors);
   }
 
   // ==================== Publishers ====================
@@ -118,19 +132,18 @@ class MappingNode {
     const bool want_region = region_pub_.getNumSubscribers() > 0;
     if (!want_gridmap && !want_cloud && !want_region) return;
 
-    mapper_->withMap([&](const ElevationMap& map) {
-      if (want_gridmap) {
-        grid_map_msgs::GridMap msg;
-        toMessage(map, msg);
-        map_pub_.publish(msg);
-      }
-      if (want_cloud) {
-        cloud_pub_.publish(toPointCloud2(map));
-      }
-      if (want_region) {
-        region_pub_.publish(toRegionMarker(map));
-      }
-    });
+    std::shared_lock lock(map_mutex_);
+    if (want_gridmap) {
+      grid_map_msgs::GridMap msg;
+      toMessage(map_, msg);
+      map_pub_.publish(msg);
+    }
+    if (want_cloud) {
+      cloud_pub_.publish(toPointCloud2(map_));
+    }
+    if (want_region) {
+      region_pub_.publish(toRegionMarker(map_));
+    }
   }
 
   void publishProcessedScan(const PointCloud& cloud) {
@@ -157,6 +170,8 @@ class MappingNode {
   // Core objects
   ElevationMap map_;
   std::unique_ptr<FastDEM> mapper_;
+  fastdem::PostProcessConfig post_cfg_;
+  mutable std::shared_mutex map_mutex_;
 
   // ROS handles
   ros::Subscriber scan_sub_;
