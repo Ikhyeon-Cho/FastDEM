@@ -100,7 +100,7 @@ TEST_F(FastDEMIntegrationTest, MultipleIntegrations) {
   EXPECT_LT(elev, 1.6f);
 }
 
-TEST_F(FastDEMIntegrationTest, PostProcessingRunsWithoutCrash) {
+TEST_F(FastDEMIntegrationTest, RaycastingRunsWithoutCrash) {
   // Raise the sensor so raycasting has downward rays
   T_world_base.translation().z() = 3.0;
 
@@ -110,7 +110,6 @@ TEST_F(FastDEMIntegrationTest, PostProcessingRunsWithoutCrash) {
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
       .enableRaycasting(true)
-      .enableInpainting(true)
       .enableUncertaintyFusion(true);
 
   auto cloud = makeGroundCloud(0.5f);
@@ -118,9 +117,8 @@ TEST_F(FastDEMIntegrationTest, PostProcessingRunsWithoutCrash) {
 
   // Verify no crash and expected output layers exist
   EXPECT_TRUE(map.exists(layer::elevation));
-  EXPECT_TRUE(map.exists(layer::elevation_inpainted));
   EXPECT_TRUE(map.exists(layer::raycasting_upper_bound));
-  // uncertainty_fusion creates these if state/variance exist (kalman creates them)
+  // Kalman creates these internal layers
   EXPECT_TRUE(map.exists(layer::state));
   EXPECT_TRUE(map.exists(layer::variance));
 }

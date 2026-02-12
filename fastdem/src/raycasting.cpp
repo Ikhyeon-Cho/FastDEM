@@ -225,7 +225,16 @@ void applyRaycasting(ElevationMap& map, const PointCloud& cloud_in_map,
     return;
   }
 
-  // 1. Initialize layers
+  // 1. Validate required layers
+  if (!map.exists(layer::elevation) || !map.exists(layer::elevation_min) ||
+      !map.exists(layer::elevation_max)) {
+    spdlog::warn(
+        "[Raycasting] Missing required layers (elevation, elevation_min, "
+        "elevation_max).");
+    return;
+  }
+
+  // 2. Initialize output layers
   if (!map.exists(layer::raycasting_upper_bound)) {
     map.add(layer::raycasting_upper_bound);
   }
@@ -235,27 +244,27 @@ void applyRaycasting(ElevationMap& map, const PointCloud& cloud_in_map,
   // Reset upper bound layer
   map.clear(layer::raycasting_upper_bound);
 
-  // 2. Validate sensor position
+  // 3. Validate sensor position
   if (!map.isInside(grid_map::Position(sensor_position_in_map.x(),
                                        sensor_position_in_map.y()))) {
     spdlog::warn("[Raycasting] Sensor origin outside map bounds");
     return;
   }
 
-  // 3. Filter to downward rays only
+  // 4. Filter to downward rays only
   auto downward_cloud = nanopcl::filters::cropZ(
       cloud_in_map, -std::numeric_limits<float>::infinity(),
       sensor_position_in_map.z());
   if (downward_cloud.empty()) return;
 
-  // 4. Extract targets
+  // 5. Extract targets
   auto ray_targets = extractTargets(map, downward_cloud);
   if (ray_targets.empty()) return;
 
-  // 5. Compute upper bound layer
+  // 6. Compute upper bound layer
   computeUpperBounds(map, sensor_position_in_map, ray_targets, config);
 
-  // 6. Detect and clear ghost cells
+  // 7. Detect and clear ghost cells
   auto ghost_cells = detectGhostCells(
       map.get(layer::raycasting_upper_bound), map.get(layer::elevation),
       map.get(layer::elevation_min), map.get(layer::elevation_max),

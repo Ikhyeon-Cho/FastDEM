@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "fastdem/config/feature_extraction.hpp"
 #include "fastdem/config/inpainting.hpp"
 #include "fastdem/config/mapping.hpp"
 #include "fastdem/config/rasterization.hpp"
@@ -27,20 +28,30 @@
 
 namespace fastdem {
 
-/**
- * @brief Configuration for FastDEM.
- */
-struct MappingConfig {
-  config::Mapping mapping;
+/// Configuration for FastDEM mapper (used by FastDEM class).
+struct CoreConfig {
+  config::Sensor sensor;
   config::ScanFilter scan_filter;
   config::Rasterization rasterization;
+  config::Mapping mapping;
   config::Raycasting raycasting;
-  config::Inpainting inpainting;
-  config::Sensor sensor;
   config::UncertaintyFusion uncertainty_fusion;
-
-  static MappingConfig load(const std::string& path);
 };
+
+/// Configuration for user-invoked post-processing free functions.
+struct PostProcessConfig {
+  config::Inpainting inpainting;
+  config::FeatureExtraction feature_extraction;
+};
+
+/// Full pipeline configuration loaded from a single YAML file.
+struct Config {
+  CoreConfig core;
+  PostProcessConfig postprocess;
+};
+
+/// Load full pipeline configuration from YAML.
+Config loadConfig(const std::string& path);
 
 }  // namespace fastdem
 

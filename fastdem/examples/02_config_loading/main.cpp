@@ -24,8 +24,8 @@ int main() {
   std::cout << "=== 02_config_loading ===\n" << std::endl;
 
   // 1. Load configs from YAML presets
-  auto config_local = MappingConfig::load(EXAMPLE_CONFIG_DIR "/default.yaml");
-  auto config_global = MappingConfig::load(EXAMPLE_CONFIG_DIR "/global.yaml");
+  auto config_local = loadConfig(EXAMPLE_CONFIG_DIR "/default.yaml");
+  auto config_global = loadConfig(EXAMPLE_CONFIG_DIR "/global.yaml");
 
   std::cout << "Loaded LOCAL preset (default.yaml)" << std::endl;
   std::cout << "Loaded GLOBAL preset (global.yaml)\n" << std::endl;
@@ -40,8 +40,8 @@ int main() {
   map_global.setFrameId("map");
 
   // 3. Create FastDEM instances with loaded configs
-  FastDEM mapper_local(map_local, config_local);
-  FastDEM mapper_global(map_global, config_global);
+  FastDEM mapper_local(map_local, config_local.core);
+  FastDEM mapper_global(map_global, config_global.core);
 
   // 4. Generate identical test data
   auto cloud = examples::generateTerrainCloud(50000, 8.0f);

@@ -48,11 +48,7 @@ TEST_F(PostprocessTest, InpaintingFillsSimpleHole) {
   }
   ASSERT_TRUE(std::isnan(map.at(layer::elevation, center)));
 
-  config::Inpainting cfg;
-  cfg.enabled = true;
-  cfg.max_iterations = 3;
-  cfg.min_valid_neighbors = 2;
-  applyInpainting(map, cfg);
+  applyInpainting(map, 3, 2);
 
   ASSERT_TRUE(map.exists(layer::elevation_inpainted));
   float inpainted = map.at(layer::elevation_inpainted, center);
@@ -64,23 +60,11 @@ TEST_F(PostprocessTest, InpaintingPreservesExistingValues) {
   // Fill all cells with 2.0
   map.get(layer::elevation).setConstant(2.0f);
 
-  config::Inpainting cfg;
-  cfg.enabled = true;
-  cfg.max_iterations = 3;
-  cfg.min_valid_neighbors = 2;
-  applyInpainting(map, cfg);
+  applyInpainting(map, 3, 2);
 
   ASSERT_TRUE(map.exists(layer::elevation_inpainted));
   auto center = centerIndex();
   EXPECT_FLOAT_EQ(map.at(layer::elevation_inpainted, center), 2.0f);
-}
-
-TEST_F(PostprocessTest, InpaintingDisabledIsNoOp) {
-  config::Inpainting cfg;
-  cfg.enabled = false;
-  applyInpainting(map, cfg);
-
-  EXPECT_FALSE(map.exists(layer::elevation_inpainted));
 }
 
 // ─── Raycasting ─────────────────────────────────────────────────────────────

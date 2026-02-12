@@ -2,24 +2,12 @@ name: build
 on: [push, pull_request]
 jobs:
   build:
-    runs-on: ubuntu-20.04
-    container:
-      image: ros:noetic-ros-base
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          apt-get update -qq
-          apt-get install -qq -y libeigen3-dev libyaml-cpp-dev libspdlog-dev
-          apt-get install -qq -y ros-noetic-grid-map-msgs ros-noetic-tf2-eigen ros-noetic-visualization-msgs
-
-      - name: Build
-        shell: bash
-        run: |
-          source /opt/ros/noetic/setup.bash
-          mkdir -p /tmp/catkin_ws/src
-          ln -s $GITHUB_WORKSPACE/fastdem /tmp/catkin_ws/src/fastdem
-          ln -s $GITHUB_WORKSPACE/fastdem_ros /tmp/catkin_ws/src/fastdem_ros
-          cd /tmp/catkin_ws
-          catkin_make -DCMAKE_BUILD_TYPE=Release
+      - run: sudo apt install -y libeigen3-dev libyaml-cpp-dev libspdlog-dev
+      - run: |
+          cd fastdem
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)

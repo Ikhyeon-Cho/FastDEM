@@ -17,7 +17,6 @@
 
 #include <functional>
 #include <memory>
-#include <shared_mutex>
 
 // Configs
 #include "fastdem/config/fastdem.hpp"
@@ -39,26 +38,13 @@ namespace fastdem {
  *
  * ## Thread safety
  *
- * **Thread-safe** (guarded by internal shared_mutex):
- * - integrate() — both online and offline overloads (exclusive lock)
- * - withMap() — read-only access to the map (shared lock)
- * - setCalibrationSystem(), setOdometrySystem(), setTransformSystem()
- * - hasTransformSystems()
- *
- * **Not thread-safe** — call these before integration or from a single thread:
- * - Configuration setters: setMappingMode(), setEstimatorType(),
- *   setSensorModel(), setHeightRange(), setDistanceRange(),
- *   enableRaycasting(), enableInpainting(), enableUncertaintyFusion()
- * - setProcessedCloudCallback()
- *
- * **Typical usage pattern**: configure once from the main thread, then call
- * integrate() from a sensor callback thread. Use withMap() for thread-safe
- * read access (e.g., publishing). Changing transform providers at runtime
- * is safe.
+ * This class is **not thread-safe**. The caller is responsible for
+ * synchronization when accessing from multiple threads (e.g., wrapping
+ * integrate() and map reads in a shared mutex).
  */
 class FastDEM {
  public:
-  using Config = MappingConfig;
+  using Config = CoreConfig;
   using ProcessedCloudCallback = std::function<void(const PointCloud&)>;
 
   /// Construct with default config (use setters to customize)
@@ -91,10 +77,7 @@ class FastDEM {
   /// Enable/disable raycasting (ghost obstacle removal)
   FastDEM& enableRaycasting(bool enabled = true) noexcept;
 
-  /// Enable/disable inpainting (hole filling)
-  FastDEM& enableInpainting(bool enabled = true) noexcept;
-
-  /// Enable/disable spatial fusion (uncertainty smoothing)
+  /// Enable/disable uncertainty fusion (spatial variance smoothing)
   FastDEM& enableUncertaintyFusion(bool enabled = true) noexcept;
 
   /// Set calibration system (sensor → base static transform)
@@ -125,15 +108,6 @@ class FastDEM {
   /// Set callback for processed cloud (after preprocess, before map update)
   void setProcessedCloudCallback(ProcessedCloudCallback callback);
 
-  /// Thread-safe read access to the elevation map.
-  /// Acquires a shared lock, so multiple readers can run concurrently
-  /// while integrate() is blocked.
-  template <typename F>
-  decltype(auto) withMap(F&& fn) const {
-    std::shared_lock lock(map_mutex_);
-    return fn(map_);
-  }
-
  private:
   /// Core integration logic (assumes valid inputs)
   bool integrateImpl(const PointCloud& cloud,
@@ -154,9 +128,6 @@ class FastDEM {
 
   // Optional callback
   ProcessedCloudCallback processed_cloud_callback_;
-
-  // Thread safety
-  mutable std::shared_mutex map_mutex_;
 };
 
 // ─── Free functions: direct rasterization ────────────────────────────

@@ -239,7 +239,7 @@ TEST_F(OnlineModeTest, WithRobotPose) {
   EXPECT_NEAR(map.elevationAt(robot_pos), 1.0f, 0.1f);
 }
 
-TEST_F(OnlineModeTest, PostProcessingOnlineMode) {
+TEST_F(OnlineModeTest, RaycastingOnlineMode) {
   // Raise robot so raycasting has downward rays
   Eigen::Isometry3d robot_pose = Eigen::Isometry3d::Identity();
   robot_pose.translation().z() = 3.0;
@@ -251,7 +251,6 @@ TEST_F(OnlineModeTest, PostProcessingOnlineMode) {
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
       .enableRaycasting(true)
-      .enableInpainting(true)
       .enableUncertaintyFusion(true)
       .setCalibrationSystem(calibration)
       .setOdometrySystem(odometry);
@@ -260,5 +259,5 @@ TEST_F(OnlineModeTest, PostProcessingOnlineMode) {
   EXPECT_TRUE(mapper.integrate(cloud));
 
   EXPECT_TRUE(map.exists(layer::elevation));
-  EXPECT_TRUE(map.exists(layer::elevation_inpainted));
+  EXPECT_TRUE(map.exists(layer::raycasting_upper_bound));
 }

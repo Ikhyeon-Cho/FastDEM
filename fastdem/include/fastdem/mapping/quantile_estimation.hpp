@@ -92,8 +92,6 @@ class QuantileEstimation {
    * @param map Height map to initialize layers on
    */
   void initialize(ElevationMap& map) {
-    map_ = &map;
-
     // Core output layers
     if (!map.exists(layer::elevation)) map.add(layer::elevation, NAN);
     if (!map.exists(layer::elevation_min)) map.add(layer::elevation_min, NAN);
@@ -355,9 +353,6 @@ class QuantileEstimation {
   int elevation_marker_ = 3;    // Which marker to use as elevation output (0-4)
   float dn_[5];                 // Desired position increments
   float max_sample_count_ = 0;  // Max count for fading memory (0 = disabled)
-
-  // Map pointer for finalize operations
-  ElevationMap* map_ = nullptr;
 
   // Core layer matrices
   grid_map::Matrix* elevation_mat_ = nullptr;

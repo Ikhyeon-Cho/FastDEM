@@ -15,7 +15,6 @@
 #ifndef FASTDEM_POSTPROCESS_INPAINTING_HPP
 #define FASTDEM_POSTPROCESS_INPAINTING_HPP
 
-#include "fastdem/config/inpainting.hpp"
 #include "fastdem/elevation_map.hpp"
 
 namespace fastdem {
@@ -26,9 +25,11 @@ namespace fastdem {
  * Results stored in elevation_inpainted layer (original unchanged).
  *
  * @param map Height map to process
- * @param config Inpainting configuration
+ * @param max_iterations Maximum number of fill passes (default: 3)
+ * @param min_valid_neighbors Minimum valid neighbors to fill a cell (default: 2)
  */
-void applyInpainting(ElevationMap& map, const config::Inpainting& config);
+void applyInpainting(ElevationMap& map, int max_iterations = 3,
+                     int min_valid_neighbors = 2);
 
 }  // namespace fastdem
 

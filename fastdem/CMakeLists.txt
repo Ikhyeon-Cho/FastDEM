@@ -60,8 +60,10 @@ target_link_libraries(${PROJECT_NAME}
 option(BUILD_BENCHMARKS "Build benchmark executables" OFF)
 
 if(BUILD_BENCHMARKS)
-  add_executable(profile_pipeline benchmark/profile_pipeline.cpp)
-  target_link_libraries(profile_pipeline PRIVATE ${PROJECT_NAME})
+  add_executable(benchmark_postprocess_iteration
+    benchmarks/benchmark_postprocess_iteration.cpp)
+  target_link_libraries(benchmark_postprocess_iteration PRIVATE ${PROJECT_NAME})
+  target_compile_options(benchmark_postprocess_iteration PRIVATE -O3)
 endif()
 
 ##############
