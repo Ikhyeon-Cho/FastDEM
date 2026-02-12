@@ -70,8 +70,6 @@ class KalmanEstimation {
    * pointers.
    */
   void initialize(ElevationMap& map) {
-    map_ = &map;
-
     // Core Kalman layers
     if (!map.exists(layer::elevation)) map.add(layer::elevation, NAN);
     if (!map.exists(layer::elevation_min)) map.add(layer::elevation_min, NAN);
@@ -208,9 +206,6 @@ class KalmanEstimation {
   float max_variance_ = 0.01f;
   float process_noise_ = 0.0f;
   float sigma_scale_ = 0.0f;
-
-  // Map pointer for finalize operations
-  ElevationMap* map_ = nullptr;
 
   // Core Kalman layer matrices
   grid_map::Matrix* elevation_mat_ = nullptr;

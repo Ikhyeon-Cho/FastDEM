@@ -14,6 +14,8 @@
 
 #include "fastdem/postprocess/uncertainty_fusion.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -105,7 +107,10 @@ void applyUncertaintyFusion(ElevationMap& map,
 
   // Validate required layers
   if (!map.exists(layer::state) || !map.exists(layer::variance)) {
-    return;  // Missing required layers
+    spdlog::warn(
+        "[UncertaintyFusion] Missing required layers (state, variance). "
+        "Use Kalman estimator to produce them.");
+    return;
   }
 
   // Ensure output layers exist

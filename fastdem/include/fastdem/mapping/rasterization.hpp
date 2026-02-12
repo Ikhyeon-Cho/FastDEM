@@ -178,9 +178,10 @@ inline PointCloud Rasterization::process(const PointCloud& cloud,
         sum_b += c.b;
       }
       float n = static_cast<float>(acc.count);
-      result.color(out_idx) = nanopcl::Color{static_cast<uint8_t>(sum_r / n),
-                                             static_cast<uint8_t>(sum_g / n),
-                                             static_cast<uint8_t>(sum_b / n)};
+      result.color(out_idx) =
+          nanopcl::Color{static_cast<uint8_t>(sum_r / n + 0.5f),
+                         static_cast<uint8_t>(sum_g / n + 0.5f),
+                         static_cast<uint8_t>(sum_b / n + 0.5f)};
     }
 
     if (has_covariance) {

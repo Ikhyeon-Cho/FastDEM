@@ -18,13 +18,11 @@
 
 namespace fastdem {
 
-void applyInpainting(ElevationMap& map, const config::Inpainting& config) {
-  if (!config.enabled) return;
-
+void applyInpainting(ElevationMap& map, int max_iterations,
+                     int min_valid_neighbors) {
   // Ensure inpainted layer exists
   if (!map.exists(layer::elevation_inpainted)) {
     map.add(layer::elevation_inpainted, NAN);
-    map.setBasicLayers({layer::elevation_inpainted});
   }
 
   // Copy elevation to inpainted layer
@@ -39,7 +37,7 @@ void applyInpainting(ElevationMap& map, const config::Inpainting& config) {
   const auto idx = map.indexer();
   Eigen::MatrixXf buffer(idx.rows, idx.cols);
 
-  for (int iter = 0; iter < config.max_iterations; ++iter) {
+  for (int iter = 0; iter < max_iterations; ++iter) {
     bool changed = false;
     buffer = inpainted;
 
@@ -60,7 +58,7 @@ void applyInpainting(ElevationMap& map, const config::Inpainting& config) {
           }
         }
 
-        if (count >= config.min_valid_neighbors) {
+        if (count >= min_valid_neighbors) {
           buffer(r, c) = sum / static_cast<float>(count);
           changed = true;
         }

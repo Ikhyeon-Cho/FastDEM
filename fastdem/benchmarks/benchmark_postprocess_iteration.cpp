@@ -19,6 +19,15 @@
 #include "fastdem/elevation_map.hpp"
 #include "fastdem/postprocess/feature_extraction.hpp"
 #include "fastdem/postprocess/inpainting.hpp"
+
+// Local config struct for benchmark inpainting variants (not part of public API)
+namespace fastdem::config {
+struct Inpainting {
+  bool enabled = false;
+  int max_iterations = 3;
+  int min_valid_neighbors = 2;
+};
+}  // namespace fastdem::config
 #include "fastdem/postprocess/spatial_smoothing.hpp"
 #include "fastdem/postprocess/uncertainty_fusion.hpp"
 
@@ -815,7 +824,7 @@ int main() {
         [&]() {
           if (map0.exists(layer::elevation_inpainted))
             map0.get(layer::elevation_inpainted).setConstant(NAN);
-          applyInpainting(map0, cfg);
+          applyInpainting(map0, cfg.max_iterations, cfg.min_valid_neighbors);
         },
         50);
     benchmark::printResult("Current (manual lr/lc)", s0);

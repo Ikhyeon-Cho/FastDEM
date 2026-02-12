@@ -4,7 +4,7 @@
 /*
  * config.cpp
  *
- * YAML configuration loading for MappingConfig.
+ * YAML configuration loading.
  *
  *  Created on: Dec 2024
  *      Author: Ikhyeon Cho
@@ -54,12 +54,14 @@ SensorType parseSensorType(const std::string& type) {
   return SensorType::LiDAR;
 }
 
-MappingConfig parseConfig(const YAML::Node& root) {
-  MappingConfig cfg;
+Config parseConfig(const YAML::Node& root) {
+  Config cfg;
+
+  // --- CoreConfig ---
 
   // Mapping (mode + estimation)
   if (auto n = root["mapping"]) {
-    auto& m = cfg.mapping;
+    auto& m = cfg.core.mapping;
     std::string mode;
     load(n, "mode", mode);
     if (!mode.empty()) m.mode = parseMode(mode);
@@ -86,10 +88,10 @@ MappingConfig parseConfig(const YAML::Node& root) {
 
   // Scan filter
   if (auto n = root["scan_filter"]) {
-    load(n, "z_min", cfg.scan_filter.z_min);
-    load(n, "z_max", cfg.scan_filter.z_max);
-    load(n, "range_min", cfg.scan_filter.range_min);
-    load(n, "range_max", cfg.scan_filter.range_max);
+    load(n, "z_min", cfg.core.scan_filter.z_min);
+    load(n, "z_max", cfg.core.scan_filter.z_max);
+    load(n, "range_min", cfg.core.scan_filter.range_min);
+    load(n, "range_max", cfg.core.scan_filter.range_max);
   }
 
   // Rasterization
@@ -97,24 +99,17 @@ MappingConfig parseConfig(const YAML::Node& root) {
     std::string method_str;
     load(n, "method", method_str);
     if (!method_str.empty())
-      cfg.rasterization.method = parseRasterMethod(method_str);
+      cfg.core.rasterization.method = parseRasterMethod(method_str);
   }
 
   // Raycasting (temporal voting for ghost removal)
   if (auto n = root["raycasting"]) {
-    load(n, "enabled", cfg.raycasting.enabled);
-    load(n, "endpoint_margin", cfg.raycasting.endpoint_margin);
-    load(n, "ray_height_margin", cfg.raycasting.ray_height_margin);
+    load(n, "enabled", cfg.core.raycasting.enabled);
+    load(n, "endpoint_margin", cfg.core.raycasting.endpoint_margin);
+    load(n, "ray_height_margin", cfg.core.raycasting.ray_height_margin);
     load(n, "dynamic_height_threshold",
-         cfg.raycasting.dynamic_height_threshold);
-    load(n, "vote_threshold", cfg.raycasting.vote_threshold);
-  }
-
-  // Inpainting
-  if (auto n = root["inpainting"]) {
-    load(n, "enabled", cfg.inpainting.enabled);
-    load(n, "max_iterations", cfg.inpainting.max_iterations);
-    load(n, "min_valid_neighbors", cfg.inpainting.min_valid_neighbors);
+         cfg.core.raycasting.dynamic_height_threshold);
+    load(n, "vote_threshold", cfg.core.raycasting.vote_threshold);
   }
 
   // Sensor model
@@ -122,64 +117,77 @@ MappingConfig parseConfig(const YAML::Node& root) {
     std::string sensor_str;
     load(n, "type", sensor_str);
     if (!sensor_str.empty())
-      cfg.sensor.type = parseSensorType(sensor_str);
-    // LiDAR parameters
-    load(n, "range_noise", cfg.sensor.range_noise);
-    load(n, "angular_noise", cfg.sensor.angular_noise);
-    // RGB-D parameters
-    load(n, "normal_a", cfg.sensor.normal_a);
-    load(n, "normal_b", cfg.sensor.normal_b);
-    load(n, "normal_c", cfg.sensor.normal_c);
-    load(n, "lateral_factor", cfg.sensor.lateral_factor);
-    // Constant model parameter
-    load(n, "constant_uncertainty", cfg.sensor.constant_uncertainty);
+      cfg.core.sensor.type = parseSensorType(sensor_str);
+    load(n, "range_noise", cfg.core.sensor.range_noise);
+    load(n, "angular_noise", cfg.core.sensor.angular_noise);
+    load(n, "normal_a", cfg.core.sensor.normal_a);
+    load(n, "normal_b", cfg.core.sensor.normal_b);
+    load(n, "normal_c", cfg.core.sensor.normal_c);
+    load(n, "lateral_factor", cfg.core.sensor.lateral_factor);
+    load(n, "constant_uncertainty", cfg.core.sensor.constant_uncertainty);
+  }
+
+  // Uncertainty fusion (bilateral filter + weighted ECDF)
+  if (auto n = root["uncertainty_fusion"]) {
+    load(n, "enabled", cfg.core.uncertainty_fusion.enabled);
+    load(n, "search_radius", cfg.core.uncertainty_fusion.search_radius);
+    load(n, "spatial_sigma", cfg.core.uncertainty_fusion.spatial_sigma);
+    load(n, "quantile_lower", cfg.core.uncertainty_fusion.quantile_lower);
+    load(n, "quantile_upper", cfg.core.uncertainty_fusion.quantile_upper);
+    load(n, "min_valid_neighbors",
+         cfg.core.uncertainty_fusion.min_valid_neighbors);
+  }
+
+  // --- PostProcessConfig ---
+
+  // Inpainting
+  if (auto n = root["inpainting"]) {
+    load(n, "enabled", cfg.postprocess.inpainting.enabled);
+    load(n, "max_iterations", cfg.postprocess.inpainting.max_iterations);
+    load(n, "min_valid_neighbors",
+         cfg.postprocess.inpainting.min_valid_neighbors);
   }
 
   // Feature extraction (PCA-based terrain features)
   if (auto n = root["feature_extraction"]) {
-    load(n, "enabled", cfg.feature_extraction.enabled);
-    load(n, "analysis_radius", cfg.feature_extraction.analysis_radius);
-    load(n, "min_valid_neighbors", cfg.feature_extraction.min_valid_neighbors);
-  }
-
-  // Spatial fusion (bilateral filter + weighted ECDF)
-  if (auto n = root["uncertainty_fusion"]) {
-    load(n, "enabled", cfg.uncertainty_fusion.enabled);
-    load(n, "search_radius", cfg.uncertainty_fusion.search_radius);
-    load(n, "spatial_sigma", cfg.uncertainty_fusion.spatial_sigma);
-    load(n, "quantile_lower", cfg.uncertainty_fusion.quantile_lower);
-    load(n, "quantile_upper", cfg.uncertainty_fusion.quantile_upper);
-    load(n, "min_valid_neighbors", cfg.uncertainty_fusion.min_valid_neighbors);
+    load(n, "enabled", cfg.postprocess.feature_extraction.enabled);
+    load(n, "analysis_radius",
+         cfg.postprocess.feature_extraction.analysis_radius);
+    load(n, "min_valid_neighbors",
+         cfg.postprocess.feature_extraction.min_valid_neighbors);
   }
 
   return cfg;
 }
 
-void validateConfig(MappingConfig& cfg) {
+void validateConfig(Config& cfg) {
+  auto& m = cfg.core;
+  auto& pp = cfg.postprocess;
+
   // --- Fatal: invalid ranges that break the pipeline ---
-  if (cfg.scan_filter.z_min >= cfg.scan_filter.z_max) {
+  if (m.scan_filter.z_min >= m.scan_filter.z_max) {
     throw std::invalid_argument(
-        "scan_filter: z_min (" + std::to_string(cfg.scan_filter.z_min) +
-        ") >= z_max (" + std::to_string(cfg.scan_filter.z_max) + ")");
+        "scan_filter: z_min (" + std::to_string(m.scan_filter.z_min) +
+        ") >= z_max (" + std::to_string(m.scan_filter.z_max) + ")");
   }
-  if (cfg.scan_filter.range_min >= cfg.scan_filter.range_max) {
+  if (m.scan_filter.range_min >= m.scan_filter.range_max) {
     throw std::invalid_argument(
-        "scan_filter: range_min (" + std::to_string(cfg.scan_filter.range_min) +
-        ") >= range_max (" + std::to_string(cfg.scan_filter.range_max) + ")");
+        "scan_filter: range_min (" + std::to_string(m.scan_filter.range_min) +
+        ") >= range_max (" + std::to_string(m.scan_filter.range_max) + ")");
   }
-  if (cfg.mapping.kalman.min_variance >= cfg.mapping.kalman.max_variance) {
+  if (m.mapping.kalman.min_variance >= m.mapping.kalman.max_variance) {
     throw std::invalid_argument(
         "mapping.kalman: min_variance (" +
-        std::to_string(cfg.mapping.kalman.min_variance) + ") >= max_variance (" +
-        std::to_string(cfg.mapping.kalman.max_variance) + ")");
+        std::to_string(m.mapping.kalman.min_variance) + ") >= max_variance (" +
+        std::to_string(m.mapping.kalman.max_variance) + ")");
   }
-  if (cfg.uncertainty_fusion.quantile_lower >
-      cfg.uncertainty_fusion.quantile_upper) {
+  if (m.uncertainty_fusion.quantile_lower >
+      m.uncertainty_fusion.quantile_upper) {
     throw std::invalid_argument(
         "uncertainty_fusion: quantile_lower (" +
-        std::to_string(cfg.uncertainty_fusion.quantile_lower) +
+        std::to_string(m.uncertainty_fusion.quantile_lower) +
         ") > quantile_upper (" +
-        std::to_string(cfg.uncertainty_fusion.quantile_upper) + ")");
+        std::to_string(m.uncertainty_fusion.quantile_upper) + ")");
   }
 
   // --- Non-fatal: warn and clamp ---
@@ -192,56 +200,45 @@ void validateConfig(MappingConfig& cfg) {
     }
   };
 
-  warn_clamp("scan_filter.range_min", cfg.scan_filter.range_min, 0.0f,
-             cfg.scan_filter.range_max);
+  warn_clamp("scan_filter.range_min", m.scan_filter.range_min, 0.0f,
+             m.scan_filter.range_max);
 
-  if (cfg.raycasting.enabled) {
-    warn_clamp("raycasting.endpoint_margin", cfg.raycasting.endpoint_margin, 0,
+  if (m.raycasting.enabled) {
+    warn_clamp("raycasting.endpoint_margin", m.raycasting.endpoint_margin, 0,
                100);
-    if (cfg.raycasting.ray_height_margin <= 0.0f) {
+    if (m.raycasting.ray_height_margin <= 0.0f) {
       spdlog::warn("[Config] raycasting.ray_height_margin ({}) must be > 0, "
                    "clamping to 0.05",
-                   cfg.raycasting.ray_height_margin);
-      cfg.raycasting.ray_height_margin = 0.05f;
+                   m.raycasting.ray_height_margin);
+      m.raycasting.ray_height_margin = 0.05f;
     }
-    if (cfg.raycasting.vote_threshold <= 0) {
+    if (m.raycasting.vote_threshold <= 0) {
       spdlog::warn(
           "[Config] raycasting.vote_threshold ({}) must be > 0, clamping to 1",
-          cfg.raycasting.vote_threshold);
-      cfg.raycasting.vote_threshold = 1;
+          m.raycasting.vote_threshold);
+      m.raycasting.vote_threshold = 1;
     }
   }
 
-  if (cfg.inpainting.enabled) {
-    if (cfg.inpainting.max_iterations < 1) {
-      spdlog::warn(
-          "[Config] inpainting.max_iterations ({}) must be >= 1, clamping to 1",
-          cfg.inpainting.max_iterations);
-      cfg.inpainting.max_iterations = 1;
-    }
-    warn_clamp("inpainting.min_valid_neighbors",
-               cfg.inpainting.min_valid_neighbors, 1, 8);
-  }
-
-  if (cfg.mapping.kalman.min_variance <= 0.0f) {
+  if (m.mapping.kalman.min_variance <= 0.0f) {
     spdlog::warn(
         "[Config] estimation.kalman.min_variance ({}) must be > 0, "
         "clamping to 0.0001",
-        cfg.mapping.kalman.min_variance);
-    cfg.mapping.kalman.min_variance = 0.0001f;
+        m.mapping.kalman.min_variance);
+    m.mapping.kalman.min_variance = 0.0001f;
   }
-  if (cfg.mapping.kalman.process_noise < 0.0f) {
+  if (m.mapping.kalman.process_noise < 0.0f) {
     spdlog::warn(
         "[Config] estimation.kalman.process_noise ({}) must be >= 0, "
         "clamping to 0",
-        cfg.mapping.kalman.process_noise);
-    cfg.mapping.kalman.process_noise = 0.0f;
+        m.mapping.kalman.process_noise);
+    m.mapping.kalman.process_noise = 0.0f;
   }
-  warn_clamp("mapping.p2.elevation_marker", cfg.mapping.p2.elevation_marker,
+  warn_clamp("mapping.p2.elevation_marker", m.mapping.p2.elevation_marker,
              0, 4);
 
   // P2 quantile markers must be monotonically non-decreasing
-  const auto& p2 = cfg.mapping.p2;
+  const auto& p2 = m.mapping.p2;
   if (p2.dn0 > p2.dn1 || p2.dn1 > p2.dn2 || p2.dn2 > p2.dn3 ||
       p2.dn3 > p2.dn4) {
     throw std::invalid_argument(
@@ -253,57 +250,69 @@ void validateConfig(MappingConfig& cfg) {
   }
 
   // Sensor model parameters must be positive
-  if (cfg.sensor.range_noise <= 0.0f) {
+  if (m.sensor.range_noise <= 0.0f) {
     spdlog::warn(
         "[Config] sensor.range_noise ({}) must be > 0, clamping to 0.02",
-        cfg.sensor.range_noise);
-    cfg.sensor.range_noise = 0.02f;
+        m.sensor.range_noise);
+    m.sensor.range_noise = 0.02f;
   }
-  if (cfg.sensor.angular_noise < 0.0f) {
+  if (m.sensor.angular_noise < 0.0f) {
     spdlog::warn(
         "[Config] sensor.angular_noise ({}) must be >= 0, clamping to 0",
-        cfg.sensor.angular_noise);
-    cfg.sensor.angular_noise = 0.0f;
+        m.sensor.angular_noise);
+    m.sensor.angular_noise = 0.0f;
   }
-  if (cfg.sensor.constant_uncertainty <= 0.0f) {
+  if (m.sensor.constant_uncertainty <= 0.0f) {
     spdlog::warn(
         "[Config] sensor.constant_uncertainty ({}) must be > 0, "
         "clamping to 0.1",
-        cfg.sensor.constant_uncertainty);
-    cfg.sensor.constant_uncertainty = 0.1f;
+        m.sensor.constant_uncertainty);
+    m.sensor.constant_uncertainty = 0.1f;
   }
 
-  if (cfg.feature_extraction.enabled) {
-    if (cfg.feature_extraction.analysis_radius <= 0.0f) {
+  if (m.uncertainty_fusion.enabled) {
+    if (m.uncertainty_fusion.search_radius <= 0.0f) {
+      spdlog::warn("[Config] uncertainty_fusion.search_radius ({}) must be > 0, "
+                   "clamping to 0.15",
+                   m.uncertainty_fusion.search_radius);
+      m.uncertainty_fusion.search_radius = 0.15f;
+    }
+    if (m.uncertainty_fusion.spatial_sigma <= 0.0f) {
+      spdlog::warn("[Config] uncertainty_fusion.spatial_sigma ({}) must be > 0, "
+                   "clamping to 0.05",
+                   m.uncertainty_fusion.spatial_sigma);
+      m.uncertainty_fusion.spatial_sigma = 0.05f;
+    }
+  }
+
+  // Post-processing validation
+  if (pp.inpainting.enabled) {
+    if (pp.inpainting.max_iterations < 1) {
+      spdlog::warn(
+          "[Config] inpainting.max_iterations ({}) must be >= 1, clamping to 1",
+          pp.inpainting.max_iterations);
+      pp.inpainting.max_iterations = 1;
+    }
+    warn_clamp("inpainting.min_valid_neighbors",
+               pp.inpainting.min_valid_neighbors, 1, 8);
+  }
+
+  if (pp.feature_extraction.enabled) {
+    if (pp.feature_extraction.analysis_radius <= 0.0f) {
       spdlog::warn(
           "[Config] feature_extraction.analysis_radius ({}) must be > 0, "
           "clamping to 0.3",
-          cfg.feature_extraction.analysis_radius);
-      cfg.feature_extraction.analysis_radius = 0.3f;
+          pp.feature_extraction.analysis_radius);
+      pp.feature_extraction.analysis_radius = 0.3f;
     }
     warn_clamp("feature_extraction.min_valid_neighbors",
-               cfg.feature_extraction.min_valid_neighbors, 4, 100);
-  }
-
-  if (cfg.uncertainty_fusion.enabled) {
-    if (cfg.uncertainty_fusion.search_radius <= 0.0f) {
-      spdlog::warn("[Config] uncertainty_fusion.search_radius ({}) must be > 0, "
-                   "clamping to 0.15",
-                   cfg.uncertainty_fusion.search_radius);
-      cfg.uncertainty_fusion.search_radius = 0.15f;
-    }
-    if (cfg.uncertainty_fusion.spatial_sigma <= 0.0f) {
-      spdlog::warn("[Config] uncertainty_fusion.spatial_sigma ({}) must be > 0, "
-                   "clamping to 0.05",
-                   cfg.uncertainty_fusion.spatial_sigma);
-      cfg.uncertainty_fusion.spatial_sigma = 0.05f;
-    }
+               pp.feature_extraction.min_valid_neighbors, 4, 100);
   }
 }
 
 }  // namespace
 
-MappingConfig MappingConfig::load(const std::string& path) {
+Config loadConfig(const std::string& path) {
   try {
     auto cfg = parseConfig(YAML::LoadFile(path));
     validateConfig(cfg);

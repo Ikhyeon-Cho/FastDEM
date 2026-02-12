@@ -58,8 +58,6 @@ class MeanEstimation {
    * Creates all layers (core + derived) eagerly and caches matrix pointers.
    */
   void initialize(ElevationMap& map) {
-    map_ = &map;
-
     // Core layers
     if (!map.exists(layer::elevation)) map.add(layer::elevation, NAN);
     if (!map.exists(layer::elevation_min)) map.add(layer::elevation_min, NAN);
@@ -157,9 +155,6 @@ class MeanEstimation {
 
  private:
   float sigma_scale_ = 0.0f;
-
-  // Map pointer for finalize operations
-  ElevationMap* map_ = nullptr;
 
   // Core layer matrices
   grid_map::Matrix* elevation_mat_ = nullptr;

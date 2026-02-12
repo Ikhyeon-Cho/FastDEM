@@ -83,11 +83,11 @@ void viridisLUT(float t, uint8_t& r, uint8_t& g, uint8_t& b) {
   float frac = idx - i0;
 
   r = static_cast<uint8_t>(
-      (lut[i0][0] * (1 - frac) + lut[i1][0] * frac) * 255);
+      (lut[i0][0] * (1 - frac) + lut[i1][0] * frac) * 255 + 0.5f);
   g = static_cast<uint8_t>(
-      (lut[i0][1] * (1 - frac) + lut[i1][1] * frac) * 255);
+      (lut[i0][1] * (1 - frac) + lut[i1][1] * frac) * 255 + 0.5f);
   b = static_cast<uint8_t>(
-      (lut[i0][2] * (1 - frac) + lut[i1][2] * frac) * 255);
+      (lut[i0][2] * (1 - frac) + lut[i1][2] * frac) * 255 + 0.5f);
 }
 
 void jetColor(float t, uint8_t& r, uint8_t& g, uint8_t& b) {
@@ -95,19 +95,19 @@ void jetColor(float t, uint8_t& r, uint8_t& g, uint8_t& b) {
 
   if (t < 0.25f) {
     r = 0;
-    g = static_cast<uint8_t>(4 * t * 255);
+    g = static_cast<uint8_t>(4 * t * 255 + 0.5f);
     b = 255;
   } else if (t < 0.5f) {
     r = 0;
     g = 255;
-    b = static_cast<uint8_t>((1 - 4 * (t - 0.25f)) * 255);
+    b = static_cast<uint8_t>((1 - 4 * (t - 0.25f)) * 255 + 0.5f);
   } else if (t < 0.75f) {
-    r = static_cast<uint8_t>(4 * (t - 0.5f) * 255);
+    r = static_cast<uint8_t>(4 * (t - 0.5f) * 255 + 0.5f);
     g = 255;
     b = 0;
   } else {
     r = 255;
-    g = static_cast<uint8_t>((1 - 4 * (t - 0.75f)) * 255);
+    g = static_cast<uint8_t>((1 - 4 * (t - 0.75f)) * 255 + 0.5f);
     b = 0;
   }
 }
@@ -162,7 +162,7 @@ bool savePng(const std::string& filename, const ElevationMap& map,
             break;
           case PngExportConfig::Colormap::GRAYSCALE:
           default:
-            px[0] = px[1] = px[2] = static_cast<uint8_t>(t * 255);
+            px[0] = px[1] = px[2] = static_cast<uint8_t>(t * 255 + 0.5f);
             break;
         }
         px[3] = 255;

@@ -16,10 +16,7 @@
 
 #include <nanopcl/filters/crop.hpp>
 
-#include "fastdem/postprocess/inpainting.hpp"
 #include "fastdem/postprocess/raycasting.hpp"
-#include "fastdem/postprocess/spatial_smoothing.hpp"
-#include "fastdem/postprocess/feature_extraction.hpp"
 #include "fastdem/postprocess/uncertainty_fusion.hpp"
 
 namespace fastdem {
@@ -69,36 +66,23 @@ FastDEM& FastDEM::enableRaycasting(bool enabled) noexcept {
   return *this;
 }
 
-FastDEM& FastDEM::enableInpainting(bool enabled) noexcept {
-  cfg_.inpainting.enabled = enabled;
-  return *this;
-}
-
 FastDEM& FastDEM::enableUncertaintyFusion(bool enabled) noexcept {
   cfg_.uncertainty_fusion.enabled = enabled;
   return *this;
 }
 
-FastDEM& FastDEM::enableFeatureExtraction(bool enabled) noexcept {
-  cfg_.feature_extraction.enabled = enabled;
-  return *this;
-}
-
 FastDEM& FastDEM::setCalibrationSystem(
     std::shared_ptr<Calibration> calibration) {
-  std::unique_lock lock(map_mutex_);
   calibration_ = std::move(calibration);
   return *this;
 }
 
 FastDEM& FastDEM::setOdometrySystem(std::shared_ptr<Odometry> odometry) {
-  std::unique_lock lock(map_mutex_);
   odometry_ = std::move(odometry);
   return *this;
 }
 
 bool FastDEM::hasTransformSystems() const noexcept {
-  std::shared_lock lock(map_mutex_);
   return calibration_ != nullptr && odometry_ != nullptr;
 }
 
@@ -187,32 +171,20 @@ bool FastDEM::integrateImpl(const PointCloud& cloud,
   PointCloud rasterized_points = rasterization_->process(points, map_);
   if (rasterized_points.empty()) return false;
 
-  // 5. Map update (thread-safe)
-  {
-    std::lock_guard<std::shared_mutex> lock(map_mutex_);
+  // 5. Map update
+  const Eigen::Vector2d robot_position = T_world_base.translation().head<2>();
+  mapping_->update(rasterized_points, robot_position);
 
-    const Eigen::Vector2d robot_position = T_world_base.translation().head<2>();
-    mapping_->update(rasterized_points, robot_position);
-
-    // Post-processing: smooth elevation_max → elevation_max_smoothed
-    if (map_.exists(layer::elevation_max)) {
-      if (!map_.exists(layer::elevation_max_smoothed))
-        map_.add(layer::elevation_max_smoothed, NAN);
-      map_.get(layer::elevation_max_smoothed) = map_.get(layer::elevation_max);
-      applySpatialSmoothing(map_, layer::elevation_max_smoothed);
-    }
-
+  // 6. Raycasting (requires per-scan sensor origin)
+  if (cfg_.raycasting.enabled) {
     const Eigen::Vector3f sensor_origin =
         (T_world_base * T_base_sensor).translation().cast<float>();
-    if (cfg_.raycasting.enabled)
-      applyRaycasting(map_, points, sensor_origin, cfg_.raycasting);
-    if (cfg_.inpainting.enabled) applyInpainting(map_, cfg_.inpainting);
-    if (cfg_.uncertainty_fusion.enabled)
-      applyUncertaintyFusion(map_, cfg_.uncertainty_fusion);
-    if (cfg_.feature_extraction.enabled)
-      applyFeatureExtraction(map_, cfg_.feature_extraction.analysis_radius,
-                             cfg_.feature_extraction.min_valid_neighbors);
+    applyRaycasting(map_, points, sensor_origin, cfg_.raycasting);
   }
+
+  // 7. Uncertainty fusion (spatial smoothing of variance estimates)
+  if (cfg_.uncertainty_fusion.enabled)
+    applyUncertaintyFusion(map_, cfg_.uncertainty_fusion);
   return true;
 }
 
