@@ -31,8 +31,8 @@ int main() {
 
   // 2. Create FastDEM and configure
   FastDEM mapper(map);
-  mapper.setHeightRange(-1.0f, 2.0f)
-      .setDistanceRange(0.5f, 10.0f)
+  mapper.setHeightFilter(-1.0f, 2.0f)
+      .setDistanceFilter(0.5f, 10.0f)
       .setEstimatorType(EstimationType::Welford)
       .setSensorModel(SensorType::Constant);
 

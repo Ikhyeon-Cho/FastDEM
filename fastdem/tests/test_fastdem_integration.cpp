@@ -43,8 +43,8 @@ class FastDEMIntegrationTest : public ::testing::Test {
 
 TEST_F(FastDEMIntegrationTest, IntegrateUpdatesElevation) {
   FastDEM mapper(map);
-  mapper.setHeightRange(-2.0f, 5.0f)
-      .setDistanceRange(0.0f, 20.0f)
+  mapper.setHeightFilter(-2.0f, 5.0f)
+      .setDistanceFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman);
 
@@ -68,7 +68,7 @@ TEST_F(FastDEMIntegrationTest, EmptyCloudIsNoOp) {
 
 TEST_F(FastDEMIntegrationTest, HeightFilterRejectsOutOfRange) {
   FastDEM mapper(map);
-  mapper.setHeightRange(0.0f, 2.0f);  // Accept z in [0, 2]
+  mapper.setHeightFilter(0.0f, 2.0f);  // Accept z in [0, 2]
 
   // All points at z=10.0 — above the filter range
   auto cloud = makeGroundCloud(10.0f);
@@ -79,8 +79,8 @@ TEST_F(FastDEMIntegrationTest, HeightFilterRejectsOutOfRange) {
 
 TEST_F(FastDEMIntegrationTest, MultipleIntegrations) {
   FastDEM mapper(map);
-  mapper.setHeightRange(-5.0f, 15.0f)
-      .setDistanceRange(0.0f, 20.0f)
+  mapper.setHeightFilter(-5.0f, 15.0f)
+      .setDistanceFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman);
 
@@ -105,8 +105,8 @@ TEST_F(FastDEMIntegrationTest, RaycastingRunsWithoutCrash) {
   T_world_base.translation().z() = 3.0;
 
   FastDEM mapper(map);
-  mapper.setHeightRange(-5.0f, 15.0f)
-      .setDistanceRange(0.0f, 20.0f)
+  mapper.setHeightFilter(-5.0f, 15.0f)
+      .setDistanceFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
       .enableRaycasting(true)

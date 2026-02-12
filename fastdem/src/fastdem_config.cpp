@@ -21,18 +21,13 @@
 #include "fastdem/config/fastdem.hpp"
 
 namespace fastdem {
-namespace {
+namespace detail {
 
 template <typename T>
 void load(const YAML::Node& node, const std::string& key, T& value) {
   if (node[key]) {
     value = node[key].as<T>();
   }
-}
-
-MappingMode parseMode(const std::string& mode) {
-  if (mode == "global") return MappingMode::GLOBAL;
-  return MappingMode::LOCAL;
 }
 
 EstimationType parseEstimationType(const std::string& type) {
@@ -54,17 +49,12 @@ SensorType parseSensorType(const std::string& type) {
   return SensorType::LiDAR;
 }
 
-Config parseConfig(const YAML::Node& root) {
+Config parse(const YAML::Node& root) {
   Config cfg;
 
-  // --- CoreConfig ---
-
-  // Mapping (mode + estimation)
+  // Mapping (estimation parameters)
   if (auto n = root["mapping"]) {
-    auto& m = cfg.core.mapping;
-    std::string mode;
-    load(n, "mode", mode);
-    if (!mode.empty()) m.mode = parseMode(mode);
+    auto& m = cfg.mapping;
     std::string estimation_str;
     load(n, "type", estimation_str);
     if (!estimation_str.empty())
@@ -86,95 +76,57 @@ Config parseConfig(const YAML::Node& root) {
     }
   }
 
-  // Scan filter
-  if (auto n = root["scan_filter"]) {
-    load(n, "z_min", cfg.core.scan_filter.z_min);
-    load(n, "z_max", cfg.core.scan_filter.z_max);
-    load(n, "range_min", cfg.core.scan_filter.range_min);
-    load(n, "range_max", cfg.core.scan_filter.range_max);
-  }
-
   // Rasterization
   if (auto n = root["rasterization"]) {
     std::string method_str;
     load(n, "method", method_str);
     if (!method_str.empty())
-      cfg.core.rasterization.method = parseRasterMethod(method_str);
+      cfg.rasterization.method = parseRasterMethod(method_str);
   }
 
   // Raycasting (temporal voting for ghost removal)
   if (auto n = root["raycasting"]) {
-    load(n, "enabled", cfg.core.raycasting.enabled);
-    load(n, "endpoint_margin", cfg.core.raycasting.endpoint_margin);
-    load(n, "ray_height_margin", cfg.core.raycasting.ray_height_margin);
+    load(n, "enabled", cfg.raycasting.enabled);
+    load(n, "endpoint_margin", cfg.raycasting.endpoint_margin);
+    load(n, "ray_height_margin", cfg.raycasting.ray_height_margin);
     load(n, "dynamic_height_threshold",
-         cfg.core.raycasting.dynamic_height_threshold);
-    load(n, "vote_threshold", cfg.core.raycasting.vote_threshold);
+         cfg.raycasting.dynamic_height_threshold);
+    load(n, "vote_threshold", cfg.raycasting.vote_threshold);
   }
 
   // Sensor model
-  if (auto n = root["sensor"]) {
+  if (auto n = root["sensor_model"]) {
     std::string sensor_str;
     load(n, "type", sensor_str);
     if (!sensor_str.empty())
-      cfg.core.sensor.type = parseSensorType(sensor_str);
-    load(n, "range_noise", cfg.core.sensor.range_noise);
-    load(n, "angular_noise", cfg.core.sensor.angular_noise);
-    load(n, "normal_a", cfg.core.sensor.normal_a);
-    load(n, "normal_b", cfg.core.sensor.normal_b);
-    load(n, "normal_c", cfg.core.sensor.normal_c);
-    load(n, "lateral_factor", cfg.core.sensor.lateral_factor);
-    load(n, "constant_uncertainty", cfg.core.sensor.constant_uncertainty);
+      cfg.sensor_model.type = parseSensorType(sensor_str);
+    load(n, "range_noise", cfg.sensor_model.range_noise);
+    load(n, "angular_noise", cfg.sensor_model.angular_noise);
+    load(n, "normal_a", cfg.sensor_model.normal_a);
+    load(n, "normal_b", cfg.sensor_model.normal_b);
+    load(n, "normal_c", cfg.sensor_model.normal_c);
+    load(n, "lateral_factor", cfg.sensor_model.lateral_factor);
+    load(n, "constant_uncertainty", cfg.sensor_model.constant_uncertainty);
   }
 
   // Uncertainty fusion (bilateral filter + weighted ECDF)
   if (auto n = root["uncertainty_fusion"]) {
-    load(n, "enabled", cfg.core.uncertainty_fusion.enabled);
-    load(n, "search_radius", cfg.core.uncertainty_fusion.search_radius);
-    load(n, "spatial_sigma", cfg.core.uncertainty_fusion.spatial_sigma);
-    load(n, "quantile_lower", cfg.core.uncertainty_fusion.quantile_lower);
-    load(n, "quantile_upper", cfg.core.uncertainty_fusion.quantile_upper);
+    load(n, "enabled", cfg.uncertainty_fusion.enabled);
+    load(n, "search_radius", cfg.uncertainty_fusion.search_radius);
+    load(n, "spatial_sigma", cfg.uncertainty_fusion.spatial_sigma);
+    load(n, "quantile_lower", cfg.uncertainty_fusion.quantile_lower);
+    load(n, "quantile_upper", cfg.uncertainty_fusion.quantile_upper);
     load(n, "min_valid_neighbors",
-         cfg.core.uncertainty_fusion.min_valid_neighbors);
-  }
-
-  // --- PostProcessConfig ---
-
-  // Inpainting
-  if (auto n = root["inpainting"]) {
-    load(n, "enabled", cfg.postprocess.inpainting.enabled);
-    load(n, "max_iterations", cfg.postprocess.inpainting.max_iterations);
-    load(n, "min_valid_neighbors",
-         cfg.postprocess.inpainting.min_valid_neighbors);
-  }
-
-  // Feature extraction (PCA-based terrain features)
-  if (auto n = root["feature_extraction"]) {
-    load(n, "enabled", cfg.postprocess.feature_extraction.enabled);
-    load(n, "analysis_radius",
-         cfg.postprocess.feature_extraction.analysis_radius);
-    load(n, "min_valid_neighbors",
-         cfg.postprocess.feature_extraction.min_valid_neighbors);
+         cfg.uncertainty_fusion.min_valid_neighbors);
   }
 
   return cfg;
 }
 
-void validateConfig(Config& cfg) {
-  auto& m = cfg.core;
-  auto& pp = cfg.postprocess;
+void validate(Config& cfg) {
+  auto& m = cfg;
 
   // --- Fatal: invalid ranges that break the pipeline ---
-  if (m.scan_filter.z_min >= m.scan_filter.z_max) {
-    throw std::invalid_argument(
-        "scan_filter: z_min (" + std::to_string(m.scan_filter.z_min) +
-        ") >= z_max (" + std::to_string(m.scan_filter.z_max) + ")");
-  }
-  if (m.scan_filter.range_min >= m.scan_filter.range_max) {
-    throw std::invalid_argument(
-        "scan_filter: range_min (" + std::to_string(m.scan_filter.range_min) +
-        ") >= range_max (" + std::to_string(m.scan_filter.range_max) + ")");
-  }
   if (m.mapping.kalman.min_variance >= m.mapping.kalman.max_variance) {
     throw std::invalid_argument(
         "mapping.kalman: min_variance (" +
@@ -199,9 +151,6 @@ void validateConfig(Config& cfg) {
                        static_cast<decltype(val)>(hi));
     }
   };
-
-  warn_clamp("scan_filter.range_min", m.scan_filter.range_min, 0.0f,
-             m.scan_filter.range_max);
 
   if (m.raycasting.enabled) {
     warn_clamp("raycasting.endpoint_margin", m.raycasting.endpoint_margin, 0,
@@ -250,24 +199,24 @@ void validateConfig(Config& cfg) {
   }
 
   // Sensor model parameters must be positive
-  if (m.sensor.range_noise <= 0.0f) {
+  if (m.sensor_model.range_noise <= 0.0f) {
     spdlog::warn(
         "[Config] sensor.range_noise ({}) must be > 0, clamping to 0.02",
-        m.sensor.range_noise);
-    m.sensor.range_noise = 0.02f;
+        m.sensor_model.range_noise);
+    m.sensor_model.range_noise = 0.02f;
   }
-  if (m.sensor.angular_noise < 0.0f) {
+  if (m.sensor_model.angular_noise < 0.0f) {
     spdlog::warn(
         "[Config] sensor.angular_noise ({}) must be >= 0, clamping to 0",
-        m.sensor.angular_noise);
-    m.sensor.angular_noise = 0.0f;
+        m.sensor_model.angular_noise);
+    m.sensor_model.angular_noise = 0.0f;
   }
-  if (m.sensor.constant_uncertainty <= 0.0f) {
+  if (m.sensor_model.constant_uncertainty <= 0.0f) {
     spdlog::warn(
         "[Config] sensor.constant_uncertainty ({}) must be > 0, "
         "clamping to 0.1",
-        m.sensor.constant_uncertainty);
-    m.sensor.constant_uncertainty = 0.1f;
+        m.sensor_model.constant_uncertainty);
+    m.sensor_model.constant_uncertainty = 0.1f;
   }
 
   if (m.uncertainty_fusion.enabled) {
@@ -285,38 +234,19 @@ void validateConfig(Config& cfg) {
     }
   }
 
-  // Post-processing validation
-  if (pp.inpainting.enabled) {
-    if (pp.inpainting.max_iterations < 1) {
-      spdlog::warn(
-          "[Config] inpainting.max_iterations ({}) must be >= 1, clamping to 1",
-          pp.inpainting.max_iterations);
-      pp.inpainting.max_iterations = 1;
-    }
-    warn_clamp("inpainting.min_valid_neighbors",
-               pp.inpainting.min_valid_neighbors, 1, 8);
-  }
-
-  if (pp.feature_extraction.enabled) {
-    if (pp.feature_extraction.analysis_radius <= 0.0f) {
-      spdlog::warn(
-          "[Config] feature_extraction.analysis_radius ({}) must be > 0, "
-          "clamping to 0.3",
-          pp.feature_extraction.analysis_radius);
-      pp.feature_extraction.analysis_radius = 0.3f;
-    }
-    warn_clamp("feature_extraction.min_valid_neighbors",
-               pp.feature_extraction.min_valid_neighbors, 4, 100);
-  }
 }
 
-}  // namespace
+}  // namespace detail
+
+Config parseConfig(const YAML::Node& root) {
+  auto cfg = detail::parse(root);
+  detail::validate(cfg);
+  return cfg;
+}
 
 Config loadConfig(const std::string& path) {
   try {
-    auto cfg = parseConfig(YAML::LoadFile(path));
-    validateConfig(cfg);
-    return cfg;
+    return parseConfig(YAML::LoadFile(path));
   } catch (const YAML::Exception& e) {
     throw std::runtime_error("Failed to load config: " + path + " - " +
                              e.what());

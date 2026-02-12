@@ -29,7 +29,7 @@ namespace config {
 /**
  * @brief Sensor model configuration.
  */
-struct Sensor {
+struct SensorModel {
   SensorType type = SensorType::LiDAR;
 
   /// @name LiDAR model parameters

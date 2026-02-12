@@ -20,6 +20,7 @@
 
 // Configs
 #include "fastdem/config/fastdem.hpp"
+#include "fastdem/config/point_filter.hpp"
 
 // Data types
 #include "fastdem/elevation_map.hpp"
@@ -44,7 +45,6 @@ namespace fastdem {
  */
 class FastDEM {
  public:
-  using Config = CoreConfig;
   using ProcessedCloudCallback = std::function<void(const PointCloud&)>;
 
   /// Construct with default config (use setters to customize)
@@ -69,10 +69,10 @@ class FastDEM {
   FastDEM& setSensorModel(SensorType type);
 
   /// Set height filter range in base frame [meters]
-  FastDEM& setHeightRange(float z_min, float z_max) noexcept;
+  FastDEM& setHeightFilter(float z_min, float z_max) noexcept;
 
   /// Set distance filter range from sensor [meters]
-  FastDEM& setDistanceRange(float range_min, float range_max) noexcept;
+  FastDEM& setDistanceFilter(float range_min, float range_max) noexcept;
 
   /// Enable/disable raycasting (ghost obstacle removal)
   FastDEM& enableRaycasting(bool enabled = true) noexcept;
