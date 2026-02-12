@@ -93,7 +93,7 @@ inline Eigen::Matrix3f ConstantUncertaintyModel::computeSensorCovariance(
 }
 
 /// Factory: create sensor model from config
-std::unique_ptr<SensorModel> createSensorModel(const config::Sensor& cfg);
+std::unique_ptr<SensorModel> createSensorModel(const config::SensorModel& cfg);
 
 }  // namespace fastdem
 

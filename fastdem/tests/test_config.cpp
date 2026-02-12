@@ -36,11 +36,10 @@ TEST(ConfigLoadTest, LoadDefaultYaml) {
   // The actual default.yaml should load without errors
   auto cfg = loadConfig(FASTDEM_CONFIG_DIR "/default.yaml");
 
-  EXPECT_EQ(cfg.core.mapping.mode, MappingMode::LOCAL);
-  EXPECT_EQ(cfg.core.mapping.estimation_type, EstimationType::Kalman);
-  EXPECT_EQ(cfg.core.sensor.type, SensorType::LiDAR);
-  EXPECT_EQ(cfg.core.rasterization.method, RasterMethod::Max);
-  EXPECT_TRUE(cfg.core.raycasting.enabled);
+  EXPECT_EQ(cfg.mapping.estimation_type, EstimationType::Kalman);
+  EXPECT_EQ(cfg.sensor_model.type, SensorType::LiDAR);
+  EXPECT_EQ(cfg.rasterization.method, RasterMethod::Max);
+  EXPECT_TRUE(cfg.raycasting.enabled);
 }
 
 TEST(ConfigLoadTest, NonexistentFileThrows) {
@@ -52,72 +51,68 @@ TEST(ConfigLoadTest, EmptyYamlUsesDefaults) {
   auto cfg = loadConfig(path);
 
   // Should have all defaults
-  CoreConfig defaults;
-  EXPECT_EQ(cfg.core.mapping.mode, defaults.mapping.mode);
-  EXPECT_EQ(cfg.core.mapping.estimation_type, defaults.mapping.estimation_type);
-  EXPECT_EQ(cfg.core.sensor.type, defaults.sensor.type);
-  EXPECT_FLOAT_EQ(cfg.core.scan_filter.z_min, defaults.scan_filter.z_min);
-  EXPECT_FLOAT_EQ(cfg.core.scan_filter.z_max, defaults.scan_filter.z_max);
+  Config defaults;
+  EXPECT_EQ(cfg.mapping.mode, defaults.mapping.mode);
+  EXPECT_EQ(cfg.mapping.estimation_type, defaults.mapping.estimation_type);
+  EXPECT_EQ(cfg.sensor_model.type, defaults.sensor_model.type);
 }
 
 TEST(ConfigLoadTest, PartialYamlPreservesDefaults) {
   auto path = writeTempYaml(
-      "scan_filter:\n"
-      "  z_min: -2.0\n"
-      "  z_max: 5.0\n",
+      "mapping:\n"
+      "  type: welford\n",
       "test_partial.yaml");
   auto cfg = loadConfig(path);
 
-  // Specified values loaded
-  EXPECT_FLOAT_EQ(cfg.core.scan_filter.z_min, -2.0f);
-  EXPECT_FLOAT_EQ(cfg.core.scan_filter.z_max, 5.0f);
+  // Specified value loaded
+  EXPECT_EQ(cfg.mapping.estimation_type, EstimationType::Welford);
 
   // Unspecified values remain at defaults
-  CoreConfig defaults;
-  EXPECT_EQ(cfg.core.mapping.estimation_type, defaults.mapping.estimation_type);
-  EXPECT_FLOAT_EQ(cfg.core.sensor.range_noise, defaults.sensor.range_noise);
+  Config defaults;
+  EXPECT_EQ(cfg.mapping.mode, defaults.mapping.mode);
+  EXPECT_FLOAT_EQ(cfg.sensor_model.range_noise, defaults.sensor_model.range_noise);
 }
 
 TEST(ConfigLoadTest, AllEstimationTypes) {
   auto kalman = loadConfig(
       writeTempYaml("mapping:\n  type: kalman_filter\n", "test_kalman.yaml"));
-  EXPECT_EQ(kalman.core.mapping.estimation_type, EstimationType::Kalman);
+  EXPECT_EQ(kalman.mapping.estimation_type, EstimationType::Kalman);
 
   auto welford = loadConfig(
       writeTempYaml("mapping:\n  type: welford\n", "test_welford.yaml"));
-  EXPECT_EQ(welford.core.mapping.estimation_type, EstimationType::Welford);
+  EXPECT_EQ(welford.mapping.estimation_type, EstimationType::Welford);
 
   auto p2 = loadConfig(
       writeTempYaml("mapping:\n  type: p2_quantile\n", "test_p2.yaml"));
-  EXPECT_EQ(p2.core.mapping.estimation_type, EstimationType::P2Quantile);
+  EXPECT_EQ(p2.mapping.estimation_type, EstimationType::P2Quantile);
 }
 
 TEST(ConfigLoadTest, AllSensorTypes) {
   auto lidar = loadConfig(
-      writeTempYaml("sensor:\n  type: lidar\n", "test_lidar.yaml"));
-  EXPECT_EQ(lidar.core.sensor.type, SensorType::LiDAR);
+      writeTempYaml("sensor_model:\n  type: lidar\n", "test_lidar.yaml"));
+  EXPECT_EQ(lidar.sensor_model.type, SensorType::LiDAR);
 
   auto rgbd = loadConfig(
-      writeTempYaml("sensor:\n  type: rgbd\n", "test_rgbd.yaml"));
-  EXPECT_EQ(rgbd.core.sensor.type, SensorType::RGBD);
+      writeTempYaml("sensor_model:\n  type: rgbd\n", "test_rgbd.yaml"));
+  EXPECT_EQ(rgbd.sensor_model.type, SensorType::RGBD);
 
   auto constant = loadConfig(
-      writeTempYaml("sensor:\n  type: constant\n", "test_const.yaml"));
-  EXPECT_EQ(constant.core.sensor.type, SensorType::Constant);
+      writeTempYaml("sensor_model:\n  type: constant\n", "test_const.yaml"));
+  EXPECT_EQ(constant.sensor_model.type, SensorType::Constant);
 }
 
 TEST(ConfigLoadTest, AllRasterMethods) {
   auto max_cfg = loadConfig(
       writeTempYaml("rasterization:\n  method: max\n", "test_rast_max.yaml"));
-  EXPECT_EQ(max_cfg.core.rasterization.method, RasterMethod::Max);
+  EXPECT_EQ(max_cfg.rasterization.method, RasterMethod::Max);
 
   auto min_cfg = loadConfig(
       writeTempYaml("rasterization:\n  method: min\n", "test_rast_min.yaml"));
-  EXPECT_EQ(min_cfg.core.rasterization.method, RasterMethod::Min);
+  EXPECT_EQ(min_cfg.rasterization.method, RasterMethod::Min);
 
   auto mean_cfg = loadConfig(
       writeTempYaml("rasterization:\n  method: mean\n", "test_rast_mean.yaml"));
-  EXPECT_EQ(mean_cfg.core.rasterization.method, RasterMethod::Mean);
+  EXPECT_EQ(mean_cfg.rasterization.method, RasterMethod::Mean);
 }
 
 TEST(ConfigLoadTest, KalmanParameters) {
@@ -131,30 +126,15 @@ TEST(ConfigLoadTest, KalmanParameters) {
       "test_kalman_params.yaml");
   auto cfg = loadConfig(path);
 
-  EXPECT_FLOAT_EQ(cfg.core.mapping.kalman.min_variance, 0.001f);
-  EXPECT_FLOAT_EQ(cfg.core.mapping.kalman.max_variance, 0.05f);
-  EXPECT_FLOAT_EQ(cfg.core.mapping.kalman.process_noise, 0.001f);
+  EXPECT_FLOAT_EQ(cfg.mapping.kalman.min_variance, 0.001f);
+  EXPECT_FLOAT_EQ(cfg.mapping.kalman.max_variance, 0.05f);
+  EXPECT_FLOAT_EQ(cfg.mapping.kalman.process_noise, 0.001f);
 }
 
 // ─── Validation: Fatal Errors ────────────────────────────────────────────────
 
-TEST(ConfigValidationTest, ZMinGeZMaxThrows) {
-  auto path = writeTempYaml(
-      "scan_filter:\n"
-      "  z_min: 5.0\n"
-      "  z_max: 1.0\n",
-      "test_zrange.yaml");
-  EXPECT_THROW(loadConfig(path), std::invalid_argument);
-}
-
-TEST(ConfigValidationTest, RangeMinGeRangeMaxThrows) {
-  auto path = writeTempYaml(
-      "scan_filter:\n"
-      "  range_min: 20.0\n"
-      "  range_max: 5.0\n",
-      "test_rrange.yaml");
-  EXPECT_THROW(loadConfig(path), std::invalid_argument);
-}
+// point_filter is no longer parsed by loadConfig/parseConfig.
+// Filter bounds are set by the application via setHeightFilter/setDistanceFilter.
 
 TEST(ConfigValidationTest, KalmanMinVarGeMaxVarThrows) {
   auto path = writeTempYaml(
@@ -193,29 +173,29 @@ TEST(ConfigValidationTest, P2MarkersNotSortedThrows) {
 
 TEST(ConfigValidationTest, NegativeRangeNoiseClamped) {
   auto path = writeTempYaml(
-      "sensor:\n"
+      "sensor_model:\n"
       "  range_noise: -0.5\n",
       "test_neg_noise.yaml");
   auto cfg = loadConfig(path);
-  EXPECT_GT(cfg.core.sensor.range_noise, 0.0f);
+  EXPECT_GT(cfg.sensor_model.range_noise, 0.0f);
 }
 
 TEST(ConfigValidationTest, NegativeAngularNoiseClamped) {
   auto path = writeTempYaml(
-      "sensor:\n"
+      "sensor_model:\n"
       "  angular_noise: -1.0\n",
       "test_neg_angular.yaml");
   auto cfg = loadConfig(path);
-  EXPECT_GE(cfg.core.sensor.angular_noise, 0.0f);
+  EXPECT_GE(cfg.sensor_model.angular_noise, 0.0f);
 }
 
 TEST(ConfigValidationTest, NegativeConstantUncertaintyClamped) {
   auto path = writeTempYaml(
-      "sensor:\n"
+      "sensor_model:\n"
       "  constant_uncertainty: -0.1\n",
       "test_neg_const.yaml");
   auto cfg = loadConfig(path);
-  EXPECT_GT(cfg.core.sensor.constant_uncertainty, 0.0f);
+  EXPECT_GT(cfg.sensor_model.constant_uncertainty, 0.0f);
 }
 
 TEST(ConfigValidationTest, NegativeProcessNoiseClamped) {
@@ -225,7 +205,7 @@ TEST(ConfigValidationTest, NegativeProcessNoiseClamped) {
       "    process_noise: -0.01\n",
       "test_neg_pnoise.yaml");
   auto cfg = loadConfig(path);
-  EXPECT_GE(cfg.core.mapping.kalman.process_noise, 0.0f);
+  EXPECT_GE(cfg.mapping.kalman.process_noise, 0.0f);
 }
 
 TEST(ConfigValidationTest, ElevationMarkerOutOfRangeClamped) {
@@ -235,6 +215,6 @@ TEST(ConfigValidationTest, ElevationMarkerOutOfRangeClamped) {
       "    elevation_marker: 10\n",
       "test_marker_oob.yaml");
   auto cfg = loadConfig(path);
-  EXPECT_GE(cfg.core.mapping.p2.elevation_marker, 0);
-  EXPECT_LE(cfg.core.mapping.p2.elevation_marker, 4);
+  EXPECT_GE(cfg.mapping.p2.elevation_marker, 0);
+  EXPECT_LE(cfg.mapping.p2.elevation_marker, 4);
 }

@@ -17,40 +17,33 @@
 
 #include <string>
 
-#include "fastdem/config/feature_extraction.hpp"
-#include "fastdem/config/inpainting.hpp"
+namespace YAML {
+class Node;
+}
+
 #include "fastdem/config/mapping.hpp"
+#include "fastdem/config/point_filter.hpp"
 #include "fastdem/config/rasterization.hpp"
 #include "fastdem/config/raycasting.hpp"
-#include "fastdem/config/scan_filter.hpp"
 #include "fastdem/config/sensor_model.hpp"
 #include "fastdem/config/uncertainty_fusion.hpp"
 
 namespace fastdem {
 
-/// Configuration for FastDEM mapper (used by FastDEM class).
-struct CoreConfig {
-  config::Sensor sensor;
-  config::ScanFilter scan_filter;
+/// Algorithm configuration for the FastDEM pipeline.
+struct Config {
+  config::PointFilter point_filter;
+  config::SensorModel sensor_model;
   config::Rasterization rasterization;
   config::Mapping mapping;
   config::Raycasting raycasting;
   config::UncertaintyFusion uncertainty_fusion;
 };
 
-/// Configuration for user-invoked post-processing free functions.
-struct PostProcessConfig {
-  config::Inpainting inpainting;
-  config::FeatureExtraction feature_extraction;
-};
+/// Parse pipeline configuration from a YAML node.
+Config parseConfig(const YAML::Node& root);
 
-/// Full pipeline configuration loaded from a single YAML file.
-struct Config {
-  CoreConfig core;
-  PostProcessConfig postprocess;
-};
-
-/// Load full pipeline configuration from YAML.
+/// Load pipeline configuration from a YAML file.
 Config loadConfig(const std::string& path);
 
 }  // namespace fastdem

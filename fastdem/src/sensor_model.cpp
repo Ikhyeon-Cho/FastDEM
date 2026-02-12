@@ -17,14 +17,14 @@
 
 namespace fastdem {
 
-std::unique_ptr<SensorModel> createSensorModel(const config::Sensor& cfg) {
+std::unique_ptr<SensorModel> createSensorModel(const config::SensorModel& cfg) {
   switch (cfg.type) {
     case SensorType::LiDAR:
       return std::make_unique<LiDARSensorModel>(cfg.range_noise,
                                                 cfg.angular_noise);
     case SensorType::RGBD:
-      return std::make_unique<RGBDSensorModel>(cfg.normal_a, cfg.normal_b,
-                                               cfg.normal_c, cfg.lateral_factor);
+      return std::make_unique<RGBDSensorModel>(
+          cfg.normal_a, cfg.normal_b, cfg.normal_c, cfg.lateral_factor);
     default:
       return std::make_unique<ConstantUncertaintyModel>(
           cfg.constant_uncertainty);

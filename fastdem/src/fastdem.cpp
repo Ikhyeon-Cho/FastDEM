@@ -24,7 +24,7 @@ namespace fastdem {
 FastDEM::FastDEM(ElevationMap& map) : FastDEM(map, Config{}) {}
 
 FastDEM::FastDEM(ElevationMap& map, const Config& cfg) : map_(map), cfg_(cfg) {
-  sensor_model_ = createSensorModel(cfg_.sensor);
+  sensor_model_ = createSensorModel(cfg_.sensor_model);
   rasterization_ = createRasterization(cfg_.rasterization);
   mapping_ = createElevationMapping(map_, cfg_.mapping);
 }
@@ -44,20 +44,20 @@ FastDEM& FastDEM::setEstimatorType(EstimationType type) {
 }
 
 FastDEM& FastDEM::setSensorModel(SensorType type) {
-  cfg_.sensor.type = type;
-  sensor_model_ = createSensorModel(cfg_.sensor);
+  cfg_.sensor_model.type = type;
+  sensor_model_ = createSensorModel(cfg_.sensor_model);
   return *this;
 }
 
-FastDEM& FastDEM::setHeightRange(float z_min, float z_max) noexcept {
-  cfg_.scan_filter.z_min = z_min;
-  cfg_.scan_filter.z_max = z_max;
+FastDEM& FastDEM::setHeightFilter(float z_min, float z_max) noexcept {
+  cfg_.point_filter.z_min = z_min;
+  cfg_.point_filter.z_max = z_max;
   return *this;
 }
 
-FastDEM& FastDEM::setDistanceRange(float range_min, float range_max) noexcept {
-  cfg_.scan_filter.range_min = range_min;
-  cfg_.scan_filter.range_max = range_max;
+FastDEM& FastDEM::setDistanceFilter(float range_min, float range_max) noexcept {
+  cfg_.point_filter.range_min = range_min;
+  cfg_.point_filter.range_max = range_max;
   return *this;
 }
 
@@ -142,10 +142,10 @@ bool FastDEM::integrateImpl(const PointCloud& cloud,
   sensor_model_->computeSensorCovariances(points);
 
   // 2. Preprocess scan (transform + filter, covariances preserved)
-  const auto& z_min = cfg_.scan_filter.z_min;
-  const auto& z_max = cfg_.scan_filter.z_max;
-  const auto& range_min = cfg_.scan_filter.range_min;
-  const auto& range_max = cfg_.scan_filter.range_max;
+  const auto& z_min = cfg_.point_filter.z_min;
+  const auto& z_max = cfg_.point_filter.z_max;
+  const auto& range_min = cfg_.point_filter.range_min;
+  const auto& range_max = cfg_.point_filter.range_max;
 
   points = nanopcl::transformCloud(std::move(points), T_base_sensor);
   points = nanopcl::filters::cropZ(std::move(points), z_min, z_max);
@@ -195,7 +195,7 @@ void FastDEM::setProcessedCloudCallback(ProcessedCloudCallback callback) {
 // ─── rasterize ──────────────────────────────────────────────────────────
 
 void rasterize(const PointCloud& cloud, ElevationMap& map,
-                   RasterMethod method) {
+               RasterMethod method) {
   if (cloud.empty()) return;
 
   Rasterization raster(method);
@@ -218,7 +218,7 @@ void rasterize(const PointCloud& cloud, ElevationMap& map,
 }
 
 ElevationMap rasterize(const PointCloud& cloud, float resolution,
-                           RasterMethod method) {
+                       RasterMethod method) {
   if (cloud.empty()) return {};
 
   // Compute XY bounding box

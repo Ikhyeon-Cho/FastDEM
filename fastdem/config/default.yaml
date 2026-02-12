@@ -1,10 +1,7 @@
 # FastDEM Configuration
-
-# Mapping pipeline
 mapping:
-  mode: "local"              # local | global (local: follows robot, global: fixed origin)
   type: "kalman_filter"      # kalman_filter | welford | p2_quantile
-  sigma_scale: 0.0            # elevation = estimate + sigma_scale * σ (0: center, 1: ~84th percentile)
+  sigma_scale: 1.0            # elevation = estimate + sigma_scale * σ (0: center, 1: ~84th percentile)
   kalman:
     min_variance: 0.0001     # [m²] prevents over-confidence
     max_variance: 0.01       # [m²] caps uncertainty
@@ -18,19 +15,12 @@ mapping:
     elevation_marker: 3      # which marker to use as elevation (0-4)
     max_sample_count: 0      # fading memory (0 = disabled, 50-200 for dynamic scenes)
 
-# Scan preprocessing
-scan_filter:
-  z_min: -0.5               # [m] min height
-  z_max: 2.0                # [m] max height
-  range_min: 0.5             # [m] min range
-  range_max: 20.0            # [m] max range
-
 # Rasterization (point-to-grid binning)
 rasterization:
   method: "max"              # max | min | mean
 
 # Sensor uncertainty model (Σ_sensor → σ_z²)
-sensor:
+sensor_model:
   type: "lidar"              # constant | lidar | rgbd
   range_noise: 0.02          # [m] σ_r (LiDAR)
   angular_noise: 0.001       # [rad] σ_θ (LiDAR)
@@ -48,11 +38,6 @@ raycasting:
   dynamic_height_threshold: 0.5  # [m] min height variation for raycasting
   vote_threshold: 10         # consecutive conflicts to clear cell
 
-inpainting:
-  enabled: true
-  max_iterations: 3
-  min_valid_neighbors: 2
-
 uncertainty_fusion:
   enabled: true
   search_radius: 0.15       # [m] neighbor search radius
@@ -60,8 +45,3 @@ uncertainty_fusion:
   quantile_lower: 0.01       # 1st percentile
   quantile_upper: 0.99       # 99th percentile
   min_valid_neighbors: 3
-
-feature_extraction:
-  enabled: false
-  analysis_radius: 0.3       # [m] PCA neighbor radius
-  min_valid_neighbors: 4

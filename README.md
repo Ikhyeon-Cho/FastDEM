@@ -85,8 +85,8 @@ int main() {
     map.setGeometry(15.0f, 15.0f, 0.1f);
 
     fastdem::FastDEM mapper(map);
-    mapper.setHeightRange(-1.0f, 2.0f)
-          .setDistanceRange(0.5f, 10.0f)
+    mapper.setHeightFilter(-1.0f, 2.0f)
+          .setDistanceFilter(0.5f, 10.0f)
           .setEstimatorType(fastdem::EstimationType::Kalman)
           .setSensorModel(fastdem::SensorType::LiDAR);
     // -- or: FastDEM mapper(map, MappingConfig::load("config/default.yaml"));

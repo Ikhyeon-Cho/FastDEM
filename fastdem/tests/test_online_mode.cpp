@@ -96,8 +96,8 @@ class OnlineModeTest : public ::testing::Test {
 
 TEST_F(OnlineModeTest, IntegrateWithTransformSystems) {
   FastDEM mapper(map);
-  mapper.setHeightRange(-2.0f, 5.0f)
-      .setDistanceRange(0.0f, 20.0f)
+  mapper.setHeightFilter(-2.0f, 5.0f)
+      .setDistanceFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setCalibrationSystem(calibration)
       .setOdometrySystem(odometry);
@@ -175,8 +175,8 @@ TEST_F(OnlineModeTest, OdometryUnavailableFails) {
 
 TEST_F(OnlineModeTest, MultipleIntegrationsOnline) {
   FastDEM mapper(map);
-  mapper.setHeightRange(-5.0f, 15.0f)
-      .setDistanceRange(0.0f, 20.0f)
+  mapper.setHeightFilter(-5.0f, 15.0f)
+      .setDistanceFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
       .setCalibrationSystem(calibration)
@@ -202,8 +202,8 @@ TEST_F(OnlineModeTest, WithNonIdentityExtrinsic) {
   calibration = std::make_shared<MockCalibration>(extrinsic);
 
   FastDEM mapper(map);
-  mapper.setHeightRange(-5.0f, 15.0f)
-      .setDistanceRange(0.0f, 20.0f)
+  mapper.setHeightFilter(-5.0f, 15.0f)
+      .setDistanceFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setCalibrationSystem(calibration)
       .setOdometrySystem(odometry);
@@ -224,8 +224,8 @@ TEST_F(OnlineModeTest, WithRobotPose) {
   odometry = std::make_shared<MockOdometry>(robot_pose);
 
   FastDEM mapper(map);
-  mapper.setHeightRange(-5.0f, 15.0f)
-      .setDistanceRange(0.0f, 20.0f)
+  mapper.setHeightFilter(-5.0f, 15.0f)
+      .setDistanceFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setCalibrationSystem(calibration)
       .setOdometrySystem(odometry);
@@ -246,8 +246,8 @@ TEST_F(OnlineModeTest, RaycastingOnlineMode) {
   odometry = std::make_shared<MockOdometry>(robot_pose);
 
   FastDEM mapper(map);
-  mapper.setHeightRange(-5.0f, 15.0f)
-      .setDistanceRange(0.0f, 20.0f)
+  mapper.setHeightFilter(-5.0f, 15.0f)
+      .setDistanceFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
       .enableRaycasting(true)
