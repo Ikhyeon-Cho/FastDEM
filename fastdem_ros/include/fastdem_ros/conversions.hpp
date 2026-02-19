@@ -6,21 +6,20 @@
 
 #include <grid_map_msgs/GridMap.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <std_msgs/Float32MultiArray.h>
 #include <visualization_msgs/Marker.h>
 
 #include <fastdem/elevation_map.hpp>
 #include <nanopcl/bridge/ros1.hpp>
-#include <std_msgs/Float32MultiArray.h>
 
 namespace fastdem::ros1 {
 
 /**
- * @brief Convert ElevationMap to ROS message
- * @param map Source height map
- * @param msg Output ROS message
+ * @brief Convert ElevationMap to grid_map_msgs::GridMap
  */
-inline void toMessage(const fastdem::ElevationMap& map,
-                      grid_map_msgs::GridMap& msg) {
+inline grid_map_msgs::GridMap toGridMap(const fastdem::ElevationMap& map) {
+  grid_map_msgs::GridMap msg;
+
   // Header
   msg.info.header.stamp.fromNSec(map.getTimestamp());
   msg.info.header.frame_id = map.getFrameId();
@@ -42,7 +41,6 @@ inline void toMessage(const fastdem::ElevationMap& map,
   msg.basic_layers = map.getBasicLayers();
 
   // Data
-  msg.data.clear();
   for (const auto& layer : map.getLayers()) {
     std_msgs::Float32MultiArray data_array;
 
@@ -73,6 +71,8 @@ inline void toMessage(const fastdem::ElevationMap& map,
   // Outer/start index for circular buffer
   msg.outer_start_index = map.getStartIndex()(0);
   msg.inner_start_index = map.getStartIndex()(1);
+
+  return msg;
 }
 
 /**
@@ -152,7 +152,7 @@ inline sensor_msgs::PointCloud2 toPointCloud2(
 /**
  * @brief Create map boundary marker for RViz visualization
  */
-inline visualization_msgs::Marker toRegionMarker(
+inline visualization_msgs::Marker toMapBoundary(
     const fastdem::ElevationMap& map) {
   visualization_msgs::Marker marker;
   marker.header.stamp.fromNSec(map.getTimestamp());
@@ -176,10 +176,10 @@ inline visualization_msgs::Marker toRegionMarker(
   geometry_msgs::Point p;
   p.z = 0.0;
   const double corners[][2] = {{cx - hx, cy - hy},
-                                {cx + hx, cy - hy},
-                                {cx + hx, cy + hy},
-                                {cx - hx, cy + hy},
-                                {cx - hx, cy - hy}};
+                               {cx + hx, cy - hy},
+                               {cx + hx, cy + hy},
+                               {cx - hx, cy + hy},
+                               {cx - hx, cy - hy}};
   for (const auto& c : corners) {
     p.x = c[0];
     p.y = c[1];

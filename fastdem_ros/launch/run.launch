@@ -1,0 +1,19 @@
+<launch>
+    <arg name="global_mapping" default="false" />
+    <arg name="input_scan" default="" doc="Override input topic (empty = use config)" />
+    <arg name="rviz" default="false" />
+
+    <!-- FastDEM Mapping Node -->
+    <node name="fastdem" pkg="fastdem_ros" type="fastdem_ros_node" output="screen">
+        <param name="config_file" value="$(find fastdem_ros)/config/local_mapping.yaml"
+               unless="$(arg global_mapping)" />
+        <param name="config_file" value="$(find fastdem_ros)/config/global_mapping.yaml"
+               if="$(arg global_mapping)" />
+        <param name="input_scan" value="$(arg input_scan)"
+               unless="$(eval arg('input_scan') == '')" />
+    </node>
+
+    <!-- RViz (optional) -->
+    <node pkg="rviz" type="rviz" name="rviz" if="$(arg rviz)"
+          args="-d $(find fastdem_ros)/launch/rviz/fastdem_ros.rviz" />
+</launch>

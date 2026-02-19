@@ -4,26 +4,23 @@
 #ifndef FASTDEM_ROS_PARAMETERS_HPP
 #define FASTDEM_ROS_PARAMETERS_HPP
 
-#include <ros/node_handle.h>
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
+#include <fastdem/config/fastdem.hpp>
+#include <fastdem/config/feature_extraction.hpp>
+#include <fastdem/config/inpainting.hpp>
+#include <fastdem/config/point_filter.hpp>
 #include <string>
 
 namespace fastdem::ros1 {
 
-struct NodeParameters {
-  std::string mapping_config{""};
-  std::string mapping_mode{""};  // Override mapping mode ("local"/"global")
+/// All configuration the node needs, parsed from a single YAML file.
+struct NodeConfig {
   std::string logger_level{"info"};
 
-  struct Map {
-    double width{15.0};
-    double height{15.0};
-    double resolution{0.1};
-  } map;
-
   struct Topics {
-    std::string input_scan{"/points"};
+    std::string input_scan{"/velodyne/points"};
     double publish_rate{10.0};
   } topics;
 
@@ -34,64 +31,106 @@ struct NodeParameters {
     double max_stale_time = 0.1;
   } tf;
 
-  /// Load parameters from ROS parameter server
-  static NodeParameters load(ros::NodeHandle& nh) {
-    NodeParameters params;
+  fastdem::Config pipeline;
 
-    auto load_param = [&nh](const std::string& name, auto& value) {
-      value = nh.param(name, value);
+  struct {
+    double width{15.0};
+    double height{15.0};
+    double resolution{0.1};
+  } map;
+
+  fastdem::MappingMode mapping_mode{fastdem::MappingMode::LOCAL};
+  config::PointFilter point_filter;
+  config::Inpainting inpainting;
+  config::FeatureExtraction feature_extraction;
+
+  /// Parse everything from a single YAML file.
+  static NodeConfig load(const std::string& config_path) {
+    if (config_path.empty()) {
+      throw std::invalid_argument("config_file path is empty");
+    }
+    auto yaml = YAML::LoadFile(config_path);
+    NodeConfig cfg;
+
+    auto read = [](const YAML::Node& n, const std::string& key, auto& val) {
+      if (n[key]) val = n[key].as<std::decay_t<decltype(val)>>();
     };
 
-    load_param("mapping_config", params.mapping_config);
-    load_param("map/width", params.map.width);
-    load_param("map/height", params.map.height);
-    load_param("map/resolution", params.map.resolution);
-    load_param("mapping_mode", params.mapping_mode);
-    load_param("topics/input_scan", params.topics.input_scan);
-    load_param("topics/publish_rate", params.topics.publish_rate);
-    load_param("tf/base_frame", params.tf.base_frame);
-    load_param("tf/map_frame", params.tf.map_frame);
-    load_param("tf/max_wait_time", params.tf.max_wait_time);
-    load_param("tf/max_stale_time", params.tf.max_stale_time);
-    load_param("logger/level", params.logger_level);
+    // ROS transport
+    if (auto n = yaml["topics"]) {
+      read(n, "input_scan", cfg.topics.input_scan);
+      read(n, "publish_rate", cfg.topics.publish_rate);
+    }
+    if (auto n = yaml["tf"]) {
+      read(n, "base_frame", cfg.tf.base_frame);
+      read(n, "map_frame", cfg.tf.map_frame);
+      read(n, "max_wait_time", cfg.tf.max_wait_time);
+      read(n, "max_stale_time", cfg.tf.max_stale_time);
+    }
+    if (auto n = yaml["logger"]) {
+      read(n, "level", cfg.logger_level);
+    }
 
-    return params;
+    // Map geometry
+    if (auto n = yaml["map"]) {
+      read(n, "width", cfg.map.width);
+      read(n, "height", cfg.map.height);
+      read(n, "resolution", cfg.map.resolution);
+    }
+
+    // Application settings
+    if (auto n = yaml["mapping_mode"]) {
+      auto s = n.as<std::string>();
+      if (s == "global")
+        cfg.mapping_mode = fastdem::MappingMode::GLOBAL;
+      else
+        cfg.mapping_mode = fastdem::MappingMode::LOCAL;
+    }
+    if (auto n = yaml["point_filter"]) {
+      read(n, "z_min", cfg.point_filter.z_min);
+      read(n, "z_max", cfg.point_filter.z_max);
+      read(n, "range_min", cfg.point_filter.range_min);
+      read(n, "range_max", cfg.point_filter.range_max);
+    }
+    if (auto n = yaml["inpainting"]) {
+      read(n, "enabled", cfg.inpainting.enabled);
+      read(n, "max_iterations", cfg.inpainting.max_iterations);
+      read(n, "min_valid_neighbors", cfg.inpainting.min_valid_neighbors);
+    }
+    if (auto n = yaml["feature_extraction"]) {
+      read(n, "enabled", cfg.feature_extraction.enabled);
+      read(n, "analysis_radius", cfg.feature_extraction.analysis_radius);
+      read(n, "min_valid_neighbors",
+           cfg.feature_extraction.min_valid_neighbors);
+    }
+
+    // Pipeline config (library — validates internally)
+    cfg.pipeline = fastdem::parseConfig(yaml);
+
+    // Validate node-level config
+    cfg.validate();
+
+    return cfg;
   }
 
-  bool isValid() const {
-    if (mapping_config.empty()) {
-      spdlog::error(
-          "mapping_config is empty. Specify a valid YAML config file path.");
-      return false;
-    }
-
-    if (map.width <= 0.0 || map.height <= 0.0 || map.resolution <= 0.0) {
-      spdlog::error(
-          "Invalid map geometry: width={}, height={}, resolution={} (all must "
-          "be > 0)",
-          map.width, map.height, map.resolution);
-      return false;
-    }
-
-    if (topics.publish_rate <= 0.0) {
-      spdlog::error("Invalid publish_rate: {} (must be > 0)",
-                    topics.publish_rate);
-      return false;
-    }
-
-    if (tf.max_wait_time < 0.0) {
-      spdlog::error("Invalid max_wait_time: {} (must be >= 0)",
-                    tf.max_wait_time);
-      return false;
-    }
-
-    if (tf.max_stale_time < 0.0) {
-      spdlog::error("Invalid max_stale_time: {} (must be >= 0)",
-                    tf.max_stale_time);
-      return false;
-    }
-
-    return true;
+ private:
+  void validate() const {
+    if (topics.input_scan.empty())
+      throw std::invalid_argument("input_scan topic is empty");
+    if (map.width <= 0.0 || map.height <= 0.0 || map.resolution <= 0.0)
+      throw std::invalid_argument(
+          "Invalid map geometry (all must be > 0): width=" +
+          std::to_string(map.width) + ", height=" + std::to_string(map.height) +
+          ", resolution=" + std::to_string(map.resolution));
+    if (topics.publish_rate <= 0.0)
+      throw std::invalid_argument("Invalid publish_rate: " +
+                                  std::to_string(topics.publish_rate));
+    if (tf.max_wait_time < 0.0)
+      throw std::invalid_argument("Invalid max_wait_time: " +
+                                  std::to_string(tf.max_wait_time));
+    if (tf.max_stale_time < 0.0)
+      throw std::invalid_argument("Invalid max_stale_time: " +
+                                  std::to_string(tf.max_stale_time));
   }
 };
 

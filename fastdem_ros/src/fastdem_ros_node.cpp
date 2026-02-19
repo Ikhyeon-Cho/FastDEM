@@ -9,9 +9,7 @@
 #include <fastdem/fastdem.hpp>
 #include <fastdem/postprocess/feature_extraction.hpp>
 #include <fastdem/postprocess/inpainting.hpp>
-#include <filesystem>
 #include <memory>
-#include <nanopcl/bridge/ros1.hpp>
 #include <shared_mutex>
 
 #include "fastdem_ros/conversions.hpp"
@@ -20,7 +18,6 @@
 
 namespace fastdem::ros1 {
 
-namespace fs = std::filesystem;
 using fastdem::ElevationMap;
 using fastdem::FastDEM;
 using fastdem::PointCloud;
@@ -31,8 +28,8 @@ class MappingNode {
 
   bool initialize() {
     if (!loadParameters()) return false;
-    if (!setupMapping()) return false;
 
+    setupCore();
     setupPublishersAndSubscribers();
     printNodeSummary();
 
@@ -42,62 +39,59 @@ class MappingNode {
 
  private:
   bool loadParameters() {
-    params_ = NodeParameters::load(nh_);
-    if (!params_.isValid()) {
-      spdlog::error("Invalid node parameters. Check your launch/config file.");
+    std::string config_path;
+    nh_.param<std::string>("config_file", config_path, std::string{});
+    try {
+      cfg_ = NodeConfig::load(config_path);
+    } catch (const std::exception& e) {
+      spdlog::error("Failed to load config: {}", e.what());
       return false;
     }
-    spdlog::set_level(spdlog::level::from_str(params_.logger_level));
+
+    // Launch arg override: input_scan
+    std::string input_scan;
+    if (nh_.getParam("input_scan", input_scan)) {
+      cfg_.topics.input_scan = input_scan;
+    }
+
+    spdlog::set_level(spdlog::level::from_str(cfg_.logger_level));
     return true;
   }
 
-  bool setupMapping() {
-    try {
-      // Prepare ElevationMap
-      map_.setGeometry(params_.map.width, params_.map.height,
-                       params_.map.resolution);
-      map_.setFrameId(params_.tf.map_frame);
+  void setupCore() {
+    // Map geometry
+    map_.setGeometry(cfg_.map.width, cfg_.map.height, cfg_.map.resolution);
+    map_.setFrameId(cfg_.tf.map_frame);
 
-      // Load configuration
-      auto cfg = fastdem::loadConfig(params_.mapping_config);
-      post_cfg_ = cfg.postprocess;
+    // Mapper
+    mapper_ = std::make_unique<FastDEM>(map_, cfg_.pipeline);
+    mapper_->setMappingMode(cfg_.mapping_mode);
 
-      // Initialize FastDEM
-      mapper_ = std::make_unique<FastDEM>(map_, cfg.core);
+    // Set scan filter
+    mapper_->setHeightFilter(cfg_.point_filter.z_min, cfg_.point_filter.z_max);
+    mapper_->setRangeFilter(cfg_.point_filter.range_min,
+                            cfg_.point_filter.range_max);
 
-      // Override mapping mode if specified in ROS params
-      if (params_.mapping_mode == "global")
-        mapper_->setMappingMode(fastdem::MappingMode::GLOBAL);
-      else if (params_.mapping_mode == "local")
-        mapper_->setMappingMode(fastdem::MappingMode::LOCAL);
+    // TF bridge implements both Calibration and Odometry
+    auto ros_tf = std::make_shared<TFBridge>(
+        cfg_.tf.base_frame, cfg_.tf.map_frame,  //
+        cfg_.tf.max_wait_time, cfg_.tf.max_stale_time);
+    mapper_->setTransformSystem(ros_tf);
 
-      // TF bridge implements both Calibration and Odometry
-      auto tf_bridge = std::make_shared<TFBridge>(params_.tf.base_frame,  //
-                                                  params_.tf.map_frame,
-                                                  params_.tf.max_wait_time,
-                                                  params_.tf.max_stale_time);
-      mapper_->setTransformSystem(tf_bridge);
-
-      // Register callback to publish processed cloud
-      mapper_->setProcessedCloudCallback(
-          [this](const PointCloud& cloud) { publishProcessedScan(cloud); });
-
-      spdlog::info("FastDEM mapper initialized [OK]");
-    } catch (const std::exception& e) {
-      spdlog::error("FastDEM initialization failed: {}", e.what());
-      return false;
-    }
-    return true;
+    // Register callback to publish processed cloud
+    mapper_->setProcessedCloudCallback(
+        [this](const PointCloud& cloud) { publishProcessedScan(cloud); });
   }
 
   void setupPublishersAndSubscribers() {
     // clang-format off
-    scan_sub_ = nh_.subscribe(params_.topics.input_scan, 10, &MappingNode::scanCallback, this);
-    scan_filtered_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("scan/filtered", 1);
-    map_pub_ = nh_.advertise<grid_map_msgs::GridMap>("map/gridmap", 1);
-    cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("map/cloud", 1);
-    region_pub_ = nh_.advertise<visualization_msgs::Marker>("map/region", 1);
-    map_pub_timer_ = nh_.createTimer(ros::Duration(1.0 / params_.topics.publish_rate),
+    scan_sub_ = nh_.subscribe(cfg_.topics.input_scan, 10, &MappingNode::scanCallback, this);
+    scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("scan", 1);
+    if (cfg_.mapping_mode != fastdem::MappingMode::GLOBAL)
+      gridmap_pub_ = nh_.advertise<grid_map_msgs::GridMap>("gridmap", 1);
+    map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("map", 1);
+    boundary_pub_ = nh_.advertise<visualization_msgs::Marker>("map_boundary", 1);
+    map_pub_timer_ = nh_.createTimer(ros::Duration(1.0 / cfg_.topics.publish_rate),
                                           &MappingNode::publishMap, this);
     // clang-format on
   }
@@ -116,69 +110,63 @@ class MappingNode {
     mapper_->integrate(cloud);
 
     // Post-processing (user-side, map-only operations)
-    const auto& inp = post_cfg_.inpainting;
-    if (inp.enabled)
-      applyInpainting(map_, inp.max_iterations, inp.min_valid_neighbors);
-    const auto& fe = post_cfg_.feature_extraction;
-    if (fe.enabled)
-      applyFeatureExtraction(map_, fe.analysis_radius, fe.min_valid_neighbors);
+    if (cfg_.inpainting.enabled)
+      applyInpainting(map_, cfg_.inpainting.max_iterations,
+                      cfg_.inpainting.min_valid_neighbors);
+    if (cfg_.feature_extraction.enabled)
+      applyFeatureExtraction(map_, cfg_.feature_extraction.analysis_radius,
+                             cfg_.feature_extraction.min_valid_neighbors);
   }
 
   // ==================== Publishers ====================
 
   void publishMap(const ros::TimerEvent&) {
-    const bool want_gridmap = map_pub_.getNumSubscribers() > 0;
-    const bool want_cloud = cloud_pub_.getNumSubscribers() > 0;
-    const bool want_region = region_pub_.getNumSubscribers() > 0;
-    if (!want_gridmap && !want_cloud && !want_region) return;
+    const bool want_map = map_pub_.getNumSubscribers() > 0;
+    const bool want_gridmap = gridmap_pub_.getNumSubscribers() > 0;
+    const bool want_boundary = boundary_pub_.getNumSubscribers() > 0;
+    if (!want_map && !want_gridmap && !want_boundary) return;
 
     std::shared_lock lock(map_mutex_);
+    if (want_map) {
+      map_pub_.publish(ros1::toPointCloud2(map_));
+    }
     if (want_gridmap) {
-      grid_map_msgs::GridMap msg;
-      toMessage(map_, msg);
-      map_pub_.publish(msg);
+      gridmap_pub_.publish(ros1::toGridMap(map_));
     }
-    if (want_cloud) {
-      cloud_pub_.publish(toPointCloud2(map_));
-    }
-    if (want_region) {
-      region_pub_.publish(toRegionMarker(map_));
+    if (want_boundary) {
+      boundary_pub_.publish(ros1::toMapBoundary(map_));
     }
   }
 
   void publishProcessedScan(const PointCloud& cloud) {
-    if (scan_filtered_pub_.getNumSubscribers() == 0) return;
-    scan_filtered_pub_.publish(nanopcl::to(cloud));
+    if (scan_pub_.getNumSubscribers() == 0) return;
+    scan_pub_.publish(nanopcl::to(cloud));
   }
 
   void printNodeSummary() const {
-    std::string config_name = fs::path(params_.mapping_config).filename();
-
     spdlog::info("");
-    spdlog::info("===== FastDEM Node =====");
-    spdlog::info("  Config   : {}", config_name);
+    spdlog::info("===== FastDEM Mapping Node =====");
     spdlog::info("  Input    : {}", scan_sub_.getTopic());
     spdlog::info("  Output   : {}", map_pub_.getTopic());
-    spdlog::info("  Pub rate : {} Hz", params_.topics.publish_rate);
-    spdlog::info("===============================");
+    spdlog::info("  Pub rate : {} Hz", cfg_.topics.publish_rate);
+    spdlog::info("================================");
     spdlog::info("");
   }
 
   ros::NodeHandle nh_;
-  NodeParameters params_;
+  NodeConfig cfg_;
 
   // Core objects
   ElevationMap map_;
   std::unique_ptr<FastDEM> mapper_;
-  fastdem::PostProcessConfig post_cfg_;
   mutable std::shared_mutex map_mutex_;
 
   // ROS handles
   ros::Subscriber scan_sub_;
-  ros::Publisher scan_filtered_pub_;
+  ros::Publisher scan_pub_;
   ros::Publisher map_pub_;
-  ros::Publisher cloud_pub_;
-  ros::Publisher region_pub_;
+  ros::Publisher gridmap_pub_;
+  ros::Publisher boundary_pub_;
   ros::Timer map_pub_timer_;
 };
 
