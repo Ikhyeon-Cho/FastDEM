@@ -59,7 +59,6 @@ Config parse(const YAML::Node& root) {
     load(n, "type", estimation_str);
     if (!estimation_str.empty())
       m.estimation_type = parseEstimationType(estimation_str);
-    load(n, "sigma_scale", m.sigma_scale);
     if (auto k = n["kalman"]) {
       load(k, "min_variance", m.kalman.min_variance);
       load(k, "max_variance", m.kalman.max_variance);

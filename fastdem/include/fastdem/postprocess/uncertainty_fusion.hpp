@@ -26,10 +26,10 @@ namespace fastdem {
  * Replaces the simple per-cell 4σ uncertainty with a neighborhood-aware
  * estimate that preserves edges while smoothing uncertainty in flat areas.
  *
- * Input layers: state (mean height), variance (Kalman covariance)
- * Output layer: uncertainty_range (overwrites existing 4σ value)
+ * Input layers: elevation (height estimate), variance (sample variance)
+ * Output layer: uncertainty_range (overwrites existing value)
  *
- * @param map Height map to process (must have state, variance layers)
+ * @param map Height map to process (must have elevation, variance layers)
  * @param config Spatial fusion configuration
  */
 void applyUncertaintyFusion(ElevationMap& map, const config::UncertaintyFusion& config);

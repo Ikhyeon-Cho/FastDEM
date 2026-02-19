@@ -118,7 +118,7 @@ TEST_F(FastDEMIntegrationTest, RaycastingRunsWithoutCrash) {
   // Verify no crash and expected output layers exist
   EXPECT_TRUE(map.exists(layer::elevation));
   EXPECT_TRUE(map.exists(layer::raycasting_upper_bound));
-  // Kalman creates these internal layers
-  EXPECT_TRUE(map.exists(layer::state));
   EXPECT_TRUE(map.exists(layer::variance));
+  // Kalman-internal layers
+  EXPECT_TRUE(map.exists(layer::kalman_p));
 }

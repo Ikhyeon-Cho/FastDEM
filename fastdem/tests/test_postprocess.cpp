@@ -145,15 +145,14 @@ TEST_F(PostprocessTest, RaycastingDisabledIsNoOp) {
 
 TEST_F(PostprocessTest, UncertaintyFusionComputesBounds) {
   // Add required layers and populate a block of cells
-  map.add(layer::state, NAN);
   map.add(layer::variance, NAN);
 
   auto center = centerIndex();
-  // Fill a 3x3 block with valid state and variance
+  // Fill a 3x3 block with valid elevation and variance
   for (int dr = -1; dr <= 1; ++dr) {
     for (int dc = -1; dc <= 1; ++dc) {
       grid_map::Index idx(center(0) + dr, center(1) + dc);
-      map.at(layer::state, idx) = 1.0f + 0.1f * dr;
+      map.at(layer::elevation, idx) = 1.0f + 0.1f * dr;
       map.at(layer::variance, idx) = 0.01f;
     }
   }
@@ -182,14 +181,17 @@ TEST_F(PostprocessTest, UncertaintyFusionComputesBounds) {
   EXPECT_NEAR(range, upper - lower, 1e-6f);
 }
 
-TEST_F(PostprocessTest, UncertaintyFusionSkipsMissingLayers) {
-  // No state/variance layers — should return without crash
+TEST_F(PostprocessTest, UncertaintyFusionSkipsMissingVariance) {
+  // elevation exists (from SetUp) but no variance layer — should return
   config::UncertaintyFusion cfg;
   cfg.enabled = true;
-  applyUncertaintyFusion(map, cfg);
 
-  // Output layers should not be created (early return before layer creation)
-  EXPECT_FALSE(map.exists(layer::upper_bound));
+  // Remove elevation data and ensure variance doesn't exist
+  ElevationMap empty_map;
+  empty_map.setGeometry(10.0f, 10.0f, 0.5f);
+  applyUncertaintyFusion(empty_map, cfg);
+
+  EXPECT_FALSE(empty_map.exists(layer::upper_bound));
 }
 
 TEST_F(PostprocessTest, UncertaintyFusionDisabledIsNoOp) {

@@ -80,10 +80,6 @@ struct Mapping {
   EstimationType estimation_type = EstimationType::Kalman;
   Kalman kalman;
   P2Quantile p2;
-
-  /// Sigma scale for elevation output: elevation = estimate + sigma_scale * σ
-  /// (0 = center estimate, 1 ≈ 84th percentile). Welford/Kalman only.
-  float sigma_scale = 0.0f;
 };
 
 }  // namespace config
