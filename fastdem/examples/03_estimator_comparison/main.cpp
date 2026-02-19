@@ -46,7 +46,7 @@ int main() {
 
     mappers[i] = std::make_unique<FastDEM>(maps[i]);
     mappers[i]->setHeightFilter(-1.0f, 2.0f)
-        .setDistanceFilter(0.5f, 10.0f)
+        .setRangeFilter(0.5f, 10.0f)
         .setSensorModel(SensorType::Constant)
         .setEstimatorType(estimators[i].type);
 

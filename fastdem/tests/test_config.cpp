@@ -134,7 +134,7 @@ TEST(ConfigLoadTest, KalmanParameters) {
 // ─── Validation: Fatal Errors ────────────────────────────────────────────────
 
 // point_filter is no longer parsed by loadConfig/parseConfig.
-// Filter bounds are set by the application via setHeightFilter/setDistanceFilter.
+// Filter bounds are set by the application via setHeightFilter/setRangeFilter.
 
 TEST(ConfigValidationTest, KalmanMinVarGeMaxVarThrows) {
   auto path = writeTempYaml(

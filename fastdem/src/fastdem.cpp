@@ -55,7 +55,7 @@ FastDEM& FastDEM::setHeightFilter(float z_min, float z_max) noexcept {
   return *this;
 }
 
-FastDEM& FastDEM::setDistanceFilter(float range_min, float range_max) noexcept {
+FastDEM& FastDEM::setRangeFilter(float range_min, float range_max) noexcept {
   cfg_.point_filter.range_min = range_min;
   cfg_.point_filter.range_max = range_max;
   return *this;

@@ -71,8 +71,8 @@ class FastDEM {
   /// Set height filter range in base frame [meters]
   FastDEM& setHeightFilter(float z_min, float z_max) noexcept;
 
-  /// Set distance filter range from sensor [meters]
-  FastDEM& setDistanceFilter(float range_min, float range_max) noexcept;
+  /// Set range filter (min/max distance from sensor) [meters]
+  FastDEM& setRangeFilter(float range_min, float range_max) noexcept;
 
   /// Enable/disable raycasting (ghost obstacle removal)
   FastDEM& enableRaycasting(bool enabled = true) noexcept;
