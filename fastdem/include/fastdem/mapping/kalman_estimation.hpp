@@ -27,22 +27,23 @@ namespace fastdem {
  *
  * Uses a simple 1D Kalman filter for height estimation with uncertainty
  * tracking. Measurement variance is provided by sensor model at update time.
- * A parallel Welford accumulator tracks raw measurement spread for
- * upper-bound elevation output: elevation = state + k * sqrt(sample_variance).
+ * A parallel Welford accumulator tracks raw measurement spread for the
+ * variance output layer and confidence bounds.
  *
  * For static terrain mapping, process noise is omitted since terrain doesn't
  * change over time. Variance bounds prevent numerical issues.
  *
  * Layers created:
- * - elevation: Height estimate (state + k * σ_sample)
- * - state: Kalman state estimate (x)
- * - elevation_min: Minimum observed height
- * - elevation_max: Maximum observed height
- * - variance: Kalman covariance (P)
- * - mean: Running mean of raw measurements (Welford)
- * - sample_variance: Sample variance of raw measurements (Welford)
- * - upper_bound, lower_bound: Confidence bounds (state ± 2σ_kalman)
+ * - elevation: Kalman state estimate (x̂)
+ * - elevation_min/max: Observed height range
+ * - variance: Sample variance of measurements (Welford)
+ * - sample_count: Number of measurements
+ * - upper_bound, lower_bound: elevation ± 2√(sample_variance)
  * - uncertainty_range: upper_bound - lower_bound
+ *
+ * Internal layers (not for visualization/post-processing):
+ * - kalman_p: Filter covariance P
+ * - sample_mean: Welford running mean (for sample_variance computation)
  */
 class KalmanEstimation {
  public:
@@ -54,34 +55,28 @@ class KalmanEstimation {
    * @param min_variance Minimum Kalman variance (prevents over-confidence)
    * @param max_variance Maximum Kalman variance (caps uncertainty)
    * @param process_noise Process noise Q (maintains filter receptivity)
-   * @param sigma_scale Sigma multiplier for elevation output (0 = state, 1 ≈ 84th percentile)
    */
-  KalmanEstimation(float min_variance, float max_variance, float process_noise,
-                   float sigma_scale = 0.0f)
+  KalmanEstimation(float min_variance, float max_variance, float process_noise)
       : min_variance_(min_variance),
         max_variance_(max_variance),
-        process_noise_(process_noise),
-        sigma_scale_(sigma_scale) {}
+        process_noise_(process_noise) {}
 
   /**
    * @brief Initialize layers on the height map.
    *
-   * Creates all layers (core + Welford + derived) eagerly and caches matrix
-   * pointers.
+   * Creates all layers eagerly and caches matrix pointers.
    */
   void initialize(ElevationMap& map) {
-    // Core Kalman layers
+    // Common output layers
     if (!map.exists(layer::elevation)) map.add(layer::elevation, NAN);
     if (!map.exists(layer::elevation_min)) map.add(layer::elevation_min, NAN);
     if (!map.exists(layer::elevation_max)) map.add(layer::elevation_max, NAN);
-    if (!map.exists(layer::state)) map.add(layer::state, NAN);
     if (!map.exists(layer::variance)) map.add(layer::variance, 0.0f);
     if (!map.exists(layer::sample_count)) map.add(layer::sample_count, 0.0f);
 
-    // Welford layers for raw measurement statistics
-    if (!map.exists(layer::mean)) map.add(layer::mean, NAN);
-    if (!map.exists(layer::sample_variance))
-      map.add(layer::sample_variance, 0.0f);
+    // Kalman-internal layers
+    if (!map.exists(layer::kalman_p)) map.add(layer::kalman_p, 0.0f);
+    if (!map.exists(layer::sample_mean)) map.add(layer::sample_mean, NAN);
 
     // Derived layers (eagerly created for finalize)
     if (!map.exists(layer::upper_bound)) map.add(layer::upper_bound, NAN);
@@ -93,11 +88,10 @@ class KalmanEstimation {
     elevation_mat_ = &map.get(layer::elevation);
     min_mat_ = &map.get(layer::elevation_min);
     max_mat_ = &map.get(layer::elevation_max);
-    state_mat_ = &map.get(layer::state);
     variance_mat_ = &map.get(layer::variance);
     count_mat_ = &map.get(layer::sample_count);
-    mean_mat_ = &map.get(layer::mean);
-    sample_var_mat_ = &map.get(layer::sample_variance);
+    kalman_p_mat_ = &map.get(layer::kalman_p);
+    sample_mean_mat_ = &map.get(layer::sample_mean);
     upper_mat_ = &map.get(layer::upper_bound);
     lower_mat_ = &map.get(layer::lower_bound);
     range_mat_ = &map.get(layer::uncertainty_range);
@@ -116,16 +110,16 @@ class KalmanEstimation {
     const int i = index(0);
     const int j = index(1);
 
-    // Map layer references (Kalman notation: x = state, P = covariance)
-    float& x = (*state_mat_)(i, j);
-    float& P = (*variance_mat_)(i, j);
+    // Kalman state: x = elevation, P = kalman_p
+    float& x = (*elevation_mat_)(i, j);
+    float& P = (*kalman_p_mat_)(i, j);
     float& min_z = (*min_mat_)(i, j);
     float& max_z = (*max_mat_)(i, j);
     float& count = (*count_mat_)(i, j);
 
     // Welford references
-    float& sample_mean = (*mean_mat_)(i, j);
-    float& sample_var = (*sample_var_mat_)(i, j);
+    float& sample_mean = (*sample_mean_mat_)(i, j);
+    float& sample_var = (*variance_mat_)(i, j);
 
     // Measurement (Kalman notation: z = measurement, R = measurement variance)
     const float z = measurement;
@@ -153,7 +147,7 @@ class KalmanEstimation {
       count += 1.0f;
     }
 
-    // Welford's online algorithm for raw measurement statistics
+    // Welford's online algorithm for sample variance
     if (std::isnan(sample_mean)) {
       sample_mean = z;
       sample_var = 0.0f;
@@ -176,24 +170,20 @@ class KalmanEstimation {
     // Min/Max update
     if (std::isnan(min_z) || z < min_z) min_z = z;
     if (std::isnan(max_z) || z > max_z) max_z = z;
-
-    // Elevation: state + sigma_scale * σ_sample
-    float sigma = (sample_var > 0.0f) ? std::sqrt(sample_var) : 0.0f;
-    (*elevation_mat_)(i, j) = x + sigma_scale_ * sigma;
   }
 
   /**
    * @brief Compute derived statistics after all updates.
    *
-   * Computes 95% confidence bounds from Kalman covariance.
+   * Computes confidence bounds from sample variance.
    */
   void finalize() {
-    // σ = sqrt(Kalman variance)
+    // σ = sqrt(sample variance)
     Eigen::ArrayXXf sigma = variance_mat_->array().sqrt();
 
-    // Confidence bounds: state ± 2σ
-    *upper_mat_ = state_mat_->array() + 2.0f * sigma;
-    *lower_mat_ = state_mat_->array() - 2.0f * sigma;
+    // Confidence bounds: elevation ± 2σ
+    *upper_mat_ = elevation_mat_->array() + 2.0f * sigma;
+    *lower_mat_ = elevation_mat_->array() - 2.0f * sigma;
 
     // Uncertainty range = upper - lower
     *range_mat_ = upper_mat_->array() - lower_mat_->array();
@@ -205,19 +195,17 @@ class KalmanEstimation {
   float min_variance_ = 0.0001f;
   float max_variance_ = 0.01f;
   float process_noise_ = 0.0f;
-  float sigma_scale_ = 0.0f;
 
-  // Core Kalman layer matrices
+  // Common output layer matrices
   grid_map::Matrix* elevation_mat_ = nullptr;
   grid_map::Matrix* min_mat_ = nullptr;
   grid_map::Matrix* max_mat_ = nullptr;
-  grid_map::Matrix* state_mat_ = nullptr;
   grid_map::Matrix* variance_mat_ = nullptr;
   grid_map::Matrix* count_mat_ = nullptr;
 
-  // Welford layer matrices
-  grid_map::Matrix* mean_mat_ = nullptr;
-  grid_map::Matrix* sample_var_mat_ = nullptr;
+  // Kalman-internal layer matrices
+  grid_map::Matrix* kalman_p_mat_ = nullptr;
+  grid_map::Matrix* sample_mean_mat_ = nullptr;
 
   // Derived layer matrices
   grid_map::Matrix* upper_mat_ = nullptr;

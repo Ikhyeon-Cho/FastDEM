@@ -106,10 +106,9 @@ void applyUncertaintyFusion(ElevationMap& map,
   if (!config.enabled) return;
 
   // Validate required layers
-  if (!map.exists(layer::state) || !map.exists(layer::variance)) {
+  if (!map.exists(layer::elevation) || !map.exists(layer::variance)) {
     spdlog::warn(
-        "[UncertaintyFusion] Missing required layers (state, variance). "
-        "Use Kalman estimator to produce them.");
+        "[UncertaintyFusion] Missing required layers (elevation, variance).");
     return;
   }
 
@@ -121,7 +120,7 @@ void applyUncertaintyFusion(ElevationMap& map,
   }
 
   // Get layer references
-  const auto& state_mat = map.get(layer::state);
+  const auto& state_mat = map.get(layer::elevation);
   const auto& variance_mat = map.get(layer::variance);
   auto& upper_mat = map.get(layer::upper_bound);
   auto& lower_mat = map.get(layer::lower_bound);

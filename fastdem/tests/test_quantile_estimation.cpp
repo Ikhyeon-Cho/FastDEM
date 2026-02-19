@@ -96,7 +96,8 @@ TEST_F(QuantileEstimationTest, NormalDistributionMedianApproximatesMean) {
 
   estimator.finalize();
 
-  float median = map.at(layer::mean, idx);  // finalize maps q2 → mean
+  // q[2] is median (50th percentile), should approximate true mean
+  float median = map.at(layer::p2_q2, idx);
   EXPECT_NEAR(median, true_mean, 0.2f);
 }
 

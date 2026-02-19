@@ -28,7 +28,6 @@ logger:
 mapping_mode: "local"  # local | global
 mapping:
   type: "kalman_filter"      # kalman_filter | welford | p2_quantile
-  sigma_scale: 0.0
   kalman:
     min_variance: 0.0001     # [m²]
     max_variance: 0.01       # [m²]

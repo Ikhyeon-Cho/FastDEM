@@ -126,7 +126,7 @@ class MappingNode {
       std::shared_lock lock(map_mutex_);
       if (!map_.exists(layer::elevation)) return;
       map_raw =
-          map_.snapshot({layer::elevation, layer::state, layer::variance});
+          map_.snapshot({layer::elevation, layer::variance});
     }
 
     // Post-processing on snapshot (lock-free)

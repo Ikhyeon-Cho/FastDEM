@@ -28,23 +28,22 @@ namespace fastdem {
 
 namespace layer {
 
-// Core layers
+// Common output layers (all estimators guarantee these)
 constexpr auto elevation = "elevation";
 constexpr auto elevation_min = "elevation_min";
 constexpr auto elevation_max = "elevation_max";
 constexpr auto elevation_max_smoothed = "elevation_max_smoothed";
-
-// Layers for Kalman estimator
-constexpr auto state = "state";  // x (Kalman state estimate)
-constexpr auto variance = "variance";
+constexpr auto variance = "variance";          // sample variance (measurement spread)
+constexpr auto sample_count = "sample_count";
 constexpr auto upper_bound = "upper_bound";
 constexpr auto lower_bound = "lower_bound";
 constexpr auto uncertainty_range = "uncertainty_range";  // upper - lower
 
-// Layers for Welford's algorithm
-constexpr auto mean = "mean";
-constexpr auto sample_count = "sample_count";
-constexpr auto sample_variance = "sample_variance";
+// Kalman-internal layers (not for visualization/post-processing)
+constexpr auto kalman_p = "kalman_p";        // filter covariance P
+constexpr auto sample_mean = "sample_mean";  // Welford running mean
+
+// Mean estimator derived statistics
 constexpr auto standard_error = "standard_error";
 constexpr auto conf_interval_95 = "conf_interval_95";
 

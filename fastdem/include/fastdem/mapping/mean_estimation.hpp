@@ -25,18 +25,17 @@ namespace fastdem {
  * @brief Elevation updater using Welford's online mean algorithm.
  *
  * Computes running mean and sample variance using numerically stable method.
- * Final elevation is computed as: elevation = mean + k * sqrt(variance),
- * where k controls the upper-bound percentile offset for bias compensation.
+ * Elevation output is the running mean directly.
  *
  * Layers created:
- * - elevation: Height estimate (mean + k * σ)
- * - mean: Running mean of measurements
- * - elevation_min: Minimum observed height
- * - elevation_max: Maximum observed height
+ * - elevation: Running mean of measurements
+ * - elevation_min/max: Observed height range
  * - variance: Sample variance (Welford)
  * - sample_count: Number of measurements
  * - standard_error: SE = sqrt(variance / count)
  * - conf_interval_95: 1.96 * SE
+ * - upper_bound, lower_bound: elevation ± 1.96 * SE
+ * - uncertainty_range: upper_bound - lower_bound
  *
  * Reference: Welford (1962), "Note on a Method for Calculating Corrected
  *            Sums of Squares and Products"
@@ -46,23 +45,15 @@ class MeanEstimation {
   MeanEstimation() = default;
 
   /**
-   * @brief Construct with parameters.
-   *
-   * @param sigma_scale Sigma multiplier for elevation output (0 = mean, 1 ≈ 84th percentile)
-   */
-  explicit MeanEstimation(float sigma_scale) : sigma_scale_(sigma_scale) {}
-
-  /**
    * @brief Initialize layers on the height map.
    *
-   * Creates all layers (core + derived) eagerly and caches matrix pointers.
+   * Creates all layers eagerly and caches matrix pointers.
    */
   void initialize(ElevationMap& map) {
-    // Core layers
+    // Common output layers
     if (!map.exists(layer::elevation)) map.add(layer::elevation, NAN);
     if (!map.exists(layer::elevation_min)) map.add(layer::elevation_min, NAN);
     if (!map.exists(layer::elevation_max)) map.add(layer::elevation_max, NAN);
-    if (!map.exists(layer::mean)) map.add(layer::mean, NAN);
     if (!map.exists(layer::variance)) map.add(layer::variance, 0.0f);
     if (!map.exists(layer::sample_count)) map.add(layer::sample_count, 0.0f);
 
@@ -70,16 +61,22 @@ class MeanEstimation {
     if (!map.exists(layer::standard_error)) map.add(layer::standard_error, NAN);
     if (!map.exists(layer::conf_interval_95))
       map.add(layer::conf_interval_95, NAN);
+    if (!map.exists(layer::upper_bound)) map.add(layer::upper_bound, NAN);
+    if (!map.exists(layer::lower_bound)) map.add(layer::lower_bound, NAN);
+    if (!map.exists(layer::uncertainty_range))
+      map.add(layer::uncertainty_range, NAN);
 
     // Cache all matrix pointers
     elevation_mat_ = &map.get(layer::elevation);
     min_mat_ = &map.get(layer::elevation_min);
     max_mat_ = &map.get(layer::elevation_max);
-    mean_mat_ = &map.get(layer::mean);
     variance_mat_ = &map.get(layer::variance);
     count_mat_ = &map.get(layer::sample_count);
     se_mat_ = &map.get(layer::standard_error);
     ci_mat_ = &map.get(layer::conf_interval_95);
+    upper_mat_ = &map.get(layer::upper_bound);
+    lower_mat_ = &map.get(layer::lower_bound);
+    range_mat_ = &map.get(layer::uncertainty_range);
   }
 
   /**
@@ -95,8 +92,8 @@ class MeanEstimation {
     const int i = index(0);
     const int j = index(1);
 
-    // Map layer references
-    float& mean = (*mean_mat_)(i, j);
+    // Map layer references (elevation = running mean)
+    float& elevation = (*elevation_mat_)(i, j);
     float& variance = (*variance_mat_)(i, j);
     float& min_z = (*min_mat_)(i, j);
     float& max_z = (*max_mat_)(i, j);
@@ -105,16 +102,16 @@ class MeanEstimation {
     const float z = measurement;
 
     // Welford's online algorithm
-    if (std::isnan(mean)) {
+    if (std::isnan(elevation)) {
       // First measurement
-      mean = z;
+      elevation = z;
       variance = 0.0f;
       count = 1.0f;
     } else {
       count += 1.0f;
 
-      const float delta = z - mean;
-      const float new_mean = mean + (delta / count);
+      const float delta = z - elevation;
+      const float new_mean = elevation + (delta / count);
       const float delta2 = z - new_mean;
 
       // Update sample variance using numerically stable computation
@@ -126,22 +123,18 @@ class MeanEstimation {
         variance = m2 / (count - 1.0f);
       }
 
-      mean = new_mean;
+      elevation = new_mean;
     }
 
     // Min/Max update
     if (std::isnan(min_z) || z < min_z) min_z = z;
     if (std::isnan(max_z) || z > max_z) max_z = z;
-
-    // Elevation: mean + sigma_scale * σ
-    float sigma = (variance > 0.0f) ? std::sqrt(variance) : 0.0f;
-    (*elevation_mat_)(i, j) = mean + sigma_scale_ * sigma;
   }
 
   /**
    * @brief Compute derived statistics after all updates.
    *
-   * Computes standard_error, conf_interval_95.
+   * Computes standard_error, conf_interval_95, and confidence bounds.
    */
   void finalize() {
     // Vectorized computation: SE = sqrt(variance / count)
@@ -149,24 +142,31 @@ class MeanEstimation {
 
     // CI_95 = 1.96 * SE
     *ci_mat_ = 1.96f * se_mat_->array();
+
+    // Confidence bounds: elevation ± 1.96 * SE
+    *upper_mat_ = elevation_mat_->array() + ci_mat_->array();
+    *lower_mat_ = elevation_mat_->array() - ci_mat_->array();
+
+    // Uncertainty range = upper - lower
+    *range_mat_ = upper_mat_->array() - lower_mat_->array();
   }
 
   std::string name() const { return "MeanEstimation"; }
 
  private:
-  float sigma_scale_ = 0.0f;
-
-  // Core layer matrices
+  // Common output layer matrices
   grid_map::Matrix* elevation_mat_ = nullptr;
   grid_map::Matrix* min_mat_ = nullptr;
   grid_map::Matrix* max_mat_ = nullptr;
-  grid_map::Matrix* mean_mat_ = nullptr;
   grid_map::Matrix* variance_mat_ = nullptr;
   grid_map::Matrix* count_mat_ = nullptr;
 
   // Derived layer matrices
   grid_map::Matrix* se_mat_ = nullptr;
   grid_map::Matrix* ci_mat_ = nullptr;
+  grid_map::Matrix* upper_mat_ = nullptr;
+  grid_map::Matrix* lower_mat_ = nullptr;
+  grid_map::Matrix* range_mat_ = nullptr;
 };
 
 }  // namespace fastdem

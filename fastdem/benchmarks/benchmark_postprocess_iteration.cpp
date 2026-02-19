@@ -70,7 +70,7 @@ ElevationMap createTestMap(int cells, float resolution, bool move_map = true) {
 
 void addKalmanLayers(ElevationMap& map) {
   const auto& elev = map.get(layer::elevation);
-  map.add(layer::state, elev);
+  // elevation already exists; add variance for uncertainty_fusion
   map.add(layer::variance, NAN);
   auto& var_mat = map.get(layer::variance);
 

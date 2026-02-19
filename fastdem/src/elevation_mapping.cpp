@@ -22,7 +22,7 @@ ElevationMapping::ElevationMapping(ElevationMap& map, const Config& cfg)
     : map_(map), cfg_(cfg) {
   switch (cfg.estimation_type) {
     case EstimationType::Welford:
-      height_estimator_ = MeanEstimation{cfg.sigma_scale};
+      height_estimator_ = MeanEstimation{};
       break;
     case EstimationType::P2Quantile: {
       const auto& p = cfg.p2;
@@ -37,8 +37,8 @@ ElevationMapping::ElevationMapping(ElevationMap& map, const Config& cfg)
     }
     default: {
       const auto& kf = cfg.kalman;
-      height_estimator_ = KalmanEstimation{kf.min_variance, kf.max_variance,
-                                           kf.process_noise, cfg.sigma_scale};
+      height_estimator_ =
+          KalmanEstimation{kf.min_variance, kf.max_variance, kf.process_noise};
       break;
     }
   }

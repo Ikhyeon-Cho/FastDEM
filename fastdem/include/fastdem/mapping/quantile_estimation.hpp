@@ -92,11 +92,10 @@ class QuantileEstimation {
    * @param map Height map to initialize layers on
    */
   void initialize(ElevationMap& map) {
-    // Core output layers
+    // Common output layers
     if (!map.exists(layer::elevation)) map.add(layer::elevation, NAN);
     if (!map.exists(layer::elevation_min)) map.add(layer::elevation_min, NAN);
     if (!map.exists(layer::elevation_max)) map.add(layer::elevation_max, NAN);
-    if (!map.exists(layer::mean)) map.add(layer::mean, NAN);
     if (!map.exists(layer::variance)) map.add(layer::variance, NAN);
     if (!map.exists(layer::sample_count)) map.add(layer::sample_count, 0.0f);
 
@@ -124,7 +123,6 @@ class QuantileEstimation {
     elevation_mat_ = &map.get(layer::elevation);
     min_mat_ = &map.get(layer::elevation_min);
     max_mat_ = &map.get(layer::elevation_max);
-    mean_mat_ = &map.get(layer::mean);
     variance_mat_ = &map.get(layer::variance);
     count_mat_ = &map.get(layer::sample_count);
 
@@ -198,7 +196,6 @@ class QuantileEstimation {
    *
    * Maps P² markers to standard output layers:
    * - elevation: q[elevation_marker] (default: 84th percentile)
-   * - mean: q[2] (median, 50th percentile)
    * - elevation_min/max: True min/max (tracked in update())
    * - lower_bound: q[0] (1st percentile)
    * - upper_bound: q[4] (99th percentile)
@@ -213,7 +210,6 @@ class QuantileEstimation {
 
     // Map markers to output layers
     // Note: min_mat_, max_mat_ are already set in update() (true min/max)
-    *mean_mat_ = *q_mat_[2];              // mean = q[2] (median)
     *elevation_mat_ = *q_mat_[elev_idx];  // elevation = q[elev_idx]
 
     // σ estimate: (84th - 16th) / 2
@@ -354,11 +350,10 @@ class QuantileEstimation {
   float dn_[5];                 // Desired position increments
   float max_sample_count_ = 0;  // Max count for fading memory (0 = disabled)
 
-  // Core layer matrices
+  // Common output layer matrices
   grid_map::Matrix* elevation_mat_ = nullptr;
   grid_map::Matrix* min_mat_ = nullptr;
   grid_map::Matrix* max_mat_ = nullptr;
-  grid_map::Matrix* mean_mat_ = nullptr;
   grid_map::Matrix* variance_mat_ = nullptr;
   grid_map::Matrix* count_mat_ = nullptr;
 
