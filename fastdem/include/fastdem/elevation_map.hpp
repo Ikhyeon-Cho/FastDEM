@@ -17,6 +17,8 @@
 #define FASTDEM_ELEVATION_MAP_HPP
 
 #include <cmath>
+#include <initializer_list>
+#include <string>
 #include <vector>
 #include <grid_map_core/grid_map_core.hpp>
 
@@ -199,6 +201,9 @@ class ElevationMap : public grid_map::GridMap {
 
   /// Create a MapIndexer for efficient grid iteration.
   MapIndexer indexer() const;
+
+  /// Create a lightweight copy with only the specified layers.
+  ElevationMap snapshot(std::initializer_list<std::string> layers) const;
 };
 
 inline ElevationMap::ElevationMap() : grid_map::GridMap({layer::elevation}) {
@@ -255,6 +260,24 @@ inline bool ElevationMap::hasElevationAt(
 
 inline bool ElevationMap::hasElevationAt(const grid_map::Index& index) const {
   return std::isfinite(elevationAt(index));
+}
+
+inline ElevationMap ElevationMap::snapshot(
+    std::initializer_list<std::string> layers) const {
+  ElevationMap snap;
+  snap.setGeometry(getLength()(0), getLength()(1), getResolution());
+  snap.setFrameId(getFrameId());
+  snap.setPosition(getPosition());
+  snap.setStartIndex(getStartIndex());
+  snap.setTimestamp(getTimestamp());
+  for (const auto& name : layers) {
+    if (!exists(name)) continue;
+    if (snap.exists(name))
+      snap.get(name) = get(name);
+    else
+      snap.add(name, get(name));
+  }
+  return snap;
 }
 
 // ─── MapIndexer inline definitions ──────────────────────────────────────────

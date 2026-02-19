@@ -17,7 +17,6 @@
 #include <nanopcl/filters/crop.hpp>
 
 #include "fastdem/postprocess/raycasting.hpp"
-#include "fastdem/postprocess/uncertainty_fusion.hpp"
 
 namespace fastdem {
 
@@ -182,9 +181,6 @@ bool FastDEM::integrateImpl(const PointCloud& cloud,
     applyRaycasting(map_, points, sensor_origin, cfg_.raycasting);
   }
 
-  // 7. Uncertainty fusion (spatial smoothing of variance estimates)
-  if (cfg_.uncertainty_fusion.enabled)
-    applyUncertaintyFusion(map_, cfg_.uncertainty_fusion);
   return true;
 }
 
