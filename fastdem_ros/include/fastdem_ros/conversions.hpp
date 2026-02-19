@@ -82,8 +82,9 @@ inline grid_map_msgs::GridMap toGridMap(const fastdem::ElevationMap& map) {
  * precomputed per-row/col world coordinates to avoid per-cell getPosition().
  */
 inline sensor_msgs::PointCloud2 toPointCloud2(
-    const fastdem::ElevationMap& map) {
-  const auto& elev = map.get(fastdem::layer::elevation);
+    const fastdem::ElevationMap& map,
+    const char* elevation_layer = fastdem::layer::elevation) {
+  const auto& elev = map.get(elevation_layer);
   const bool has_intensity = map.exists(fastdem::layer::intensity);
   const bool has_color = map.exists(fastdem::layer::color);
   const auto size = map.getSize();

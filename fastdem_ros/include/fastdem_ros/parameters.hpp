@@ -22,6 +22,7 @@ struct NodeConfig {
   struct Topics {
     std::string input_scan{"/velodyne/points"};
     double publish_rate{10.0};
+    double post_process_rate{2.0};
   } topics;
 
   struct TF {
@@ -60,6 +61,7 @@ struct NodeConfig {
     if (auto n = yaml["topics"]) {
       read(n, "input_scan", cfg.topics.input_scan);
       read(n, "publish_rate", cfg.topics.publish_rate);
+      read(n, "post_process_rate", cfg.topics.post_process_rate);
     }
     if (auto n = yaml["tf"]) {
       read(n, "base_frame", cfg.tf.base_frame);

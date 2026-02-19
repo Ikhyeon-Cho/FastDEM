@@ -27,17 +27,18 @@ namespace fastdem::ros1 {
  */
 class TFBridge : public Calibration, public Odometry {
  public:
-  TFBridge(std::string base_frame, std::string world_frame,
-           double max_wait_time = 0.1, double max_stale_time = 0.1,
-           bool use_latest_transform_fallback = false)
+  TFBridge(std::string base_frame, std::string world_frame)
       : base_frame_(std::move(base_frame)),
         world_frame_(std::move(world_frame)),
-        max_wait_time_(max_wait_time),
-        max_stale_time_(max_stale_time),
-        use_latest_transform_fallback_(use_latest_transform_fallback),
         buffer_(ros::Duration(10.0)),
         listener_(buffer_) {
     ros::Duration(0.5).sleep();  // Wait for TF buffer to fill
+  }
+
+  void setMaxWaitTime(double seconds) { max_wait_time_ = seconds; }
+  void setMaxStaleTime(double seconds) { max_stale_time_ = seconds; }
+  void setLatestTransformFallback(bool enable) {
+    use_latest_transform_fallback_ = enable;
   }
 
   ~TFBridge() override = default;
@@ -97,8 +98,7 @@ class TFBridge : public Calibration, public Odometry {
     // Fallback to latest transform if enabled
     if (!tf_msg_opt && use_latest_transform_fallback_) {
       spdlog::warn("Using latest transform as fallback for robot pose");
-      tf_msg_opt =
-          lookupTransformMsg(world_frame_, base_frame_, ros::Time(0));
+      tf_msg_opt = lookupTransformMsg(world_frame_, base_frame_, ros::Time(0));
     }
 
     if (!tf_msg_opt) {
@@ -123,15 +123,14 @@ class TFBridge : public Calibration, public Odometry {
 
   std::string base_frame_;
   std::string world_frame_;
-  double max_wait_time_;
-  double max_stale_time_;
-  bool use_latest_transform_fallback_;
+  double max_wait_time_{0.1};
+  double max_stale_time_{0.1};
+  bool use_latest_transform_fallback_{false};
 
   tf2_ros::Buffer buffer_;
   tf2_ros::TransformListener listener_;
 
-  mutable std::unordered_map<std::string, Eigen::Isometry3d>
-      extrinsic_cache_;
+  mutable std::unordered_map<std::string, Eigen::Isometry3d> extrinsic_cache_;
 };
 
 }  // namespace fastdem::ros1

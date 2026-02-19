@@ -1,10 +1,8 @@
 # FastDEM ROS Configuration
-logger:
-  level: "info"  # info, warn, error, debug
-  
 topics:
-  input_scan: "/velodyne/points"
-  publish_rate: 1.0  # [Hz]
+  input_scan: "/points"
+  publish_rate: 1.0        # [Hz]
+  post_process_rate: 1.0   # [Hz] inpainting, feature extraction
 
 tf:
   base_frame: "base_link"
@@ -23,6 +21,9 @@ point_filter:
   range_min: 0.5    # [m] min range from sensor
   range_max: 20.0   # [m] max range from sensor
 
+logger:
+  level: "info"  # info, warn, error, debug
+  
 # ─── Mapping Pipeline ───────────────────────────────
 mapping_mode: "local"  # local | global
 mapping:
@@ -63,12 +64,12 @@ raycasting:
   vote_threshold: 10
 
 inpainting:
-  enabled: true
+  enabled: false
   max_iterations: 3
   min_valid_neighbors: 2
 
 uncertainty_fusion:
-  enabled: true
+  enabled: false
   search_radius: 0.15       # [m]
   spatial_sigma: 0.05        # [m]
   quantile_lower: 0.01

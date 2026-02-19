@@ -9,6 +9,7 @@
 #include <fastdem/fastdem.hpp>
 #include <fastdem/postprocess/feature_extraction.hpp>
 #include <fastdem/postprocess/inpainting.hpp>
+#include <fastdem/postprocess/uncertainty_fusion.hpp>
 #include <memory>
 #include <shared_mutex>
 
@@ -59,7 +60,7 @@ class MappingNode {
   }
 
   void setupCore() {
-    // Map geometry
+    // Elevation map geometry
     map_.setGeometry(cfg_.map.width, cfg_.map.height, cfg_.map.resolution);
     map_.setFrameId(cfg_.tf.map_frame);
 
@@ -67,16 +68,16 @@ class MappingNode {
     mapper_ = std::make_unique<FastDEM>(map_, cfg_.pipeline);
     mapper_->setMappingMode(cfg_.mapping_mode);
 
-    // Set scan filter
+    // Set scan data limit
     mapper_->setHeightFilter(cfg_.point_filter.z_min, cfg_.point_filter.z_max);
     mapper_->setRangeFilter(cfg_.point_filter.range_min,
                             cfg_.point_filter.range_max);
 
-    // TF bridge implements both Calibration and Odometry
-    auto ros_tf = std::make_shared<TFBridge>(
-        cfg_.tf.base_frame, cfg_.tf.map_frame,  //
-        cfg_.tf.max_wait_time, cfg_.tf.max_stale_time);
-    mapper_->setTransformSystem(ros_tf);
+    // ROS TF provides both Calibration and Odometry values
+    auto tf = std::make_shared<TFBridge>(cfg_.tf.base_frame, cfg_.tf.map_frame);
+    tf->setMaxWaitTime(cfg_.tf.max_wait_time);
+    tf->setMaxStaleTime(cfg_.tf.max_stale_time);
+    mapper_->setTransformSystem(tf);
 
     // Register callback to publish processed cloud
     mapper_->setProcessedCloudCallback(
@@ -85,14 +86,18 @@ class MappingNode {
 
   void setupPublishersAndSubscribers() {
     // clang-format off
-    scan_sub_ = nh_.subscribe(cfg_.topics.input_scan, 10, &MappingNode::scanCallback, this);
-    scan_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("scan", 1);
-    if (cfg_.mapping_mode != fastdem::MappingMode::GLOBAL)
-      gridmap_pub_ = nh_.advertise<grid_map_msgs::GridMap>("gridmap", 1);
-    map_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("map", 1);
-    boundary_pub_ = nh_.advertise<visualization_msgs::Marker>("map_boundary", 1);
-    map_pub_timer_ = nh_.createTimer(ros::Duration(1.0 / cfg_.topics.publish_rate),
-                                          &MappingNode::publishMap, this);
+    sub_scan_ = nh_.subscribe(cfg_.topics.input_scan, 10, &MappingNode::scanCallback, this);
+    
+    pub_scan_         = nh_.advertise<sensor_msgs::PointCloud2>("mapping/scan", 1);
+    pub_map_          = nh_.advertise<sensor_msgs::PointCloud2>("mapping/map", 1);
+    pub_gridmap_      = nh_.advertise<grid_map_msgs::GridMap>("mapping/gridmap", 1);
+    pub_boundary_     = nh_.advertise<visualization_msgs::Marker>("mapping/boundary", 1);
+    
+    pub_post_map_     = nh_.advertise<sensor_msgs::PointCloud2>("postprocess/map", 1);
+    pub_post_gridmap_ = nh_.advertise<grid_map_msgs::GridMap>("postprocess/gridmap", 1);
+
+    timer_viz_ = nh_.createTimer(ros::Duration(1.0 / cfg_.topics.publish_rate),
+                                     &MappingNode::publishMap, this);
     // clang-format on
   }
 
@@ -102,52 +107,73 @@ class MappingNode {
     static bool first_scan = true;
     if (first_scan) {
       spdlog::info("First scan received. Mapping started...");
+      if (cfg_.pipeline.uncertainty_fusion.enabled || cfg_.inpainting.enabled ||
+          cfg_.feature_extraction.enabled)
+        timer_post_process_ =
+            nh_.createTimer(ros::Duration(1.0 / cfg_.topics.post_process_rate),
+                            &MappingNode::postProcessCallback, this);
       first_scan = false;
     }
 
     auto cloud = std::make_shared<PointCloud>(nanopcl::from(*msg));
     std::unique_lock lock(map_mutex_);
     mapper_->integrate(cloud);
+  }
 
-    // Post-processing (user-side, map-only operations)
+  void postProcessCallback(const ros::TimerEvent&) {
+    ElevationMap map_raw;
+    {
+      std::shared_lock lock(map_mutex_);
+      if (!map_.exists(layer::elevation)) return;
+      map_raw =
+          map_.snapshot({layer::elevation, layer::state, layer::variance});
+    }
+
+    // Post-processing on snapshot (lock-free)
+    if (cfg_.pipeline.uncertainty_fusion.enabled)
+      applyUncertaintyFusion(map_raw, cfg_.pipeline.uncertainty_fusion);
     if (cfg_.inpainting.enabled)
-      applyInpainting(map_, cfg_.inpainting.max_iterations,
-                      cfg_.inpainting.min_valid_neighbors);
+      applyInpainting(map_raw, cfg_.inpainting.max_iterations,
+                      cfg_.inpainting.min_valid_neighbors, /*inplace=*/true);
     if (cfg_.feature_extraction.enabled)
-      applyFeatureExtraction(map_, cfg_.feature_extraction.analysis_radius,
+      applyFeatureExtraction(map_raw,
+                             cfg_.feature_extraction.analysis_radius,  //
                              cfg_.feature_extraction.min_valid_neighbors);
+
+    // Publish
+    if (pub_post_map_.getNumSubscribers() > 0)
+      pub_post_map_.publish(ros1::toPointCloud2(map_raw));
+    if (pub_post_gridmap_.getNumSubscribers() > 0 &&
+        cfg_.mapping_mode != fastdem::MappingMode::GLOBAL)
+      pub_post_gridmap_.publish(ros1::toGridMap(map_raw));
   }
 
   // ==================== Publishers ====================
 
   void publishMap(const ros::TimerEvent&) {
-    const bool want_map = map_pub_.getNumSubscribers() > 0;
-    const bool want_gridmap = gridmap_pub_.getNumSubscribers() > 0;
-    const bool want_boundary = boundary_pub_.getNumSubscribers() > 0;
-    if (!want_map && !want_gridmap && !want_boundary) return;
-
-    std::shared_lock lock(map_mutex_);
-    if (want_map) {
-      map_pub_.publish(ros1::toPointCloud2(map_));
-    }
-    if (want_gridmap) {
-      gridmap_pub_.publish(ros1::toGridMap(map_));
-    }
-    if (want_boundary) {
-      boundary_pub_.publish(ros1::toMapBoundary(map_));
+    // Core layers (from map_)
+    const bool want_map = pub_map_.getNumSubscribers() > 0;
+    const bool want_gridmap = pub_gridmap_.getNumSubscribers() > 0 &&
+                              cfg_.mapping_mode != fastdem::MappingMode::GLOBAL;
+    const bool want_boundary = pub_boundary_.getNumSubscribers() > 0;
+    if (want_map || want_gridmap || want_boundary) {
+      std::shared_lock lock(map_mutex_);
+      if (want_map) pub_map_.publish(ros1::toPointCloud2(map_));
+      if (want_gridmap) pub_gridmap_.publish(ros1::toGridMap(map_));
+      if (want_boundary) pub_boundary_.publish(ros1::toMapBoundary(map_));
     }
   }
 
   void publishProcessedScan(const PointCloud& cloud) {
-    if (scan_pub_.getNumSubscribers() == 0) return;
-    scan_pub_.publish(nanopcl::to(cloud));
+    if (pub_scan_.getNumSubscribers() == 0) return;
+    pub_scan_.publish(nanopcl::to(cloud));
   }
 
   void printNodeSummary() const {
     spdlog::info("");
     spdlog::info("===== FastDEM Mapping Node =====");
-    spdlog::info("  Input    : {}", scan_sub_.getTopic());
-    spdlog::info("  Output   : {}", map_pub_.getTopic());
+    spdlog::info("  Input    : {}", sub_scan_.getTopic());
+    spdlog::info("  Output   : {}", pub_map_.getTopic());
     spdlog::info("  Pub rate : {} Hz", cfg_.topics.publish_rate);
     spdlog::info("================================");
     spdlog::info("");
@@ -162,12 +188,15 @@ class MappingNode {
   mutable std::shared_mutex map_mutex_;
 
   // ROS handles
-  ros::Subscriber scan_sub_;
-  ros::Publisher scan_pub_;
-  ros::Publisher map_pub_;
-  ros::Publisher gridmap_pub_;
-  ros::Publisher boundary_pub_;
-  ros::Timer map_pub_timer_;
+  ros::Subscriber sub_scan_;
+  ros::Publisher pub_scan_;
+  ros::Publisher pub_map_;
+  ros::Publisher pub_gridmap_;
+  ros::Publisher pub_boundary_;
+  ros::Publisher pub_post_map_;
+  ros::Publisher pub_post_gridmap_;
+  ros::Timer timer_viz_;
+  ros::Timer timer_post_process_;
 };
 
 }  // namespace fastdem::ros1
@@ -181,8 +210,9 @@ int main(int argc, char** argv) {
 
   // Multi-threaded spinner for parallel processing:
   // Thread 1: Point cloud processing (mapping)
-  // Thread 2: Map publishing (visualization)
-  ros::AsyncSpinner spinner(2);
+  // Thread 2: Async post-processing (inpainting, feature extraction)
+  // Thread 3: Map publishing (visualization)
+  ros::AsyncSpinner spinner(3);
   spinner.start();
   ros::waitForShutdown();
 
