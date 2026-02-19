@@ -97,7 +97,7 @@ class OnlineModeTest : public ::testing::Test {
 TEST_F(OnlineModeTest, IntegrateWithTransformSystems) {
   FastDEM mapper(map);
   mapper.setHeightFilter(-2.0f, 5.0f)
-      .setDistanceFilter(0.0f, 20.0f)
+      .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setCalibrationSystem(calibration)
       .setOdometrySystem(odometry);
@@ -176,7 +176,7 @@ TEST_F(OnlineModeTest, OdometryUnavailableFails) {
 TEST_F(OnlineModeTest, MultipleIntegrationsOnline) {
   FastDEM mapper(map);
   mapper.setHeightFilter(-5.0f, 15.0f)
-      .setDistanceFilter(0.0f, 20.0f)
+      .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
       .setCalibrationSystem(calibration)
@@ -203,7 +203,7 @@ TEST_F(OnlineModeTest, WithNonIdentityExtrinsic) {
 
   FastDEM mapper(map);
   mapper.setHeightFilter(-5.0f, 15.0f)
-      .setDistanceFilter(0.0f, 20.0f)
+      .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setCalibrationSystem(calibration)
       .setOdometrySystem(odometry);
@@ -225,7 +225,7 @@ TEST_F(OnlineModeTest, WithRobotPose) {
 
   FastDEM mapper(map);
   mapper.setHeightFilter(-5.0f, 15.0f)
-      .setDistanceFilter(0.0f, 20.0f)
+      .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setCalibrationSystem(calibration)
       .setOdometrySystem(odometry);
@@ -247,7 +247,7 @@ TEST_F(OnlineModeTest, RaycastingOnlineMode) {
 
   FastDEM mapper(map);
   mapper.setHeightFilter(-5.0f, 15.0f)
-      .setDistanceFilter(0.0f, 20.0f)
+      .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
       .enableRaycasting(true)

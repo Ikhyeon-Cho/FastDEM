@@ -63,7 +63,7 @@ int main() {
   // 2. Create FastDEM and configure
   FastDEM mapper(map);
   mapper.setHeightFilter(-2.0f, 3.0f)
-      .setDistanceFilter(0.5f, 10.0f)
+      .setRangeFilter(0.5f, 10.0f)
       .setEstimatorType(EstimationType::Kalman)
       .setSensorModel(SensorType::Constant);
 
