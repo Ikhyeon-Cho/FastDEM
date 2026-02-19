@@ -19,16 +19,17 @@
 namespace fastdem {
 
 void applyInpainting(ElevationMap& map, int max_iterations,
-                     int min_valid_neighbors) {
-  // Ensure inpainted layer exists
-  if (!map.exists(layer::elevation_inpainted)) {
-    map.add(layer::elevation_inpainted, NAN);
+                     int min_valid_neighbors, bool inplace) {
+  const char* output = inplace ? layer::elevation : layer::elevation_inpainted;
+
+  // Ensure output layer exists
+  if (!map.exists(output)) {
+    map.add(output, NAN);
   }
 
-  // Copy elevation to inpainted layer
-  const auto& elevation = map.get(layer::elevation);
-  auto& inpainted = map.get(layer::elevation_inpainted);
-  inpainted = elevation;
+  // Copy elevation to output layer (no-op when inplace)
+  auto& inpainted = map.get(output);
+  if (!inplace) inpainted = map.get(layer::elevation);
 
   // 8-connected neighbor offsets
   constexpr int dr[] = {-1, -1, -1, 0, 0, 1, 1, 1};

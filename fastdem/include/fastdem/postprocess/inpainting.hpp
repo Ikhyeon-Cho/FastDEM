@@ -22,14 +22,14 @@ namespace fastdem {
 /**
  * @brief Fills NaN holes in elevation using neighbor averaging.
  *
- * Results stored in elevation_inpainted layer (original unchanged).
- *
  * @param map Height map to process
  * @param max_iterations Maximum number of fill passes (default: 3)
  * @param min_valid_neighbors Minimum valid neighbors to fill a cell (default: 2)
+ * @param inplace If true, writes to elevation layer directly.
+ *                If false, writes to elevation_inpainted layer (original unchanged).
  */
 void applyInpainting(ElevationMap& map, int max_iterations = 3,
-                     int min_valid_neighbors = 2);
+                     int min_valid_neighbors = 2, bool inplace = false);
 
 }  // namespace fastdem
 
