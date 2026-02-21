@@ -29,9 +29,9 @@
 
 * **Fast** — Real-time on embedded CPUs. Single thread, without GPU.
 * **Lightweight** — Minimal dependencies. No OpenCV, PCL, or Open3D.
-* **Library-First** — Clean C++ API, not a ROS node. Online (with TF) or offline (explicit transforms) support.
+* **Library-First** — Clean C++ API, not a ROS node. Scan-sequential mapping with transform providers or explicit transforms.
 * **Sensor-Aware** — Physics-based uncertainty models for LiDAR and RGB-D.
-* **Multiple Estimators** — Kalman Filter, Welford Mean, P² Quantile.
+* **Multiple Estimators** — Kalman Filter (parametric), P² Quantile (non-parametric).
 * **Local + Global Mapping** — Robot-centric or map-centric modes.
 * **Post-processing functions** — Raycasting, Inpainting, Spike removal, Uncertainty fusion, etc.
 

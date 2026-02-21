@@ -20,14 +20,7 @@
 #include "fastdem/postprocess/feature_extraction.hpp"
 #include "fastdem/postprocess/inpainting.hpp"
 
-// Local config struct for benchmark inpainting variants (not part of public API)
-namespace fastdem::config {
-struct Inpainting {
-  bool enabled = false;
-  int max_iterations = 3;
-  int min_valid_neighbors = 2;
-};
-}  // namespace fastdem::config
+#include "fastdem/config/postprocess.hpp"
 #include "fastdem/postprocess/spatial_smoothing.hpp"
 #include "fastdem/postprocess/uncertainty_fusion.hpp"
 
@@ -82,7 +75,7 @@ void addKalmanLayers(ElevationMap& map) {
 
   map.add(layer::upper_bound, NAN);
   map.add(layer::lower_bound, NAN);
-  map.add(layer::uncertainty_range, NAN);
+  map.add("uncertainty_range", NAN);
   map.add(layer::elevation_min, elev);
   map.add(layer::elevation_max, elev);
 }
@@ -911,7 +904,7 @@ int main() {
         [&]() {
           map.get(layer::upper_bound).setConstant(NAN);
           map.get(layer::lower_bound).setConstant(NAN);
-          map.get(layer::uncertainty_range).setConstant(NAN);
+          map.get("uncertainty_range").setConstant(NAN);
           applyUncertaintyFusion(map, cfg);
         },
         30);

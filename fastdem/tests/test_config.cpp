@@ -38,7 +38,6 @@ TEST(ConfigLoadTest, LoadDefaultYaml) {
 
   EXPECT_EQ(cfg.mapping.estimation_type, EstimationType::Kalman);
   EXPECT_EQ(cfg.sensor_model.type, SensorType::LiDAR);
-  EXPECT_EQ(cfg.rasterization.method, RasterMethod::Max);
   EXPECT_TRUE(cfg.raycasting.enabled);
 }
 
@@ -60,12 +59,12 @@ TEST(ConfigLoadTest, EmptyYamlUsesDefaults) {
 TEST(ConfigLoadTest, PartialYamlPreservesDefaults) {
   auto path = writeTempYaml(
       "mapping:\n"
-      "  type: welford\n",
+      "  type: p2_quantile\n",
       "test_partial.yaml");
   auto cfg = loadConfig(path);
 
   // Specified value loaded
-  EXPECT_EQ(cfg.mapping.estimation_type, EstimationType::Welford);
+  EXPECT_EQ(cfg.mapping.estimation_type, EstimationType::P2Quantile);
 
   // Unspecified values remain at defaults
   Config defaults;
@@ -77,10 +76,6 @@ TEST(ConfigLoadTest, AllEstimationTypes) {
   auto kalman = loadConfig(
       writeTempYaml("mapping:\n  type: kalman_filter\n", "test_kalman.yaml"));
   EXPECT_EQ(kalman.mapping.estimation_type, EstimationType::Kalman);
-
-  auto welford = loadConfig(
-      writeTempYaml("mapping:\n  type: welford\n", "test_welford.yaml"));
-  EXPECT_EQ(welford.mapping.estimation_type, EstimationType::Welford);
 
   auto p2 = loadConfig(
       writeTempYaml("mapping:\n  type: p2_quantile\n", "test_p2.yaml"));
@@ -99,20 +94,6 @@ TEST(ConfigLoadTest, AllSensorTypes) {
   auto constant = loadConfig(
       writeTempYaml("sensor_model:\n  type: constant\n", "test_const.yaml"));
   EXPECT_EQ(constant.sensor_model.type, SensorType::Constant);
-}
-
-TEST(ConfigLoadTest, AllRasterMethods) {
-  auto max_cfg = loadConfig(
-      writeTempYaml("rasterization:\n  method: max\n", "test_rast_max.yaml"));
-  EXPECT_EQ(max_cfg.rasterization.method, RasterMethod::Max);
-
-  auto min_cfg = loadConfig(
-      writeTempYaml("rasterization:\n  method: min\n", "test_rast_min.yaml"));
-  EXPECT_EQ(min_cfg.rasterization.method, RasterMethod::Min);
-
-  auto mean_cfg = loadConfig(
-      writeTempYaml("rasterization:\n  method: mean\n", "test_rast_mean.yaml"));
-  EXPECT_EQ(mean_cfg.rasterization.method, RasterMethod::Mean);
 }
 
 TEST(ConfigLoadTest, KalmanParameters) {
@@ -143,16 +124,6 @@ TEST(ConfigValidationTest, KalmanMinVarGeMaxVarThrows) {
       "    min_variance: 0.1\n"
       "    max_variance: 0.001\n",
       "test_kalman_inv.yaml");
-  EXPECT_THROW(loadConfig(path), std::invalid_argument);
-}
-
-TEST(ConfigValidationTest, QuantileLowerGtUpperThrows) {
-  auto path = writeTempYaml(
-      "uncertainty_fusion:\n"
-      "  enabled: true\n"
-      "  quantile_lower: 0.99\n"
-      "  quantile_upper: 0.01\n",
-      "test_quant_inv.yaml");
   EXPECT_THROW(loadConfig(path), std::invalid_argument);
 }
 

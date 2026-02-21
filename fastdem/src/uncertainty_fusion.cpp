@@ -105,26 +105,17 @@ void applyUncertaintyFusion(ElevationMap& map,
                             const config::UncertaintyFusion& config) {
   if (!config.enabled) return;
 
-  // Validate required layers
-  if (!map.exists(layer::elevation) || !map.exists(layer::variance)) {
+  // Validate required layers (bounds from estimator finalize)
+  if (!map.exists(layer::upper_bound) || !map.exists(layer::lower_bound)) {
     spdlog::warn(
-        "[UncertaintyFusion] Missing required layers (elevation, variance).");
+        "[UncertaintyFusion] Missing required layers (upper_bound, "
+        "lower_bound).");
     return;
   }
 
-  // Ensure output layers exist
-  if (!map.exists(layer::upper_bound)) map.add(layer::upper_bound, NAN);
-  if (!map.exists(layer::lower_bound)) map.add(layer::lower_bound, NAN);
-  if (!map.exists(layer::uncertainty_range)) {
-    map.add(layer::uncertainty_range, NAN);
-  }
-
   // Get layer references
-  const auto& state_mat = map.get(layer::elevation);
-  const auto& variance_mat = map.get(layer::variance);
   auto& upper_mat = map.get(layer::upper_bound);
   auto& lower_mat = map.get(layer::lower_bound);
-  auto& range_mat = map.get(layer::uncertainty_range);
 
   const auto idx = map.indexer();
   const auto neighbors = idx.circleNeighbors(config.search_radius);
@@ -136,7 +127,6 @@ void applyUncertaintyFusion(ElevationMap& map,
   // Buffers for double-buffering (copy existing values as fallback)
   Eigen::MatrixXf upper_buffer = upper_mat;
   Eigen::MatrixXf lower_buffer = lower_mat;
-  Eigen::MatrixXf range_buffer = range_mat;
 
   // Two separate ECDFs for lower and upper bounds
   SimpleWeightedECDF lower_ecdf;
@@ -148,11 +138,12 @@ void applyUncertaintyFusion(ElevationMap& map,
     for (int col = 0; col < idx.cols; ++col) {
       auto [r, c] = idx(row, col);
 
-      const float center_h = state_mat(r, c);
-      const float center_var = variance_mat(r, c);
+      const float center_upper = upper_mat(r, c);
+      const float center_lower = lower_mat(r, c);
 
       // Skip invalid cells
-      if (!std::isfinite(center_h) || center_var <= 0.0f) continue;
+      if (!std::isfinite(center_upper) || !std::isfinite(center_lower))
+        continue;
 
       lower_ecdf.clear();
       upper_ecdf.clear();
@@ -163,26 +154,26 @@ void applyUncertaintyFusion(ElevationMap& map,
         if (!idx.contains(row + dr, col + dc)) continue;
         auto [nr, nc] = idx(row + dr, col + dc);
 
-        const float neighbor_h = state_mat(nr, nc);
-        const float neighbor_var = variance_mat(nr, nc);
+        const float neighbor_upper = upper_mat(nr, nc);
+        const float neighbor_lower = lower_mat(nr, nc);
 
         // Skip invalid neighbors
-        if (!std::isfinite(neighbor_h) || neighbor_var <= 0.0f) continue;
+        if (!std::isfinite(neighbor_upper) || !std::isfinite(neighbor_lower))
+          continue;
 
         // Spatial weight (Gaussian distance decay)
-        const float w_spatial =
-            std::exp(-dist_sq * inv_2sigma_spatial_sq);
+        const float w_spatial = std::exp(-dist_sq * inv_2sigma_spatial_sq);
 
-        // Inverse variance weight (confident cells dominate)
+        // Inverse range weight (narrow bounds = more certain → higher weight)
         constexpr float epsilon = 1e-4f;
-        const float w_variance = 1.0f / (neighbor_var + epsilon);
+        const float range = neighbor_upper - neighbor_lower;
+        const float w_range = 1.0f / (range + epsilon);
 
-        const float weight = w_spatial * w_variance;
+        const float weight = w_spatial * w_range;
 
-        // Add to separate distributions (mean ± 2σ)
-        const float sigma = std::sqrt(neighbor_var);
-        lower_ecdf.add(neighbor_h - 2.0f * sigma, weight);
-        upper_ecdf.add(neighbor_h + 2.0f * sigma, weight);
+        // Add estimator-computed bounds directly to ECDF
+        lower_ecdf.add(neighbor_lower, weight);
+        upper_ecdf.add(neighbor_upper, weight);
 
         ++valid_count;
       }
@@ -194,7 +185,6 @@ void applyUncertaintyFusion(ElevationMap& map,
         if (std::isfinite(lower) && std::isfinite(upper)) {
           upper_buffer(r, c) = upper;
           lower_buffer(r, c) = lower;
-          range_buffer(r, c) = upper - lower;
         }
       }
     }
@@ -203,7 +193,6 @@ void applyUncertaintyFusion(ElevationMap& map,
   // Copy buffers to output
   upper_mat = upper_buffer;
   lower_mat = lower_buffer;
-  range_mat = range_buffer;
 }
 
 }  // namespace fastdem

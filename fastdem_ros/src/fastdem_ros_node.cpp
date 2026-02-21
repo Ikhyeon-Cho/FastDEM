@@ -77,11 +77,13 @@ class MappingNode {
     auto tf = std::make_shared<TFBridge>(cfg_.tf.base_frame, cfg_.tf.map_frame);
     tf->setMaxWaitTime(cfg_.tf.max_wait_time);
     tf->setMaxStaleTime(cfg_.tf.max_stale_time);
-    mapper_->setTransformSystem(tf);
+    mapper_->setTransformProvider(tf);
 
-    // Register callback to publish processed cloud
-    mapper_->setProcessedCloudCallback(
+    // Register callbacks to publish intermediate clouds
+    mapper_->onPreprocessed(
         [this](const PointCloud& cloud) { publishProcessedScan(cloud); });
+    mapper_->onRasterized(
+        [this](const PointCloud& cloud) { publishRasterizedScan(cloud); });
   }
 
   void setupPublishersAndSubscribers() {
@@ -89,6 +91,7 @@ class MappingNode {
     sub_scan_ = nh_.subscribe(cfg_.topics.input_scan, 10, &MappingNode::scanCallback, this);
     
     pub_scan_         = nh_.advertise<sensor_msgs::PointCloud2>("mapping/scan", 1);
+    pub_rasterized_   = nh_.advertise<sensor_msgs::PointCloud2>("mapping/rasterized", 1);
     pub_map_          = nh_.advertise<sensor_msgs::PointCloud2>("mapping/map", 1);
     pub_gridmap_      = nh_.advertise<grid_map_msgs::GridMap>("mapping/gridmap", 1);
     pub_boundary_     = nh_.advertise<visualization_msgs::Marker>("mapping/boundary", 1);
@@ -107,7 +110,7 @@ class MappingNode {
     static bool first_scan = true;
     if (first_scan) {
       spdlog::info("First scan received. Mapping started...");
-      if (cfg_.pipeline.uncertainty_fusion.enabled || cfg_.inpainting.enabled ||
+      if (cfg_.uncertainty_fusion.enabled || cfg_.inpainting.enabled ||
           cfg_.feature_extraction.enabled)
         timer_post_process_ =
             nh_.createTimer(ros::Duration(1.0 / cfg_.topics.post_process_rate),
@@ -125,13 +128,13 @@ class MappingNode {
     {
       std::shared_lock lock(map_mutex_);
       if (!map_.exists(layer::elevation)) return;
-      map_raw =
-          map_.snapshot({layer::elevation, layer::variance});
+      map_raw = map_.snapshot(
+          {layer::elevation, layer::upper_bound, layer::lower_bound});
     }
 
     // Post-processing on snapshot (lock-free)
-    if (cfg_.pipeline.uncertainty_fusion.enabled)
-      applyUncertaintyFusion(map_raw, cfg_.pipeline.uncertainty_fusion);
+    if (cfg_.uncertainty_fusion.enabled)
+      applyUncertaintyFusion(map_raw, cfg_.uncertainty_fusion);
     if (cfg_.inpainting.enabled)
       applyInpainting(map_raw, cfg_.inpainting.max_iterations,
                       cfg_.inpainting.min_valid_neighbors, /*inplace=*/true);
@@ -139,6 +142,11 @@ class MappingNode {
       applyFeatureExtraction(map_raw,
                              cfg_.feature_extraction.analysis_radius,  //
                              cfg_.feature_extraction.min_valid_neighbors);
+
+    // Compute derived layer for visualization
+    grid_map::Matrix range_mat =
+        map_raw.get(layer::upper_bound) - map_raw.get(layer::lower_bound);
+    map_raw.add("uncertainty_range", range_mat);
 
     // Publish
     if (pub_post_map_.getNumSubscribers() > 0)
@@ -169,6 +177,11 @@ class MappingNode {
     pub_scan_.publish(nanopcl::to(cloud));
   }
 
+  void publishRasterizedScan(const PointCloud& cloud) {
+    if (pub_rasterized_.getNumSubscribers() == 0) return;
+    pub_rasterized_.publish(nanopcl::to(cloud));
+  }
+
   void printNodeSummary() const {
     spdlog::info("");
     spdlog::info("===== FastDEM Mapping Node =====");
@@ -190,6 +203,7 @@ class MappingNode {
   // ROS handles
   ros::Subscriber sub_scan_;
   ros::Publisher pub_scan_;
+  ros::Publisher pub_rasterized_;
   ros::Publisher pub_map_;
   ros::Publisher pub_gridmap_;
   ros::Publisher pub_boundary_;

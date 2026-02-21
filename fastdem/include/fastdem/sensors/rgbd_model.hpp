@@ -60,7 +60,7 @@ class RGBDSensorModel : public SensorModel {
   RGBDSensorModel(float normal_a = 0.001f, float normal_b = 0.002f,
                   float normal_c = 0.4f, float lateral_factor = 0.001f);
 
-  Eigen::Matrix3f computeSensorCovariance(
+  Eigen::Matrix3f computeCovariance(
       const Eigen::Vector3f& point_sensor) const override;
 
  private:
@@ -79,11 +79,11 @@ inline RGBDSensorModel::RGBDSensorModel(float normal_a, float normal_b,
       normal_c_(normal_c),
       lateral_factor_(lateral_factor) {}
 
-inline Eigen::Matrix3f RGBDSensorModel::computeSensorCovariance(
+inline Eigen::Matrix3f RGBDSensorModel::computeCovariance(
     const Eigen::Vector3f& point_sensor) const {
   const float depth = point_sensor.z();
 
-  if (depth < 1e-3f) {
+  if (depth <= 0.0f) {
     return Eigen::Matrix3f::Identity() * fallback_variance_;
   }
 

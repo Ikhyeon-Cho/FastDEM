@@ -19,6 +19,10 @@
 
 namespace fastdem {
 
+namespace layer {
+constexpr auto elevation_inpainted = "elevation_inpainted";
+}  // namespace layer
+
 /**
  * @brief Fills NaN holes in elevation using neighbor averaging.
  *

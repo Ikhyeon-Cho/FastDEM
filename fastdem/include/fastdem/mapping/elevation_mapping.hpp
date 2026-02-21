@@ -1,71 +1,64 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2024 Ikhyeon Cho <tre0430@korea.ac.kr>
 
-/*
- * elevation_mapping.hpp
- *
- * Elevation mapping: updates all map layers from rasterized point cloud.
- *
- *  Created on: Feb 2025
- *      Author: Ikhyeon Cho
- *   Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
- *       Email: tre0430@korea.ac.kr
- */
-
 #ifndef FASTDEM_MAPPING_ELEVATION_MAPPING_HPP
 #define FASTDEM_MAPPING_ELEVATION_MAPPING_HPP
 
+#include <limits>
 #include <memory>
 #include <variant>
 
 #include "fastdem/config/mapping.hpp"
 #include "fastdem/elevation_map.hpp"
+#include "fastdem/mapping/grid_index_hash.hpp"
 #include "fastdem/mapping/kalman_estimation.hpp"
-#include "fastdem/mapping/mean_estimation.hpp"
 #include "fastdem/mapping/quantile_estimation.hpp"
 #include "fastdem/point_types.hpp"
 
 namespace fastdem {
 
-/**
- * @brief Updates all ElevationMap layers from rasterized points.
- *
- * Handles map movement (LOCAL mode), cell index calculation, and layer updates
- * for elevation (via HeightEstimator variant), intensity, and color.
- *
- * @code
- *   auto mapping = ElevationMapping::create(map, config);
- *   auto rasterized = rasterization.process(cloud, map);
- *   mapping->update(rasterized, robot_position);
- * @endcode
- */
+/// Scan-sequential elevation mapping.
+/// Updates map layers via temporal height estimation (Kalman or P² quantile).
 class ElevationMapping {
  public:
-  using Config = config::Mapping;
-  using HeightEstimator =
-      std::variant<MeanEstimation, KalmanEstimation, QuantileEstimation>;
+  using HeightEstimator = std::variant<Kalman, P2Quantile>;
 
-  ElevationMapping(ElevationMap& map, const Config& cfg);
+  /// Per-cell observation from a single scan.
+  struct CellObservation {
+    float min_z = std::numeric_limits<float>::max();
+    float min_z_var = 0.0f;
+    float max_z = std::numeric_limits<float>::lowest();
+    float max_intensity = std::numeric_limits<float>::lowest();
+    float color_packed = 0.0f;
+    bool has_intensity = false;
+    bool has_color = false;
+  };
 
-  /**
-   * @brief Update map layers from rasterized point cloud.
-   *
-   * In LOCAL mode, moves map center to robot_position before updating.
-   * In GLOBAL mode, robot_position is ignored.
-   *
-   * @param rasterized Points from Rasterization::process()
-   * @param robot_position Robot position in world frame (used in LOCAL mode)
-   */
-  void update(const PointCloud& rasterized,
-              const Eigen::Vector2d& robot_position);
+  using CellObservations = CellMap<CellObservation>;
+
+  ElevationMapping(ElevationMap& map, const config::Mapping& cfg);
+
+  /// Main api: rasterize + estimate in one call. Returns cell observations.
+  CellObservations update(const PointCloud& cloud,
+                          const Eigen::Vector2d& robot_position);
+
+  /// Bin points into per-cell observations.
+  CellObservations rasterize(const PointCloud& cloud);
+
+  /// Apply height estimation to map layers (elevation, variance, bounds).
+  void estimate(const CellObservations& obs);
 
  private:
+  void updateMinMax(const CellObservations& obs);
+  void updateObstacle(const CellObservations& obs);
+  void updateIntensity(const CellObservations& obs);
+  void updateColor(const CellObservations& obs);
+
   ElevationMap& map_;
-  Config cfg_;
+  config::Mapping cfg_;
   HeightEstimator height_estimator_;
 };
 
-/// Factory function for consistent creation pattern
 inline std::unique_ptr<ElevationMapping> createElevationMapping(
     ElevationMap& map, const config::Mapping& cfg) {
   return std::make_unique<ElevationMapping>(map, cfg);

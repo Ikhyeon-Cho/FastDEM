@@ -30,10 +30,9 @@ namespace fastdem {
  * Sensor models compute measurement uncertainty based on sensor
  * characteristics. The interface is covariance-based:
  *
- *   1. computeSensorCovariance(point_sensor) → 3x3 covariance in sensor frame
- *   2. computeSensorCovariances(cloud) → batch version, stores in cloud
- *
- * Use projectToHeightVariance() (free function) to get σ_z² in map frame.
+ *   1. computeCovariance(point) → 3x3 covariance for a single point
+ *   2. computeCovariances(cloud) → batch version, returns cloud with
+ *      covariance channel populated (pass by value; use std::move to avoid copy)
  */
 class SensorModel {
  public:
@@ -45,17 +44,16 @@ class SensorModel {
    * @param point_sensor Point position in sensor frame
    * @return Covariance matrix Σ_sensor (3x3, symmetric positive semi-definite)
    */
-  virtual Eigen::Matrix3f computeSensorCovariance(
+  virtual Eigen::Matrix3f computeCovariance(
       const Eigen::Vector3f& point_sensor) const = 0;
 
   /**
    * @brief Compute and store covariances for entire cloud.
    *
-   * Enables covariance channel in the cloud and populates it.
-   *
-   * @param cloud_sensor Point cloud in sensor frame (modified in place)
+   * @param cloud_sensor Point cloud in sensor frame (taken by value)
+   * @return Cloud with covariance channel populated
    */
-  virtual void computeSensorCovariances(PointCloud& cloud_sensor) const;
+  virtual PointCloud computeCovariances(PointCloud cloud_sensor) const;
 };
 
 /**
@@ -68,26 +66,28 @@ class ConstantUncertaintyModel : public SensorModel {
  public:
   explicit ConstantUncertaintyModel(float uncertainty = 0.1f);
 
-  Eigen::Matrix3f computeSensorCovariance(
+  Eigen::Matrix3f computeCovariance(
       const Eigen::Vector3f& p) const override;
 
  private:
   float variance_;
 };
 
-inline void SensorModel::computeSensorCovariances(PointCloud& scan) const {
+inline PointCloud SensorModel::computeCovariances(
+    PointCloud scan) const {
   scan.useCovariance();
   auto& covs = scan.covariances();
 
   for (size_t i = 0; i < scan.size(); ++i) {
-    covs[i] = computeSensorCovariance(scan.point(i));
+    covs[i] = computeCovariance(scan.point(i));
   }
+  return scan;
 }
 
 inline ConstantUncertaintyModel::ConstantUncertaintyModel(float uncertainty)
     : variance_(uncertainty * uncertainty) {}
 
-inline Eigen::Matrix3f ConstantUncertaintyModel::computeSensorCovariance(
+inline Eigen::Matrix3f ConstantUncertaintyModel::computeCovariance(
     const Eigen::Vector3f& /*point_sensor*/) const {
   return Eigen::Matrix3f::Identity() * variance_;
 }

@@ -6,12 +6,6 @@
  *
  * Height estimation using P² quantile algorithm.
  * Provides robust height estimation for skewed measurement distributions.
- *
- *  Created on: Jan 2025
- *      Author: Ikhyeon Cho
- *   Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
- *       Email: tre0430@korea.ac.kr
- *
  * Reference: Jain & Chlamtac (1985), "The P² Algorithm for Dynamic
  *            Calculation of Quantiles and Histograms Without Storing
  *            Observations"
@@ -26,6 +20,19 @@
 #include "fastdem/elevation_map.hpp"
 
 namespace fastdem {
+
+namespace layer {
+constexpr auto p2_q0 = "_p2_q0";
+constexpr auto p2_q1 = "_p2_q1";
+constexpr auto p2_q2 = "_p2_q2";
+constexpr auto p2_q3 = "_p2_q3";
+constexpr auto p2_q4 = "_p2_q4";
+constexpr auto p2_n0 = "_p2_n0";
+constexpr auto p2_n1 = "_p2_n1";
+constexpr auto p2_n2 = "_p2_n2";
+constexpr auto p2_n3 = "_p2_n3";
+constexpr auto p2_n4 = "_p2_n4";
+}  // namespace layer
 
 /**
  * @brief Elevation layer updater using P² quantile estimation.
@@ -42,23 +49,23 @@ namespace fastdem {
  *
  * Usage:
  * @code
- *   QuantileEstimation p2_elev(config);
- *   p2_elev.initialize(map);
+ *   P2Quantile p2_elev(config);
+ *   p2_elev.ensureLayers(map);  // once
+ *   p2_elev.bind(map);          // each frame
  *   for (const auto& point : cloud) {
  *     p2_elev.update(index, point, variance);
  *   }
- *   p2_elev.finalize();
+ *   p2_elev.computeBounds();
  * @endcode
  */
-class QuantileEstimation {
+class P2Quantile {
  public:
   /**
    * @brief Default constructor with standard quantile markers.
    *
    * Default markers at {1%, 16%, 50%, 84%, 99%} for robust bounds estimation.
    */
-  QuantileEstimation()
-      : QuantileEstimation(0.01f, 0.16f, 0.50f, 0.84f, 0.99f, 3, 0.0f) {}
+  P2Quantile() : P2Quantile(0.01f, 0.16f, 0.50f, 0.84f, 0.99f, 3, 0.0f) {}
 
   /**
    * @brief Construct with P² quantile parameters.
@@ -72,8 +79,8 @@ class QuantileEstimation {
    * @param max_sample_count Maximum sample count for fading memory (0 =
    * disabled)
    */
-  QuantileEstimation(float dn0, float dn1, float dn2, float dn3, float dn4,
-                     int elevation_marker, float max_sample_count = 0.0f)
+  P2Quantile(float dn0, float dn1, float dn2, float dn3, float dn4,
+             int elevation_marker, float max_sample_count = 0.0f)
       : elevation_marker_(elevation_marker),
         max_sample_count_(max_sample_count) {
     dn_[0] = dn0;
@@ -83,48 +90,32 @@ class QuantileEstimation {
     dn_[4] = dn4;
   }
 
-  /**
-   * @brief Initialize P² layers on the height map.
-   *
-   * Creates all layers (core + P² markers + derived) eagerly and caches
-   * matrix pointers.
-   *
-   * @param map Height map to initialize layers on
-   */
-  void initialize(ElevationMap& map) {
-    // Common output layers
-    if (!map.exists(layer::elevation)) map.add(layer::elevation, NAN);
-    if (!map.exists(layer::elevation_min)) map.add(layer::elevation_min, NAN);
-    if (!map.exists(layer::elevation_max)) map.add(layer::elevation_max, NAN);
+  /// Create required layers on the map. Call once before first update.
+  void ensureLayers(ElevationMap& map) {
     if (!map.exists(layer::variance)) map.add(layer::variance, NAN);
-    if (!map.exists(layer::sample_count)) map.add(layer::sample_count, 0.0f);
+    if (!map.exists(layer::n_points)) map.add(layer::n_points, 0.0f);
 
-    // P² marker height layers (q[0-4])
     if (!map.exists(layer::p2_q0)) map.add(layer::p2_q0, NAN);
     if (!map.exists(layer::p2_q1)) map.add(layer::p2_q1, NAN);
     if (!map.exists(layer::p2_q2)) map.add(layer::p2_q2, NAN);
     if (!map.exists(layer::p2_q3)) map.add(layer::p2_q3, NAN);
     if (!map.exists(layer::p2_q4)) map.add(layer::p2_q4, NAN);
 
-    // P² marker position layers (n[0-4])
     if (!map.exists(layer::p2_n0)) map.add(layer::p2_n0, 0.0f);
     if (!map.exists(layer::p2_n1)) map.add(layer::p2_n1, 1.0f);
     if (!map.exists(layer::p2_n2)) map.add(layer::p2_n2, 2.0f);
     if (!map.exists(layer::p2_n3)) map.add(layer::p2_n3, 3.0f);
     if (!map.exists(layer::p2_n4)) map.add(layer::p2_n4, 4.0f);
 
-    // Derived layers (eagerly created for finalize)
     if (!map.exists(layer::upper_bound)) map.add(layer::upper_bound, NAN);
     if (!map.exists(layer::lower_bound)) map.add(layer::lower_bound, NAN);
-    if (!map.exists(layer::uncertainty_range))
-      map.add(layer::uncertainty_range, NAN);
+  }
 
-    // Cache all matrix pointers
+  /// Cache matrix pointers. Call each frame before update loop.
+  void bind(ElevationMap& map) {
     elevation_mat_ = &map.get(layer::elevation);
-    min_mat_ = &map.get(layer::elevation_min);
-    max_mat_ = &map.get(layer::elevation_max);
     variance_mat_ = &map.get(layer::variance);
-    count_mat_ = &map.get(layer::sample_count);
+    count_mat_ = &map.get(layer::n_points);
 
     q_mat_[0] = &map.get(layer::p2_q0);
     q_mat_[1] = &map.get(layer::p2_q1);
@@ -140,68 +131,34 @@ class QuantileEstimation {
 
     upper_mat_ = &map.get(layer::upper_bound);
     lower_mat_ = &map.get(layer::lower_bound);
-    range_mat_ = &map.get(layer::uncertainty_range);
   }
 
-  /**
-   * @brief Update P² quantile estimate at a cell.
-   *
-   * @param index Pre-computed cell index
-   * @param measurement Height measurement value [m]
-   * @param measurement_variance Measurement variance (unused in P²)
-   */
+  /// Update P² quantile estimate at a single cell.
   void update(const grid_map::Index& index, float measurement,
               [[maybe_unused]] float measurement_variance) {
     const int i = index(0);
     const int j = index(1);
     const float x = measurement;
-
     float& count = (*count_mat_)(i, j);
 
-    // Extract marker values for this cell
     float q[5] = {(*q_mat_[0])(i, j), (*q_mat_[1])(i, j), (*q_mat_[2])(i, j),
                   (*q_mat_[3])(i, j), (*q_mat_[4])(i, j)};
     float n[5] = {(*n_mat_[0])(i, j), (*n_mat_[1])(i, j), (*n_mat_[2])(i, j),
                   (*n_mat_[3])(i, j), (*n_mat_[4])(i, j)};
 
-    // Run P² algorithm
     updateP2(q, n, count, x);
 
-    // Write back marker values
-    (*q_mat_[0])(i, j) = q[0];
-    (*q_mat_[1])(i, j) = q[1];
-    (*q_mat_[2])(i, j) = q[2];
-    (*q_mat_[3])(i, j) = q[3];
-    (*q_mat_[4])(i, j) = q[4];
+    for (int k = 0; k < 5; ++k) {
+      (*q_mat_[k])(i, j) = q[k];
+      (*n_mat_[k])(i, j) = n[k];
+    }
 
-    (*n_mat_[0])(i, j) = n[0];
-    (*n_mat_[1])(i, j) = n[1];
-    (*n_mat_[2])(i, j) = n[2];
-    (*n_mat_[3])(i, j) = n[3];
-    (*n_mat_[4])(i, j) = n[4];
-
-    // Track true min/max (separate from P² quantiles)
-    float& min_z = (*min_mat_)(i, j);
-    float& max_z = (*max_mat_)(i, j);
-    if (std::isnan(min_z) || x < min_z) min_z = x;
-    if (std::isnan(max_z) || x > max_z) max_z = x;
-
-    // Elevation: q[marker] when P² is active, latest measurement otherwise
     const int elev_idx = std::clamp(elevation_marker_, 0, 4);
     (*elevation_mat_)(i, j) = (count >= 5.0f) ? q[elev_idx] : x;
   }
 
-  /**
-   * @brief Compute derived statistics after all updates.
-   *
-   * Maps P² markers to standard output layers:
-   * - elevation: q[elevation_marker] (default: 84th percentile)
-   * - elevation_min/max: True min/max (tracked in update())
-   * - lower_bound: q[0] (1st percentile)
-   * - upper_bound: q[4] (99th percentile)
-   * - variance: ((q[3] - q[1]) / 2)² (σ² estimate)
-   */
-  void finalize() {
+  /// Compute bounds and variance from accumulated quantiles.
+  void computeBounds() {
     const int elev_idx = std::clamp(elevation_marker_, 0, 4);
 
     // Vectorized computation using Eigen arrays
@@ -209,7 +166,6 @@ class QuantileEstimation {
     auto q3 = q_mat_[3]->array();
 
     // Map markers to output layers
-    // Note: min_mat_, max_mat_ are already set in update() (true min/max)
     *elevation_mat_ = *q_mat_[elev_idx];  // elevation = q[elev_idx]
 
     // σ estimate: (84th - 16th) / 2
@@ -220,42 +176,25 @@ class QuantileEstimation {
     // assumption)
     *lower_mat_ = *q_mat_[0];  // 1st percentile
     *upper_mat_ = *q_mat_[4];  // 99th percentile
-    range_mat_->array() = upper_mat_->array() - lower_mat_->array();
   }
 
  private:
-  /**
-   * @brief P² algorithm core update.
-   *
-   * @param q Marker heights (5 elements)
-   * @param n Marker positions (5 elements)
-   * @param count Sample count (updated in-place)
-   * @param x New measurement
-   */
+  /// P² algorithm core. See Jain & Chlamtac (1985).
   void updateP2(float* q, float* n, float& count, float x) {
-    // Handle uninitialized cell (NaN count after grid_map::move())
-    if (std::isnan(count) || count < 0.0f) {
-      count = 0.0f;
-    }
+    if (std::isnan(count) || count < 0.0f) count = 0.0f;
 
-    // Phase 1: Initialization (first 5 observations)
+    // Phase 1: collect first 5 observations
     if (count < 5.0f) {
-      int idx = static_cast<int>(count);
-      q[idx] = x;
+      q[static_cast<int>(count)] = x;
       count += 1.0f;
-
-      // Sort and initialize positions after 5th observation
       if (count >= 5.0f) {
         std::sort(q, q + 5);
-        for (int i = 0; i < 5; ++i) {
-          n[i] = static_cast<float>(i);
-        }
+        for (int i = 0; i < 5; ++i) n[i] = static_cast<float>(i);
       }
       return;
     }
 
-    // Phase 2: P² update
-    // Step 1: Find cell k where x falls, update extreme markers if needed
+    // Phase 2: find interval k, update extreme markers
     int k;
     if (x < q[0]) {
       q[0] = x;
@@ -273,74 +212,41 @@ class QuantileEstimation {
       k = 3;
     }
 
-    // Step 2: Increment positions of markers k+1 to 4
-    for (int i = k + 1; i < 5; ++i) {
-      n[i] += 1.0f;
-    }
+    for (int i = k + 1; i < 5; ++i) n[i] += 1.0f;
 
-    // Step 3: Update desired positions
     float n_prime[5];
-    for (int i = 0; i < 5; ++i) {
-      n_prime[i] = dn_[i] * count;
-    }
+    for (int i = 0; i < 5; ++i) n_prime[i] = dn_[i] * count;
 
     count += 1.0f;
 
-    // Fading Memory: rescale count and marker positions when exceeding limit
-    // This maintains responsiveness to new data in dynamic environments
+    // Fading memory: rescale to maintain responsiveness in dynamic environments
     if (max_sample_count_ > 0.0f && count > max_sample_count_) {
       const float scale = max_sample_count_ / count;
-      for (int i = 0; i < 5; ++i) {
-        n[i] *= scale;
-      }
+      for (int i = 0; i < 5; ++i) n[i] *= scale;
       count = max_sample_count_;
     }
 
-    // Step 4: Adjust marker heights for markers 1, 2, 3
+    // Adjust interior markers (1, 2, 3)
     for (int i = 1; i < 4; ++i) {
       float d = n_prime[i] - n[i];
-
       if ((d >= 1.0f && n[i + 1] - n[i] > 1.0f) ||
           (d <= -1.0f && n[i - 1] - n[i] < -1.0f)) {
         int sign = (d >= 0.0f) ? 1 : -1;
-
-        // Try parabolic interpolation
         float q_new = parabolic(q, n, i, sign);
-
-        // Check if parabolic result is valid (monotonicity)
-        if (q[i - 1] < q_new && q_new < q[i + 1]) {
-          q[i] = q_new;
-        } else {
-          // Fallback to linear interpolation
-          q[i] = linear(q, n, i, sign);
-        }
-
+        q[i] = (q[i - 1] < q_new && q_new < q[i + 1]) ? q_new
+                                                      : linear(q, n, i, sign);
         n[i] += static_cast<float>(sign);
       }
     }
   }
 
-  /**
-   * @brief Parabolic (P²) interpolation for marker adjustment.
-   */
   float parabolic(const float* q, const float* n, int i, int sign) const {
-    float qi = q[i];
-    float qim1 = q[i - 1];
-    float qip1 = q[i + 1];
-    float ni = n[i];
-    float nim1 = n[i - 1];
-    float nip1 = n[i + 1];
     float s = static_cast<float>(sign);
-
-    float term1 = (ni - nim1 + s) * (qip1 - qi) / (nip1 - ni);
-    float term2 = (nip1 - ni - s) * (qi - qim1) / (ni - nim1);
-
-    return qi + s * (term1 + term2) / (nip1 - nim1);
+    float t1 = (n[i] - n[i - 1] + s) * (q[i + 1] - q[i]) / (n[i + 1] - n[i]);
+    float t2 = (n[i + 1] - n[i] - s) * (q[i] - q[i - 1]) / (n[i] - n[i - 1]);
+    return q[i] + s * (t1 + t2) / (n[i + 1] - n[i - 1]);
   }
 
-  /**
-   * @brief Linear interpolation fallback for marker adjustment.
-   */
   float linear(const float* q, const float* n, int i, int sign) const {
     int j = i + sign;
     return q[i] + static_cast<float>(sign) * (q[j] - q[i]) / (n[j] - n[i]);
@@ -352,8 +258,6 @@ class QuantileEstimation {
 
   // Common output layer matrices
   grid_map::Matrix* elevation_mat_ = nullptr;
-  grid_map::Matrix* min_mat_ = nullptr;
-  grid_map::Matrix* max_mat_ = nullptr;
   grid_map::Matrix* variance_mat_ = nullptr;
   grid_map::Matrix* count_mat_ = nullptr;
 
@@ -364,7 +268,6 @@ class QuantileEstimation {
   // Derived layer matrices
   grid_map::Matrix* upper_mat_ = nullptr;
   grid_map::Matrix* lower_mat_ = nullptr;
-  grid_map::Matrix* range_mat_ = nullptr;
 };
 
 }  // namespace fastdem

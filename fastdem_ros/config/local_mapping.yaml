@@ -27,7 +27,7 @@ logger:
 # ─── Mapping Pipeline ───────────────────────────────
 mapping_mode: "local"  # local | global
 mapping:
-  type: "kalman_filter"      # kalman_filter | welford | p2_quantile
+  type: "kalman_filter"      # kalman_filter | p2_quantile
   kalman:
     min_variance: 0.0001     # [m²]
     max_variance: 0.01       # [m²]
@@ -40,9 +40,6 @@ mapping:
     dn4: 1.0
     elevation_marker: 3
     max_sample_count: 0
-
-rasterization:
-  method: "max"              # max | min | mean
 
 sensor_model:
   type: "lidar"              # constant | lidar | rgbd
@@ -57,10 +54,11 @@ sensor_model:
 # ─── Post-processing ───────────────────────────────
 raycasting:
   enabled: true
-  endpoint_margin: 2
-  ray_height_margin: 0.05    # [m]
-  dynamic_height_threshold: 0.5  # [m]
-  vote_threshold: 10
+  height_conflict_threshold: 0.05  # [m]
+  log_odds_observed: 0.4
+  log_odds_ghost: 0.2
+  log_odds_max: 2.0
+  clear_threshold: -1.0
 
 inpainting:
   enabled: true
@@ -68,7 +66,7 @@ inpainting:
   min_valid_neighbors: 2
 
 uncertainty_fusion:
-  enabled: true
+  enabled: false
   search_radius: 0.15       # [m]
   spatial_sigma: 0.05        # [m]
   quantile_lower: 0.01
@@ -76,6 +74,6 @@ uncertainty_fusion:
   min_valid_neighbors: 3
 
 feature_extraction:
-  enabled: true
+  enabled: false
   analysis_radius: 0.3       # [m]
   min_valid_neighbors: 4

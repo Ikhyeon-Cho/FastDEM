@@ -8,9 +8,6 @@
 #include <yaml-cpp/yaml.h>
 
 #include <fastdem/config/fastdem.hpp>
-#include <fastdem/config/feature_extraction.hpp>
-#include <fastdem/config/inpainting.hpp>
-#include <fastdem/config/point_filter.hpp>
 #include <string>
 
 namespace fastdem::ros1 {
@@ -43,6 +40,7 @@ struct NodeConfig {
   fastdem::MappingMode mapping_mode{fastdem::MappingMode::LOCAL};
   config::PointFilter point_filter;
   config::Inpainting inpainting;
+  config::UncertaintyFusion uncertainty_fusion;
   config::FeatureExtraction feature_extraction;
 
   /// Parse everything from a single YAML file.
@@ -98,6 +96,15 @@ struct NodeConfig {
       read(n, "enabled", cfg.inpainting.enabled);
       read(n, "max_iterations", cfg.inpainting.max_iterations);
       read(n, "min_valid_neighbors", cfg.inpainting.min_valid_neighbors);
+    }
+    if (auto n = yaml["uncertainty_fusion"]) {
+      read(n, "enabled", cfg.uncertainty_fusion.enabled);
+      read(n, "search_radius", cfg.uncertainty_fusion.search_radius);
+      read(n, "spatial_sigma", cfg.uncertainty_fusion.spatial_sigma);
+      read(n, "quantile_lower", cfg.uncertainty_fusion.quantile_lower);
+      read(n, "quantile_upper", cfg.uncertainty_fusion.quantile_upper);
+      read(n, "min_valid_neighbors",
+           cfg.uncertainty_fusion.min_valid_neighbors);
     }
     if (auto n = yaml["feature_extraction"]) {
       read(n, "enabled", cfg.feature_extraction.enabled);

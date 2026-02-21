@@ -4,12 +4,14 @@
 /*
  * test_fastdem_integration.cpp
  *
- * End-to-end integration tests for the FastDEM class (offline mode).
+ * End-to-end integration tests for the FastDEM class (explicit transforms).
  */
 
 #include <gtest/gtest.h>
 
 #include "fastdem/fastdem.hpp"
+#include "fastdem/mapping/kalman_estimation.hpp"
+#include "fastdem/postprocess/raycasting.hpp"
 
 using namespace fastdem;
 
@@ -109,15 +111,14 @@ TEST_F(FastDEMIntegrationTest, RaycastingRunsWithoutCrash) {
       .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
-      .enableRaycasting(true)
-      .enableUncertaintyFusion(true);
+      .enableRaycasting(true);
 
   auto cloud = makeGroundCloud(0.5f);
   mapper.integrate(cloud, T_base_sensor, T_world_base);
 
   // Verify no crash and expected output layers exist
   EXPECT_TRUE(map.exists(layer::elevation));
-  EXPECT_TRUE(map.exists(layer::raycasting_upper_bound));
+  EXPECT_TRUE(map.exists(layer::raycasting));
   EXPECT_TRUE(map.exists(layer::variance));
   // Kalman-internal layers
   EXPECT_TRUE(map.exists(layer::kalman_p));

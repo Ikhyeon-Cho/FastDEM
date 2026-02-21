@@ -23,7 +23,7 @@ namespace fastdem::ros1 {
  * - Calibration: Static sensor-to-robot transform (Sensor -> Base)
  * - Odometry: Dynamic robot localization (Base -> World)
  *
- * Register with FastDEM via setTransformSystem(bridge).
+ * Register with FastDEM via setTransformProvider(bridge).
  */
 class TFBridge : public Calibration, public Odometry {
  public:

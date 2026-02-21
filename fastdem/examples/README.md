@@ -15,10 +15,10 @@ make -j$(nproc)
 
 | # | Name | Difficulty | Description |
 |---|------|------------|-------------|
-| 01 | hello_mapping | Basic | Map setup, offline integration, elevation access |
+| 01 | hello_mapping | Basic | Map setup, explicit-transform integration, elevation access |
 | 02 | config_loading | Basic | YAML configuration loading (LOCAL / GLOBAL presets) |
-| 03 | estimator_comparison | Intermediate | Compare Kalman, Welford, and P2 Quantile estimators |
-| 04 | transform_provider | Intermediate | Online mode with Calibration / Odometry interfaces |
+| 03 | estimator_comparison | Intermediate | Compare Kalman and P2 Quantile estimators |
+| 04 | transform_provider | Intermediate | Integration with Calibration / Odometry interfaces |
 
 ## Run
 

@@ -1,21 +1,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2024 Ikhyeon Cho <tre0430@korea.ac.kr>
 
-/*
- * fastdem.cpp
- *
- *  Created on: Feb 2025
- *      Author: Ikhyeon Cho
- *   Institute: Korea Univ. ISR (Intelligent Systems & Robotics) Lab
- *       Email: tre0430@korea.ac.kr
- */
-
 #include "fastdem/fastdem.hpp"
 
 #include <spdlog/spdlog.h>
 
+#include <cmath>
+#include <limits>
 #include <nanopcl/filters/crop.hpp>
+#include <nanopcl/filters/downsample.hpp>
 
+#include "fastdem/mapping/grid_index_hash.hpp"
 #include "fastdem/postprocess/raycasting.hpp"
 
 namespace fastdem {
@@ -24,7 +19,6 @@ FastDEM::FastDEM(ElevationMap& map) : FastDEM(map, Config{}) {}
 
 FastDEM::FastDEM(ElevationMap& map, const Config& cfg) : map_(map), cfg_(cfg) {
   sensor_model_ = createSensorModel(cfg_.sensor_model);
-  rasterization_ = createRasterization(cfg_.rasterization);
   mapping_ = createElevationMapping(map_, cfg_.mapping);
 }
 
@@ -48,6 +42,11 @@ FastDEM& FastDEM::setSensorModel(SensorType type) {
   return *this;
 }
 
+FastDEM& FastDEM::setSensorModel(std::unique_ptr<SensorModel> model) {
+  sensor_model_ = std::move(model);
+  return *this;
+}
+
 FastDEM& FastDEM::setHeightFilter(float z_min, float z_max) noexcept {
   cfg_.point_filter.z_min = z_min;
   cfg_.point_filter.z_max = z_max;
@@ -65,35 +64,30 @@ FastDEM& FastDEM::enableRaycasting(bool enabled) noexcept {
   return *this;
 }
 
-FastDEM& FastDEM::enableUncertaintyFusion(bool enabled) noexcept {
-  cfg_.uncertainty_fusion.enabled = enabled;
-  return *this;
-}
-
-FastDEM& FastDEM::setCalibrationSystem(
+FastDEM& FastDEM::setCalibrationProvider(
     std::shared_ptr<Calibration> calibration) {
   calibration_ = std::move(calibration);
   return *this;
 }
 
-FastDEM& FastDEM::setOdometrySystem(std::shared_ptr<Odometry> odometry) {
+FastDEM& FastDEM::setOdometryProvider(std::shared_ptr<Odometry> odometry) {
   odometry_ = std::move(odometry);
   return *this;
 }
 
-bool FastDEM::hasTransformSystems() const noexcept {
+bool FastDEM::hasTransformProvider() const noexcept {
   return calibration_ != nullptr && odometry_ != nullptr;
 }
 
 bool FastDEM::integrate(std::shared_ptr<PointCloud> cloud) {
-  // Online-specific validation
+  // Transform provider validation
   if (!calibration_ || !odometry_) {
     spdlog::error(
-        "[FastDEM] Online mode requires transform systems. "
-        "Call setTransformSystem() or "
-        "setCalibrationSystem()/setOdometrySystem() first, "
-        "or use integrate(cloud, T_base_sensor, T_world_base) for offline "
-        "mode.");
+        "[FastDEM] Transform providers not set. "
+        "Call setTransformProvider() or "
+        "setCalibrationProvider()/setOdometryProvider() first, or "
+        "use integrate(cloud, T_base_sensor, T_world_base) for explicit "
+        "transforms.");
     return false;
   }
 
@@ -127,7 +121,7 @@ bool FastDEM::integrate(std::shared_ptr<PointCloud> cloud) {
 bool FastDEM::integrate(const PointCloud& cloud,
                         const Eigen::Isometry3d& T_base_sensor,
                         const Eigen::Isometry3d& T_world_base) {
-  // Offline-specific validation
+  // Explicit-transform validation
   if (cloud.empty()) return false;
 
   return integrateImpl(cloud, T_base_sensor, T_world_base);
@@ -136,112 +130,84 @@ bool FastDEM::integrate(const PointCloud& cloud,
 bool FastDEM::integrateImpl(const PointCloud& cloud,
                             const Eigen::Isometry3d& T_base_sensor,
                             const Eigen::Isometry3d& T_world_base) {
-  // 1. Compute sensor covariances (in sensor frame, before filtering)
-  PointCloud points = cloud;
-  sensor_model_->computeSensorCovariances(points);
-
-  // 2. Preprocess scan (transform + filter, covariances preserved)
-  const auto& z_min = cfg_.point_filter.z_min;
-  const auto& z_max = cfg_.point_filter.z_max;
-  const auto& range_min = cfg_.point_filter.range_min;
-  const auto& range_max = cfg_.point_filter.range_max;
-
-  points = nanopcl::transformCloud(std::move(points), T_base_sensor);
-  points = nanopcl::filters::cropZ(std::move(points), z_min, z_max);
-  points = nanopcl::filters::cropRange(std::move(points), range_min, range_max);
-  points = nanopcl::transformCloud(std::move(points), T_world_base,
-                                   map_.getFrameId());
+  // 1. Preprocess scan (covariance + transform + filter)
+  PointCloud points = preprocessScan(cloud, T_base_sensor, T_world_base);
   if (points.empty()) return false;
-  if (processed_cloud_callback_) {
-    processed_cloud_callback_(points);
+  if (on_preprocessed_) {
+    on_preprocessed_(points);
   }
 
-  // 3. Transform covariances to map frame
-  if (points.hasCovariance()) {
-    const Eigen::Matrix3f R =
-        (T_world_base * T_base_sensor).rotation().cast<float>();
-    for (size_t i : points.indices()) {
-      auto& cov = points.covariance(i);
-      cov = R * cov * R.transpose();
-    }
-  }
-
-  // 4. Rasterize
-  PointCloud rasterized_points = rasterization_->process(points, map_);
-  if (rasterized_points.empty()) return false;
-
-  // 5. Map update
+  // 2. Map update (rasterize + estimate)
   const Eigen::Vector2d robot_position = T_world_base.translation().head<2>();
-  mapping_->update(rasterized_points, robot_position);
+  auto obs = mapping_->update(points, robot_position);
 
-  // 6. Raycasting (requires per-scan sensor origin)
+  // 2.1 Build rasterized scan (one point per cell, z = min_z)
+  if (on_rasterized_ && !obs.empty()) {
+    on_rasterized_(toPointCloud(obs));
+  }
+
+  // 3. (Optional) Raycasting - dynamic object removal
   if (cfg_.raycasting.enabled) {
     const Eigen::Vector3f sensor_origin =
         (T_world_base * T_base_sensor).translation().cast<float>();
-    applyRaycasting(map_, points, sensor_origin, cfg_.raycasting);
+    auto ray_scan = nanopcl::filters::voxelGrid(
+        points, map_.getResolution(), nanopcl::filters::VoxelMode::ANY);
+    applyRaycasting(map_, ray_scan, sensor_origin, cfg_.raycasting);
   }
 
   return true;
 }
 
-void FastDEM::setProcessedCloudCallback(ProcessedCloudCallback callback) {
-  processed_cloud_callback_ = std::move(callback);
-}
+PointCloud FastDEM::preprocessScan(const PointCloud& cloud,
+                                   const Eigen::Isometry3d& T_base_sensor,
+                                   const Eigen::Isometry3d& T_world_base) {
+  const auto& z_min = cfg_.point_filter.z_min;
+  const auto& z_max = cfg_.point_filter.z_max;
+  const auto& range_min = cfg_.point_filter.range_min;
+  const auto& range_max = cfg_.point_filter.range_max;
 
-// ─── rasterize ──────────────────────────────────────────────────────────
+  // Compute covariances in sensor frame, then transform + filter
+  PointCloud points = sensor_model_->computeCovariances(cloud);
+  points = nanopcl::transformCloud(std::move(points), T_base_sensor);
+  points = nanopcl::filters::cropRange(std::move(points), range_min, range_max);
+  points = nanopcl::filters::cropZ(std::move(points), z_min, z_max);
 
-void rasterize(const PointCloud& cloud, ElevationMap& map,
-               RasterMethod method) {
-  if (cloud.empty()) return;
-
-  Rasterization raster(method);
-  PointCloud rasterized = raster.process(cloud, map);
-
-  const bool has_intensity =
-      rasterized.hasIntensity() && map.exists(layer::intensity);
-
-  for (size_t i : rasterized.indices()) {
-    auto pt = rasterized.point(i);
-    grid_map::Index index;
-    if (!map.getIndex(grid_map::Position(pt.x(), pt.y()), index)) continue;
-
-    map.at(layer::elevation, index) = pt.z();
-
-    if (has_intensity) {
-      map.at(layer::intensity, index) = rasterized.intensity(i);
-    }
-  }
-}
-
-ElevationMap rasterize(const PointCloud& cloud, float resolution,
-                       RasterMethod method) {
-  if (cloud.empty()) return {};
-
-  // Compute XY bounding box
-  float min_x = std::numeric_limits<float>::max();
-  float min_y = std::numeric_limits<float>::max();
-  float max_x = std::numeric_limits<float>::lowest();
-  float max_y = std::numeric_limits<float>::lowest();
-
-  for (size_t i : cloud.indices()) {
-    auto pt = cloud.point(i);
-    min_x = std::min(min_x, pt.x());
-    min_y = std::min(min_y, pt.y());
-    max_x = std::max(max_x, pt.x());
-    max_y = std::max(max_y, pt.y());
+  // Transform to map frame
+  points = nanopcl::transformCloud(std::move(points), T_world_base,
+                                   map_.getFrameId());
+  // Rotate covariances to map frame (R·Σ·Rᵀ)
+  const Eigen::Matrix3f R =
+      (T_world_base * T_base_sensor).rotation().cast<float>();
+  for (size_t i : points.indices()) {
+    auto& cov = points.covariance(i);
+    cov = R * cov * R.transpose();
   }
 
-  // Add one cell margin so edge points are inside the map
-  float width = max_x - min_x + resolution;
-  float height = max_y - min_y + resolution;
+  return points;
+}
 
-  ElevationMap map;
-  map.setGeometry(width, height, resolution);
-  map.setPosition(
-      grid_map::Position((min_x + max_x) / 2.0, (min_y + max_y) / 2.0));
+void FastDEM::onPreprocessed(CloudCallback callback) {
+  on_preprocessed_ = std::move(callback);
+}
 
-  rasterize(cloud, map, method);
-  return map;
+void FastDEM::onRasterized(CloudCallback callback) {
+  on_rasterized_ = std::move(callback);
+}
+
+PointCloud FastDEM::toPointCloud(
+    const ElevationMapping::CellObservations& observations) const {
+  PointCloud cloud;
+  cloud.resize(observations.size());
+  cloud.setFrameId(map_.getFrameId());
+
+  size_t i = 0;
+  for (const auto& [index, cell] : observations) {
+    grid_map::Position pos;
+    map_.getPosition(index, pos);
+    cloud.point(i) = Eigen::Vector3f(pos.x(), pos.y(), cell.min_z);
+    ++i;
+  }
+  return cloud;
 }
 
 }  // namespace fastdem

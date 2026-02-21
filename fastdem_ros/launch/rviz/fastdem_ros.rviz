@@ -5,7 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Status1
-        - /ElevationMap (Raw)1
+        - /ElevationMap (Raw)2
       Splitter Ratio: 0.6332417726516724
     Tree Height: 1707
   - Class: rviz/Selection
@@ -98,7 +98,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -113,14 +113,14 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Class: grid_map_rviz_plugin/GridMap
       Color: 200; 200; 200
       Color Layer: elevation
       Color Transformer: GridMapLayer
-      Enabled: false
+      Enabled: true
       Height Layer: elevation
       Height Transformer: GridMapLayer
       History Length: 1
@@ -134,7 +134,7 @@ Visualization Manager:
       Topic: /fastdem/mapping/gridmap
       Unreliable: false
       Use Rainbow: true
-      Value: false
+      Value: true
     - Class: rviz/Marker
       Enabled: false
       Marker Topic: /fastdem/mapping/boundary

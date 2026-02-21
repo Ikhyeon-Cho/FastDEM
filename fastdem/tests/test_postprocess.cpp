@@ -70,17 +70,10 @@ TEST_F(PostprocessTest, InpaintingPreservesExistingValues) {
 // ─── Raycasting ─────────────────────────────────────────────────────────────
 
 TEST_F(PostprocessTest, RaycastingCreatesLayers) {
-  // Add required layers
-  map.add(layer::elevation_min, NAN);
-  map.add(layer::elevation_max, NAN);
-
-  // Populate a few cells with elevation data
+  // Populate a cell with elevation data
   auto center = centerIndex();
   map.at(layer::elevation, center) = 1.0f;
-  map.at(layer::elevation_min, center) = 0.5f;
-  map.at(layer::elevation_max, center) = 1.5f;
 
-  // Create a cloud with one downward point
   PointCloud cloud;
   cloud.add(1.0f, 0.0f, 0.5f);  // Below sensor
 
@@ -88,28 +81,20 @@ TEST_F(PostprocessTest, RaycastingCreatesLayers) {
 
   config::Raycasting cfg;
   cfg.enabled = true;
-  cfg.vote_threshold = 10;
   applyRaycasting(map, cloud, sensor_origin, cfg);
 
-  EXPECT_TRUE(map.exists(layer::raycasting_upper_bound));
-  EXPECT_TRUE(map.exists(layer::conflict_count));
+  EXPECT_TRUE(map.exists(layer::ghost_removal));
+  EXPECT_TRUE(map.exists(layer::raycasting));
+  EXPECT_TRUE(map.exists(layer::visibility_logodds));
 }
 
 TEST_F(PostprocessTest, RaycastingClearsGhostCell) {
-  // Setup: ghost cell at position (2.0, 0.0) with high elevation
-  map.add(layer::elevation_min, NAN);
-  map.add(layer::elevation_max, NAN);
-
+  // Ghost cell at (2,0) with high elevation — no measurement reaches it
   grid_map::Index ghost_idx;
   ASSERT_TRUE(map.getIndex(grid_map::Position(2.0, 0.0), ghost_idx));
-
-  // Ghost cell: high elevation with large variation (passes dynamic_height_threshold)
   map.at(layer::elevation, ghost_idx) = 10.0f;
-  map.at(layer::elevation_min, ghost_idx) = 0.0f;
-  map.at(layer::elevation_max, ghost_idx) = 10.0f;
 
-  // Cloud target beyond the ghost cell — ray from sensor (0,0,5) to (4,0,0)
-  // passes through the ghost cell at (2,0)
+  // Ray from sensor (0,0,5) to target (4,0,0) passes through ghost cell
   PointCloud cloud;
   cloud.add(4.0f, 0.0f, 0.0f);
 
@@ -117,14 +102,74 @@ TEST_F(PostprocessTest, RaycastingClearsGhostCell) {
 
   config::Raycasting cfg;
   cfg.enabled = true;
-  cfg.endpoint_margin = 0;
-  cfg.ray_height_margin = 0.05f;
-  cfg.dynamic_height_threshold = 0.5f;
-  cfg.vote_threshold = 1;  // Clear after 1 conflict
+
+  cfg.height_conflict_threshold = 0.05f;
+  cfg.log_odds_ghost = 0.5f;
+  cfg.clear_threshold = -0.4f;  // Clear after 1 conflict (0 - 0.5 = -0.5 < -0.4)
 
   applyRaycasting(map, cloud, sensor_origin, cfg);
 
-  // Ghost cell should have been cleared (elevation = NaN)
+  EXPECT_TRUE(std::isnan(map.at(layer::elevation, ghost_idx)));
+  EXPECT_FLOAT_EQ(map.at(layer::ghost_removal, ghost_idx), 1.0f);
+}
+
+TEST_F(PostprocessTest, RaycastingObservedCellProtected) {
+  // Cell at (2,0) has elevation AND is directly measured this frame
+  grid_map::Index cell_idx;
+  ASSERT_TRUE(map.getIndex(grid_map::Position(2.0, 0.0), cell_idx));
+  map.at(layer::elevation, cell_idx) = 2.0f;
+
+  // Target at (4,0,0): ray passes through (2,0) cell
+  // Also add a measurement landing directly on (2,0)
+  PointCloud cloud;
+  cloud.add(4.0f, 0.0f, 0.0f);
+  cloud.add(2.0f, 0.0f, 0.3f);  // Direct observation at cell (2,0)
+
+  Eigen::Vector3f sensor_origin(0.0f, 0.0f, 5.0f);
+
+  config::Raycasting cfg;
+  cfg.enabled = true;
+
+  cfg.height_conflict_threshold = 0.05f;
+  cfg.log_odds_observed = 0.8f;
+  cfg.log_odds_ghost = 0.5f;
+  cfg.clear_threshold = -0.4f;
+
+  applyRaycasting(map, cloud, sensor_origin, cfg);
+
+  // Cell was observed (+0.8) then ghost evidence (-0.5) → logodds = +0.3 > -0.4
+  // → NOT cleared
+  EXPECT_FALSE(std::isnan(map.at(layer::elevation, cell_idx)));
+}
+
+TEST_F(PostprocessTest, RaycastingGhostRequiresAccumulation) {
+  // Ghost cell — logodds should decrease gradually over multiple frames
+  grid_map::Index ghost_idx;
+  ASSERT_TRUE(map.getIndex(grid_map::Position(2.0, 0.0), ghost_idx));
+  map.at(layer::elevation, ghost_idx) = 10.0f;
+
+  PointCloud cloud;
+  cloud.add(4.0f, 0.0f, 0.0f);
+
+  Eigen::Vector3f sensor_origin(0.0f, 0.0f, 5.0f);
+
+  config::Raycasting cfg;
+  cfg.enabled = true;
+
+  cfg.height_conflict_threshold = 0.05f;
+  cfg.log_odds_ghost = 0.2f;
+  cfg.clear_threshold = -0.9f;  // Needs 5+ conflicts to clear
+
+  // Frame 1-4: logodds decreases but stays above threshold
+  for (int i = 0; i < 4; ++i) {
+    map.at(layer::elevation, ghost_idx) = 10.0f;  // Restore if cleared
+    applyRaycasting(map, cloud, sensor_origin, cfg);
+  }
+  // logodds = 0 - 4*0.2 = -0.8 > -0.9 → not yet cleared
+  EXPECT_FALSE(std::isnan(map.at(layer::elevation, ghost_idx)));
+
+  // Frame 5: logodds = -0.8 - 0.2 = -1.0 < -0.9 → cleared
+  applyRaycasting(map, cloud, sensor_origin, cfg);
   EXPECT_TRUE(std::isnan(map.at(layer::elevation, ghost_idx)));
 }
 
@@ -137,23 +182,27 @@ TEST_F(PostprocessTest, RaycastingDisabledIsNoOp) {
   cfg.enabled = false;
   applyRaycasting(map, cloud, sensor_origin, cfg);
 
-  EXPECT_FALSE(map.exists(layer::raycasting_upper_bound));
-  EXPECT_FALSE(map.exists(layer::conflict_count));
+  EXPECT_FALSE(map.exists(layer::ghost_removal));
+  EXPECT_FALSE(map.exists(layer::raycasting));
+  EXPECT_FALSE(map.exists(layer::visibility_logodds));
 }
 
 // ─── Uncertainty Fusion ─────────────────────────────────────────────────────
 
 TEST_F(PostprocessTest, UncertaintyFusionComputesBounds) {
-  // Add required layers and populate a block of cells
-  map.add(layer::variance, NAN);
+  // Add required layers (estimator-computed bounds) and populate a block
+  map.add(layer::upper_bound, NAN);
+  map.add(layer::lower_bound, NAN);
 
   auto center = centerIndex();
-  // Fill a 3x3 block with valid elevation and variance
+  // Fill a 3x3 block with valid bounds
   for (int dr = -1; dr <= 1; ++dr) {
     for (int dc = -1; dc <= 1; ++dc) {
       grid_map::Index idx(center(0) + dr, center(1) + dc);
-      map.at(layer::elevation, idx) = 1.0f + 0.1f * dr;
-      map.at(layer::variance, idx) = 0.01f;
+      float h = 1.0f + 0.1f * dr;
+      map.at(layer::elevation, idx) = h;
+      map.at(layer::upper_bound, idx) = h + 0.2f;
+      map.at(layer::lower_bound, idx) = h - 0.2f;
     }
   }
 
@@ -166,32 +215,24 @@ TEST_F(PostprocessTest, UncertaintyFusionComputesBounds) {
   cfg.min_valid_neighbors = 1;
   applyUncertaintyFusion(map, cfg);
 
-  ASSERT_TRUE(map.exists(layer::upper_bound));
-  ASSERT_TRUE(map.exists(layer::lower_bound));
-  ASSERT_TRUE(map.exists(layer::uncertainty_range));
-
   float upper = map.at(layer::upper_bound, center);
   float lower = map.at(layer::lower_bound, center);
-  float range = map.at(layer::uncertainty_range, center);
 
   EXPECT_TRUE(std::isfinite(upper));
   EXPECT_TRUE(std::isfinite(lower));
-  EXPECT_TRUE(std::isfinite(range));
   EXPECT_GT(upper, lower);
-  EXPECT_NEAR(range, upper - lower, 1e-6f);
 }
 
-TEST_F(PostprocessTest, UncertaintyFusionSkipsMissingVariance) {
-  // elevation exists (from SetUp) but no variance layer — should return
+TEST_F(PostprocessTest, UncertaintyFusionSkipsMissingBounds) {
+  // No upper_bound/lower_bound layers — should return without crashing
   config::UncertaintyFusion cfg;
   cfg.enabled = true;
 
-  // Remove elevation data and ensure variance doesn't exist
   ElevationMap empty_map;
   empty_map.setGeometry(10.0f, 10.0f, 0.5f);
   applyUncertaintyFusion(empty_map, cfg);
 
-  EXPECT_FALSE(empty_map.exists(layer::upper_bound));
+  // Should not crash — just return early
 }
 
 TEST_F(PostprocessTest, UncertaintyFusionDisabledIsNoOp) {

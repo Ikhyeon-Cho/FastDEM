@@ -77,6 +77,16 @@ if(FASTDEM_BUILD_EXAMPLES)
 endif()
 
 ###########
+## Tools ##
+###########
+
+option(FASTDEM_BUILD_TOOLS "Build fastdem CLI tools" OFF)
+
+if(FASTDEM_BUILD_TOOLS)
+  add_subdirectory(tools)
+endif()
+
+###########
 ## Tests ##
 ###########
 

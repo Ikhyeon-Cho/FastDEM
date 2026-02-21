@@ -17,69 +17,31 @@
 #define FASTDEM_ELEVATION_MAP_HPP
 
 #include <cmath>
+#include <grid_map_core/grid_map_core.hpp>
 #include <initializer_list>
 #include <string>
 #include <vector>
-#include <grid_map_core/grid_map_core.hpp>
 
 namespace fastdem {
 
-// ─── Layer name constants ───────────────────────────────────────────────────
-
 namespace layer {
-
-// Common output layers (all estimators guarantee these)
 constexpr auto elevation = "elevation";
 constexpr auto elevation_min = "elevation_min";
 constexpr auto elevation_max = "elevation_max";
-constexpr auto elevation_max_smoothed = "elevation_max_smoothed";
-constexpr auto variance = "variance";          // sample variance (measurement spread)
-constexpr auto sample_count = "sample_count";
+constexpr auto variance = "variance";
+constexpr auto n_points = "n_points";
 constexpr auto upper_bound = "upper_bound";
 constexpr auto lower_bound = "lower_bound";
-constexpr auto uncertainty_range = "uncertainty_range";  // upper - lower
 
-// Kalman-internal layers (not for visualization/post-processing)
-constexpr auto kalman_p = "kalman_p";        // filter covariance P
-constexpr auto sample_mean = "sample_mean";  // Welford running mean
-
-// Mean estimator derived statistics
-constexpr auto standard_error = "standard_error";
-constexpr auto conf_interval_95 = "conf_interval_95";
-
-// Layers for P2 quantile estimator (marker heights)
-constexpr auto p2_q0 = "p2_q0";  // 1st percentile (lower bound)
-constexpr auto p2_q1 = "p2_q1";  // 16th percentile
-constexpr auto p2_q2 = "p2_q2";  // 50th percentile (median)
-constexpr auto p2_q3 = "p2_q3";  // 84th percentile
-constexpr auto p2_q4 = "p2_q4";  // 99th percentile (upper bound)
-// Layers for P2 quantile estimator (marker positions)
-constexpr auto p2_n0 = "p2_n0";
-constexpr auto p2_n1 = "p2_n1";
-constexpr auto p2_n2 = "p2_n2";
-constexpr auto p2_n3 = "p2_n3";
-constexpr auto p2_n4 = "p2_n4";
-
-// Derived statistics
-constexpr auto elevation_inpainted = "elevation_inpainted";
-constexpr auto conflict_count = "conflict_count";  // Raycasting temporal voting
-
-// Extension layers (add at use site when needed)
+// Per-frame layers
+constexpr auto obstacle = "obstacle";
 constexpr auto intensity = "intensity";
-constexpr auto color = "color";  // Packed RGBA for grid_map_rviz_plugin
-constexpr auto label = "label";
-constexpr auto raycasting_upper_bound = "raycasting_upper_bound";
-constexpr auto traversability = "traversability";
+constexpr auto color = "color";
 
-// Terrain feature layers
-constexpr auto step = "step";
-constexpr auto slope = "slope";
-constexpr auto roughness = "roughness";
-constexpr auto curvature = "curvature";
-constexpr auto normal_x = "normal_x";
-constexpr auto normal_y = "normal_y";
-constexpr auto normal_z = "normal_z";
-
+/// Internal layers use '_' prefix and are excluded from visualization.
+inline bool isInternal(const std::string& name) {
+  return !name.empty() && name[0] == '_';
+}
 }  // namespace layer
 
 // ─── MapIndexer ─────────────────────────────────────────────────────────────
@@ -93,24 +55,6 @@ class ElevationMap;  // forward declaration
  * with plain (row, col) loops and access Eigen matrices without knowing about
  * the underlying buffer layout.
  *
- * Usage:
- * @code
- *   const auto idx = map.indexer();
- *   const auto neighbors = idx.circleNeighbors(0.3f);
- *
- *   for (int row = 0; row < idx.rows; ++row) {
- *     for (int col = 0; col < idx.cols; ++col) {
- *       auto [r, c] = idx(row, col);
- *       float val = elev(r, c);
- *
- *       for (const auto& [dr, dc, dist_sq] : neighbors) {
- *         if (!idx.contains(row + dr, col + dc)) continue;
- *         auto [nr, nc] = idx(row + dr, col + dc);
- *         // use elev(nr, nc)
- *       }
- *     }
- *   }
- * @endcode
  */
 struct MapIndexer {
   const int rows, cols;
@@ -205,9 +149,9 @@ class ElevationMap : public grid_map::GridMap {
   ElevationMap snapshot(std::initializer_list<std::string> layers) const;
 };
 
-inline ElevationMap::ElevationMap() : grid_map::GridMap({layer::elevation}) {
-  setBasicLayers({layer::elevation});
-}
+inline ElevationMap::ElevationMap()
+    : grid_map::GridMap(
+          {layer::elevation, layer::elevation_min, layer::elevation_max}) {}
 
 inline ElevationMap::ElevationMap(float width, float height, float resolution,
                                   const std::string& frame_id)
@@ -232,7 +176,7 @@ inline bool ElevationMap::isEmpty() const {
 }
 
 inline bool ElevationMap::isEmptyAt(const grid_map::Index& index) const {
-  return !isValid(index) || std::isnan(at(layer::elevation, index));
+  return std::isnan(at(layer::elevation, index));
 }
 
 inline void ElevationMap::clearAt(const grid_map::Index& index) {
@@ -248,7 +192,6 @@ inline float ElevationMap::elevationAt(
 }
 
 inline float ElevationMap::elevationAt(const grid_map::Index& index) const {
-  if (!isValid(index)) return NAN;
   return at(layer::elevation, index);
 }
 

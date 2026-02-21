@@ -31,21 +31,19 @@ void load(const YAML::Node& node, const std::string& key, T& value) {
 }
 
 EstimationType parseEstimationType(const std::string& type) {
-  if (type == "welford") return EstimationType::Welford;
+  if (type == "kalman_filter") return EstimationType::Kalman;
   if (type == "p2_quantile") return EstimationType::P2Quantile;
+  spdlog::warn("[Config] Unknown estimation type '{}', defaulting to kalman_filter",
+               type);
   return EstimationType::Kalman;
-}
-
-RasterMethod parseRasterMethod(const std::string& method) {
-  if (method == "min") return RasterMethod::Min;
-  if (method == "mean") return RasterMethod::Mean;
-  return RasterMethod::Max;
 }
 
 SensorType parseSensorType(const std::string& type) {
   if (type == "lidar" || type == "laser") return SensorType::LiDAR;
   if (type == "rgbd") return SensorType::RGBD;
   if (type == "constant" || type == "none") return SensorType::Constant;
+  spdlog::warn("[Config] Unknown sensor_model.type '{}', defaulting to LiDAR",
+               type);
   return SensorType::LiDAR;
 }
 
@@ -75,22 +73,14 @@ Config parse(const YAML::Node& root) {
     }
   }
 
-  // Rasterization
-  if (auto n = root["rasterization"]) {
-    std::string method_str;
-    load(n, "method", method_str);
-    if (!method_str.empty())
-      cfg.rasterization.method = parseRasterMethod(method_str);
-  }
-
-  // Raycasting (temporal voting for ghost removal)
+  // Raycasting (log-odds ghost removal)
   if (auto n = root["raycasting"]) {
     load(n, "enabled", cfg.raycasting.enabled);
-    load(n, "endpoint_margin", cfg.raycasting.endpoint_margin);
-    load(n, "ray_height_margin", cfg.raycasting.ray_height_margin);
-    load(n, "dynamic_height_threshold",
-         cfg.raycasting.dynamic_height_threshold);
-    load(n, "vote_threshold", cfg.raycasting.vote_threshold);
+    load(n, "height_conflict_threshold", cfg.raycasting.height_conflict_threshold);
+    load(n, "log_odds_observed", cfg.raycasting.log_odds_observed);
+    load(n, "log_odds_ghost", cfg.raycasting.log_odds_ghost);
+    load(n, "log_odds_max", cfg.raycasting.log_odds_max);
+    load(n, "clear_threshold", cfg.raycasting.clear_threshold);
   }
 
   // Sensor model
@@ -108,17 +98,6 @@ Config parse(const YAML::Node& root) {
     load(n, "constant_uncertainty", cfg.sensor_model.constant_uncertainty);
   }
 
-  // Uncertainty fusion (bilateral filter + weighted ECDF)
-  if (auto n = root["uncertainty_fusion"]) {
-    load(n, "enabled", cfg.uncertainty_fusion.enabled);
-    load(n, "search_radius", cfg.uncertainty_fusion.search_radius);
-    load(n, "spatial_sigma", cfg.uncertainty_fusion.spatial_sigma);
-    load(n, "quantile_lower", cfg.uncertainty_fusion.quantile_lower);
-    load(n, "quantile_upper", cfg.uncertainty_fusion.quantile_upper);
-    load(n, "min_valid_neighbors",
-         cfg.uncertainty_fusion.min_valid_neighbors);
-  }
-
   return cfg;
 }
 
@@ -132,15 +111,6 @@ void validate(Config& cfg) {
         std::to_string(m.mapping.kalman.min_variance) + ") >= max_variance (" +
         std::to_string(m.mapping.kalman.max_variance) + ")");
   }
-  if (m.uncertainty_fusion.quantile_lower >
-      m.uncertainty_fusion.quantile_upper) {
-    throw std::invalid_argument(
-        "uncertainty_fusion: quantile_lower (" +
-        std::to_string(m.uncertainty_fusion.quantile_lower) +
-        ") > quantile_upper (" +
-        std::to_string(m.uncertainty_fusion.quantile_upper) + ")");
-  }
-
   // --- Non-fatal: warn and clamp ---
   auto warn_clamp = [](const std::string& name, auto& val, auto lo, auto hi) {
     if (val < lo || val > hi) {
@@ -152,19 +122,35 @@ void validate(Config& cfg) {
   };
 
   if (m.raycasting.enabled) {
-    warn_clamp("raycasting.endpoint_margin", m.raycasting.endpoint_margin, 0,
-               100);
-    if (m.raycasting.ray_height_margin <= 0.0f) {
-      spdlog::warn("[Config] raycasting.ray_height_margin ({}) must be > 0, "
+    if (m.raycasting.height_conflict_threshold <= 0.0f) {
+      spdlog::warn("[Config] raycasting.height_conflict_threshold ({}) must be > 0, "
                    "clamping to 0.05",
-                   m.raycasting.ray_height_margin);
-      m.raycasting.ray_height_margin = 0.05f;
+                   m.raycasting.height_conflict_threshold);
+      m.raycasting.height_conflict_threshold = 0.05f;
     }
-    if (m.raycasting.vote_threshold <= 0) {
-      spdlog::warn(
-          "[Config] raycasting.vote_threshold ({}) must be > 0, clamping to 1",
-          m.raycasting.vote_threshold);
-      m.raycasting.vote_threshold = 1;
+    if (m.raycasting.log_odds_observed <= 0.0f) {
+      spdlog::warn("[Config] raycasting.log_odds_observed ({}) must be > 0, "
+                   "clamping to 0.4",
+                   m.raycasting.log_odds_observed);
+      m.raycasting.log_odds_observed = 0.4f;
+    }
+    if (m.raycasting.log_odds_ghost <= 0.0f) {
+      spdlog::warn("[Config] raycasting.log_odds_ghost ({}) must be > 0, "
+                   "clamping to 0.2",
+                   m.raycasting.log_odds_ghost);
+      m.raycasting.log_odds_ghost = 0.2f;
+    }
+    if (m.raycasting.log_odds_max <= 0.0f) {
+      spdlog::warn("[Config] raycasting.log_odds_max ({}) must be > 0, "
+                   "clamping to 2.0",
+                   m.raycasting.log_odds_max);
+      m.raycasting.log_odds_max = 2.0f;
+    }
+    if (m.raycasting.clear_threshold >= 0.0f) {
+      spdlog::warn("[Config] raycasting.clear_threshold ({}) must be < 0, "
+                   "clamping to -1.0",
+                   m.raycasting.clear_threshold);
+      m.raycasting.clear_threshold = -1.0f;
     }
   }
 
@@ -217,20 +203,26 @@ void validate(Config& cfg) {
         m.sensor_model.constant_uncertainty);
     m.sensor_model.constant_uncertainty = 0.1f;
   }
-
-  if (m.uncertainty_fusion.enabled) {
-    if (m.uncertainty_fusion.search_radius <= 0.0f) {
-      spdlog::warn("[Config] uncertainty_fusion.search_radius ({}) must be > 0, "
-                   "clamping to 0.15",
-                   m.uncertainty_fusion.search_radius);
-      m.uncertainty_fusion.search_radius = 0.15f;
-    }
-    if (m.uncertainty_fusion.spatial_sigma <= 0.0f) {
-      spdlog::warn("[Config] uncertainty_fusion.spatial_sigma ({}) must be > 0, "
-                   "clamping to 0.05",
-                   m.uncertainty_fusion.spatial_sigma);
-      m.uncertainty_fusion.spatial_sigma = 0.05f;
-    }
+  if (m.sensor_model.normal_a < 0.0f) {
+    spdlog::warn("[Config] sensor.normal_a ({}) must be >= 0, clamping to 0",
+                 m.sensor_model.normal_a);
+    m.sensor_model.normal_a = 0.0f;
+  }
+  if (m.sensor_model.normal_b < 0.0f) {
+    spdlog::warn("[Config] sensor.normal_b ({}) must be >= 0, clamping to 0",
+                 m.sensor_model.normal_b);
+    m.sensor_model.normal_b = 0.0f;
+  }
+  if (m.sensor_model.normal_c < 0.0f) {
+    spdlog::warn("[Config] sensor.normal_c ({}) must be >= 0, clamping to 0",
+                 m.sensor_model.normal_c);
+    m.sensor_model.normal_c = 0.0f;
+  }
+  if (m.sensor_model.lateral_factor < 0.0f) {
+    spdlog::warn(
+        "[Config] sensor.lateral_factor ({}) must be >= 0, clamping to 0",
+        m.sensor_model.lateral_factor);
+    m.sensor_model.lateral_factor = 0.0f;
   }
 
 }

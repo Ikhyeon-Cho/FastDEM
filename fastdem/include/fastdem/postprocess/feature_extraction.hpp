@@ -8,6 +8,16 @@
 
 namespace fastdem {
 
+namespace layer {
+constexpr auto step = "step";
+constexpr auto slope = "slope";
+constexpr auto roughness = "roughness";
+constexpr auto curvature = "curvature";
+constexpr auto normal_x = "_normal_x";
+constexpr auto normal_y = "_normal_y";
+constexpr auto normal_z = "_normal_z";
+}  // namespace layer
+
 /// @brief Extract terrain features from elevation map using local PCA.
 ///
 /// For each measured cell, gathers 3D neighbor positions within

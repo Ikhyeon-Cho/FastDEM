@@ -4,12 +4,13 @@
 /*
  * test_online_mode.cpp
  *
- * Integration tests for FastDEM online mode with mock transform systems.
+ * Integration tests for FastDEM with mock transform providers.
  */
 
 #include <gtest/gtest.h>
 
 #include "fastdem/fastdem.hpp"
+#include "fastdem/postprocess/raycasting.hpp"
 
 using namespace fastdem;
 
@@ -94,15 +95,15 @@ class OnlineModeTest : public ::testing::Test {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-TEST_F(OnlineModeTest, IntegrateWithTransformSystems) {
+TEST_F(OnlineModeTest, IntegrateWithTransformProvider) {
   FastDEM mapper(map);
   mapper.setHeightFilter(-2.0f, 5.0f)
       .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
-      .setCalibrationSystem(calibration)
-      .setOdometrySystem(odometry);
+      .setCalibrationProvider(calibration)
+      .setOdometryProvider(odometry);
 
-  ASSERT_TRUE(mapper.hasTransformSystems());
+  ASSERT_TRUE(mapper.hasTransformProvider());
 
   auto cloud = makeCloud(1.0f);
   EXPECT_TRUE(mapper.integrate(cloud));
@@ -112,17 +113,17 @@ TEST_F(OnlineModeTest, IntegrateWithTransformSystems) {
   EXPECT_NEAR(map.elevationAt(center), 1.0f, 0.1f);
 }
 
-TEST_F(OnlineModeTest, SetTransformSystemTemplate) {
+TEST_F(OnlineModeTest, SetTransformProviderTemplate) {
   // MockCalibration + MockOdometry in a single object requires dual interface.
   // Test setCalibration + setOdometry separately, verify both set.
   FastDEM mapper(map);
-  EXPECT_FALSE(mapper.hasTransformSystems());
+  EXPECT_FALSE(mapper.hasTransformProvider());
 
-  mapper.setCalibrationSystem(calibration);
-  EXPECT_FALSE(mapper.hasTransformSystems());
+  mapper.setCalibrationProvider(calibration);
+  EXPECT_FALSE(mapper.hasTransformProvider());
 
-  mapper.setOdometrySystem(odometry);
-  EXPECT_TRUE(mapper.hasTransformSystems());
+  mapper.setOdometryProvider(odometry);
+  EXPECT_TRUE(mapper.hasTransformProvider());
 }
 
 TEST_F(OnlineModeTest, IntegrateWithoutTransformsFails) {
@@ -134,14 +135,14 @@ TEST_F(OnlineModeTest, IntegrateWithoutTransformsFails) {
 
 TEST_F(OnlineModeTest, NullCloudFails) {
   FastDEM mapper(map);
-  mapper.setCalibrationSystem(calibration).setOdometrySystem(odometry);
+  mapper.setCalibrationProvider(calibration).setOdometryProvider(odometry);
 
   EXPECT_FALSE(mapper.integrate(nullptr));
 }
 
 TEST_F(OnlineModeTest, EmptyCloudFails) {
   FastDEM mapper(map);
-  mapper.setCalibrationSystem(calibration).setOdometrySystem(odometry);
+  mapper.setCalibrationProvider(calibration).setOdometryProvider(odometry);
 
   auto empty = std::make_shared<PointCloud>();
   empty->setFrameId("lidar");
@@ -150,7 +151,7 @@ TEST_F(OnlineModeTest, EmptyCloudFails) {
 
 TEST_F(OnlineModeTest, MissingFrameIdFails) {
   FastDEM mapper(map);
-  mapper.setCalibrationSystem(calibration).setOdometrySystem(odometry);
+  mapper.setCalibrationProvider(calibration).setOdometryProvider(odometry);
 
   auto cloud = makeCloud(1.0f, "");  // empty frame_id
   EXPECT_FALSE(mapper.integrate(cloud));
@@ -158,7 +159,7 @@ TEST_F(OnlineModeTest, MissingFrameIdFails) {
 
 TEST_F(OnlineModeTest, UnknownSensorFrameFails) {
   FastDEM mapper(map);
-  mapper.setCalibrationSystem(calibration).setOdometrySystem(odometry);
+  mapper.setCalibrationProvider(calibration).setOdometryProvider(odometry);
 
   auto cloud = makeCloud(1.0f, "unknown_sensor");
   EXPECT_FALSE(mapper.integrate(cloud));
@@ -167,7 +168,7 @@ TEST_F(OnlineModeTest, UnknownSensorFrameFails) {
 TEST_F(OnlineModeTest, OdometryUnavailableFails) {
   FastDEM mapper(map);
   odometry->setFail(true);
-  mapper.setCalibrationSystem(calibration).setOdometrySystem(odometry);
+  mapper.setCalibrationProvider(calibration).setOdometryProvider(odometry);
 
   auto cloud = makeCloud(1.0f);
   EXPECT_FALSE(mapper.integrate(cloud));
@@ -179,8 +180,8 @@ TEST_F(OnlineModeTest, MultipleIntegrationsOnline) {
       .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
-      .setCalibrationSystem(calibration)
-      .setOdometrySystem(odometry);
+      .setCalibrationProvider(calibration)
+      .setOdometryProvider(odometry);
 
   auto cloud1 = makeCloud(1.0f);
   EXPECT_TRUE(mapper.integrate(cloud1));
@@ -205,8 +206,8 @@ TEST_F(OnlineModeTest, WithNonIdentityExtrinsic) {
   mapper.setHeightFilter(-5.0f, 15.0f)
       .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
-      .setCalibrationSystem(calibration)
-      .setOdometrySystem(odometry);
+      .setCalibrationProvider(calibration)
+      .setOdometryProvider(odometry);
 
   // Points at z=0 in sensor frame → z=1 in base frame → z=1 in world
   auto cloud = makeCloud(0.0f);
@@ -227,8 +228,8 @@ TEST_F(OnlineModeTest, WithRobotPose) {
   mapper.setHeightFilter(-5.0f, 15.0f)
       .setRangeFilter(0.0f, 20.0f)
       .setSensorModel(SensorType::Constant)
-      .setCalibrationSystem(calibration)
-      .setOdometrySystem(odometry);
+      .setCalibrationProvider(calibration)
+      .setOdometryProvider(odometry);
 
   auto cloud = makeCloud(1.0f);
   EXPECT_TRUE(mapper.integrate(cloud));
@@ -251,13 +252,12 @@ TEST_F(OnlineModeTest, RaycastingOnlineMode) {
       .setSensorModel(SensorType::Constant)
       .setEstimatorType(EstimationType::Kalman)
       .enableRaycasting(true)
-      .enableUncertaintyFusion(true)
-      .setCalibrationSystem(calibration)
-      .setOdometrySystem(odometry);
+      .setCalibrationProvider(calibration)
+      .setOdometryProvider(odometry);
 
   auto cloud = makeCloud(0.5f);
   EXPECT_TRUE(mapper.integrate(cloud));
 
   EXPECT_TRUE(map.exists(layer::elevation));
-  EXPECT_TRUE(map.exists(layer::raycasting_upper_bound));
+  EXPECT_TRUE(map.exists(layer::raycasting));
 }

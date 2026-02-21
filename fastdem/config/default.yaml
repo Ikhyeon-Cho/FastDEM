@@ -1,22 +1,18 @@
 # FastDEM Configuration
 mapping:
-  type: "kalman_filter"      # kalman_filter | welford | p2_quantile
+  type: "kalman_filter"      # kalman_filter | p2_quantile
   kalman:
     min_variance: 0.0001     # [m²] prevents over-confidence
     max_variance: 0.01       # [m²] caps uncertainty
     process_noise: 0.0       # [m²] maintains filter receptivity (0 = static terrain)
   p2:
-    dn0: 0.0                 # 0th percentile (min)
+    dn0: 0.01                # 1st percentile (soft min)
     dn1: 0.16                # 16th percentile (≈ mean - 1σ)
     dn2: 0.50                # 50th percentile (median)
     dn3: 0.84                # 84th percentile (≈ mean + 1σ)
-    dn4: 1.0                 # 100th percentile (max)
+    dn4: 0.99                # 99th percentile (soft max)
     elevation_marker: 3      # which marker to use as elevation (0-4)
     max_sample_count: 0      # fading memory (0 = disabled, 50-200 for dynamic scenes)
-
-# Rasterization (point-to-grid binning)
-rasterization:
-  method: "max"              # max | min | mean
 
 # Sensor uncertainty model (Σ_sensor → σ_z²)
 sensor_model:
@@ -32,10 +28,11 @@ sensor_model:
 # Post-processing
 raycasting:
   enabled: true
-  endpoint_margin: 2         # cells to skip before target
-  ray_height_margin: 0.05    # [m] conflict threshold above upper bound
-  dynamic_height_threshold: 0.5  # [m] min height variation for raycasting
-  vote_threshold: 10         # consecutive conflicts to clear cell
+  height_conflict_threshold: 0.05  # [m] min height diff for conflict
+  log_odds_observed: 0.4     # evidence for cell being present (measured this frame)
+  log_odds_ghost: 0.2        # evidence for cell being empty (ray passes below)
+  log_odds_max: 2.0          # upper clamp (prevents over-confidence)
+  clear_threshold: -1.0      # clear cell when logodds falls below this
 
 uncertainty_fusion:
   enabled: true

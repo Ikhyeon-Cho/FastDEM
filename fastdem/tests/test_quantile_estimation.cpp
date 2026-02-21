@@ -9,19 +9,20 @@
 
 using namespace fastdem;
 
-class QuantileEstimationTest : public ::testing::Test {
+class P2QuantileTest : public ::testing::Test {
  protected:
   ElevationMap map;
-  QuantileEstimation estimator;
+  P2Quantile estimator;
   grid_map::Index idx{0, 0};
 
   void SetUp() override {
     map.setGeometry(10.0f, 10.0f, 0.5f);
-    estimator.initialize(map);
+    estimator.ensureLayers(map);
+    estimator.bind(map);
   }
 };
 
-TEST_F(QuantileEstimationTest, InitializeCreatesLayers) {
+TEST_F(P2QuantileTest, InitializeCreatesLayers) {
   EXPECT_TRUE(map.exists(layer::p2_q0));
   EXPECT_TRUE(map.exists(layer::p2_q1));
   EXPECT_TRUE(map.exists(layer::p2_q2));
@@ -36,22 +37,22 @@ TEST_F(QuantileEstimationTest, InitializeCreatesLayers) {
   EXPECT_TRUE(map.exists(layer::lower_bound));
 }
 
-TEST_F(QuantileEstimationTest, LessThanFiveStoredOnly) {
+TEST_F(P2QuantileTest, LessThanFiveStoredOnly) {
   estimator.update(idx, 3.0f, 0.0f);
   estimator.update(idx, 1.0f, 0.0f);
   estimator.update(idx, 4.0f, 0.0f);
 
-  EXPECT_FLOAT_EQ(map.at(layer::sample_count, idx), 3.0f);
+  EXPECT_FLOAT_EQ(map.at(layer::n_points, idx), 3.0f);
 }
 
-TEST_F(QuantileEstimationTest, FiveObservationsActivatesP2) {
+TEST_F(P2QuantileTest, FiveObservationsActivatesP2) {
   estimator.update(idx, 5.0f, 0.0f);
   estimator.update(idx, 3.0f, 0.0f);
   estimator.update(idx, 1.0f, 0.0f);
   estimator.update(idx, 4.0f, 0.0f);
   estimator.update(idx, 2.0f, 0.0f);
 
-  EXPECT_FLOAT_EQ(map.at(layer::sample_count, idx), 5.0f);
+  EXPECT_FLOAT_EQ(map.at(layer::n_points, idx), 5.0f);
 
   float q0 = map.at(layer::p2_q0, idx);
   float q1 = map.at(layer::p2_q1, idx);
@@ -65,7 +66,7 @@ TEST_F(QuantileEstimationTest, FiveObservationsActivatesP2) {
   EXPECT_LE(q3, q4);
 }
 
-TEST_F(QuantileEstimationTest, MarkerMonotonicity) {
+TEST_F(P2QuantileTest, MarkerMonotonicity) {
   std::mt19937 gen(42);
   std::uniform_real_distribution<float> dist(0.0f, 10.0f);
 
@@ -85,7 +86,7 @@ TEST_F(QuantileEstimationTest, MarkerMonotonicity) {
   EXPECT_LE(q3, q4);
 }
 
-TEST_F(QuantileEstimationTest, NormalDistributionMedianApproximatesMean) {
+TEST_F(P2QuantileTest, NormalDistributionMedianApproximatesMean) {
   std::mt19937 gen(42);
   float true_mean = 5.0f;
   std::normal_distribution<float> dist(true_mean, 1.0f);
@@ -94,14 +95,14 @@ TEST_F(QuantileEstimationTest, NormalDistributionMedianApproximatesMean) {
     estimator.update(idx, dist(gen), 0.0f);
   }
 
-  estimator.finalize();
+  estimator.computeBounds();
 
   // q[2] is median (50th percentile), should approximate true mean
   float median = map.at(layer::p2_q2, idx);
   EXPECT_NEAR(median, true_mean, 0.2f);
 }
 
-TEST_F(QuantileEstimationTest, FinalizeComputesBounds) {
+TEST_F(P2QuantileTest, FinalizeComputesBounds) {
   std::mt19937 gen(42);
   std::normal_distribution<float> dist(5.0f, 1.0f);
 
@@ -109,17 +110,15 @@ TEST_F(QuantileEstimationTest, FinalizeComputesBounds) {
     estimator.update(idx, dist(gen), 0.0f);
   }
 
-  estimator.finalize();
+  estimator.computeBounds();
 
   float lower = map.at(layer::lower_bound, idx);
   float upper = map.at(layer::upper_bound, idx);
-  float range = map.at(layer::uncertainty_range, idx);
 
   EXPECT_LT(lower, upper);
-  EXPECT_NEAR(range, upper - lower, 1e-5f);
 }
 
-TEST_F(QuantileEstimationTest, ElevationWrittenInUpdate_BeforeP2) {
+TEST_F(P2QuantileTest, ElevationWrittenInUpdate_BeforeP2) {
   // Before 5 observations: elevation = latest measurement
   estimator.update(idx, 3.0f, 0.0f);
   EXPECT_FLOAT_EQ(map.at(layer::elevation, idx), 3.0f);
@@ -128,7 +127,7 @@ TEST_F(QuantileEstimationTest, ElevationWrittenInUpdate_BeforeP2) {
   EXPECT_FLOAT_EQ(map.at(layer::elevation, idx), 7.0f);
 }
 
-TEST_F(QuantileEstimationTest, ElevationWrittenInUpdate_AfterP2) {
+TEST_F(P2QuantileTest, ElevationWrittenInUpdate_AfterP2) {
   // Default elevation_marker=3 (84th percentile)
   estimator.update(idx, 1.0f, 0.0f);
   estimator.update(idx, 2.0f, 0.0f);

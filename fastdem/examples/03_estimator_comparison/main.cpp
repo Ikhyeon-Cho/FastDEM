@@ -5,7 +5,7 @@
  * 03_estimator_comparison - Height estimation algorithm comparison
  *
  * Demonstrates:
- * - Using all three estimator types (Kalman, Welford, P2Quantile)
+ * - Using both estimator types (Kalman, P2Quantile)
  * - Comparing estimation results on identical data
  * - Multiple integration passes with different noise seeds
  */
@@ -31,12 +31,11 @@ int main() {
   };
   EstimatorInfo estimators[] = {
       {EstimationType::Kalman, "Kalman"},
-      {EstimationType::Welford, "Welford"},
       {EstimationType::P2Quantile, "P2Quantile"},
   };
 
   // Create maps and mappers
-  constexpr int N = 3;
+  constexpr int N = 2;
   ElevationMap maps[N];
   std::unique_ptr<FastDEM> mappers[N];
 

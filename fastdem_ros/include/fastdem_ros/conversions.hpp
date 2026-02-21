@@ -36,12 +36,14 @@ inline grid_map_msgs::GridMap toGridMap(const fastdem::ElevationMap& map) {
   msg.info.pose.orientation.y = 0.0;
   msg.info.pose.orientation.z = 0.0;
 
-  // Layers
-  msg.layers = map.getLayers();
+  // Layers (skip internal layers not meant for visualization)
+  for (const auto& l : map.getLayers()) {
+    if (!fastdem::layer::isInternal(l)) msg.layers.push_back(l);
+  }
   msg.basic_layers = map.getBasicLayers();
 
   // Data
-  for (const auto& layer : map.getLayers()) {
+  for (const auto& layer : msg.layers) {
     std_msgs::Float32MultiArray data_array;
 
     // Layout

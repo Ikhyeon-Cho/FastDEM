@@ -45,7 +45,7 @@ class LiDARSensorModel : public SensorModel {
    */
   LiDARSensorModel(float range_noise = 0.02f, float angular_noise = 0.001f);
 
-  Eigen::Matrix3f computeSensorCovariance(
+  Eigen::Matrix3f computeCovariance(
       const Eigen::Vector3f& point_sensor) const override;
 
  private:
@@ -59,7 +59,7 @@ inline LiDARSensorModel::LiDARSensorModel(float range_noise,
                                           float angular_noise)
     : range_noise_(range_noise), angular_noise_(angular_noise) {}
 
-inline Eigen::Matrix3f LiDARSensorModel::computeSensorCovariance(
+inline Eigen::Matrix3f LiDARSensorModel::computeCovariance(
     const Eigen::Vector3f& point_sensor) const {
   const float dist_sq = point_sensor.squaredNorm();
 
