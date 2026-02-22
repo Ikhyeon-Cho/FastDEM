@@ -1,0 +1,82 @@
+# FastDEM ROS Configuration
+topics:
+  input_scan: "/points"
+  publish_rate: 10.0       # [Hz]
+  post_process_rate: 10.0   # [Hz] inpainting | feature extraction
+
+tf:
+  base_frame: "base_link"
+  map_frame: "map"
+  max_wait_time: 0.1   # [sec]
+  max_stale_time: 0.1  # [sec]
+
+map:
+  width: 15.0       # [m]
+  height: 15.0      # [m]
+  resolution: 0.1   # [m/cell]
+
+point_filter:
+  z_min: -0.5       # [m] min height in base frame
+  z_max: 2.0        # [m] max height in base frame
+  range_min: 0.5    # [m] min range from sensor
+  range_max: 20.0   # [m] max range from sensor
+
+logger:
+  level: "info"  # info, warn, error, debug
+
+# ─── Mapping Pipeline ───────────────────────────────
+mapping:
+  mode: "local"                # local | global
+  type: "kalman_filter"        # kalman_filter | p2_quantile
+  kalman:
+    min_variance: 0.0001     # [m²]
+    max_variance: 0.01       # [m²]
+    process_noise: 0.0       # [m²]
+  p2:
+    dn0: 0.0
+    dn1: 0.16
+    dn2: 0.50
+    dn3: 0.84
+    dn4: 1.0
+    elevation_marker: 3
+    max_sample_count: 0
+
+sensor_model:
+  type: "lidar"              # lidar | rgbd | constant
+  lidar:
+    range_noise: 0.02        # [m] σ_r
+    angular_noise: 0.001     # [rad] σ_θ
+  rgbd:
+    normal_a: 0.001          # [m] base depth noise
+    normal_b: 0.002          # [m⁻¹] quadratic coefficient
+    normal_c: 0.4            # [m] optimal depth
+    lateral_factor: 0.001    # lateral noise factor
+  constant:
+    uncertainty: 0.03        # [m] σ
+
+# ─── Post-processing ───────────────────────────────
+raycasting:
+  enabled: true
+  height_conflict_threshold: 0.05  # [m]
+  log_odds_observed: 0.4
+  log_odds_ghost: 0.2
+  log_odds_max: 2.0
+  clear_threshold: -1.0
+
+inpainting:
+  enabled: true
+  max_iterations: 3
+  min_valid_neighbors: 2
+
+uncertainty_fusion:
+  enabled: false
+  search_radius: 0.15       # [m]
+  spatial_sigma: 0.05        # [m]
+  quantile_lower: 0.01
+  quantile_upper: 0.99
+  min_valid_neighbors: 3
+
+feature_extraction:
+  enabled: false
+  analysis_radius: 0.3       # [m]
+  min_valid_neighbors: 4

@@ -17,21 +17,29 @@
 
 #include <Eigen/Core>
 
-#include "fastdem/config/raycasting.hpp"
+#include "fastdem/config/postprocess.hpp"
 #include "fastdem/elevation_map.hpp"
 #include "fastdem/point_types.hpp"
 
 namespace fastdem {
 
+namespace layer {
+constexpr auto ghost_removal = "ghost_removal";
+constexpr auto raycasting = "raycasting";
+constexpr auto visibility_logodds = "_visibility_logodds";
+}  // namespace layer
+
 /**
- * @brief Raycasting for ghost obstacle removal and persistence management.
+ * @brief Raycasting for ghost obstacle removal via log-odds accumulation.
  *
- * Handles both Hit (observation) and Miss (ray pass-through) logic.
- * - Hit: Increment persistence at target cell
- * - Miss: Decrement persistence along ray path where map height > ray height
+ * Maintains per-cell log-odds representing confidence that recorded elevation
+ * is valid. Observed cells gain confidence (+L_observed), cells where rays
+ * pass below recorded elevation lose confidence (-L_ghost). Cells whose
+ * log-odds fall below clear_threshold are cleared as ghosts.
  *
  * @param map Height map to update
- * @param scan Point cloud in map frame
+ * @param scan Points inside map provide observed evidence; all points
+ *             serve as ray targets.
  * @param sensor_origin Sensor position in map frame
  * @param config Raycasting configuration
  */

@@ -4,17 +4,14 @@
 
 <a href="https://github.com/Ikhyeon-Cho/FastDEM/tree/main"><img src="https://img.shields.io/badge/C++17-00599C?logo=cplusplus&logoColor=white" /></a>
 <a href="https://github.com/Ikhyeon-Cho/FastDEM/tree/ros1"><img src="https://img.shields.io/badge/ROS1-Noetic-blue" /></a>
-<a href="https://github.com/Ikhyeon-Cho/FastDEM/tree/ros2"><img src="https://img.shields.io/badge/ROS2-Humble-blue" /></a>
+<a href="https://github.com/Ikhyeon-Cho/FastDEM/tree/ros2"><img src="https://img.shields.io/badge/ROS2-Humble-lightgrey" /></a>
 <a href=""><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" /></a>
 <br>
-<a href="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml"><img src="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml/badge.svg" /></a>
-<!-- <br>
-<a href=""><img src="https://img.shields.io/badge/YouTube-Demo-FF0000?logo=youtube&logoColor=white" /></a>
-<a href=""><img src="https://img.shields.io/badge/FastDEM-github.io-8B0029" /></a> -->
+<a href="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml"><img src="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml/badge.svg?branch=ros1" /></a>
 
 > ***Real-time elevation mapping** on **embedded** CPUs — **100+ Hz** on Jetson Orin*
 
-**[Quick Start](#quick-start)** · **[ROS1](https://github.com/Ikhyeon-Cho/FastDEM/tree/ros1)** · **[ROS2](https://github.com/Ikhyeon-Cho/FastDEM/tree/ros2)**
+**[Quick Start (ROS1)](#start-with-ros1)** · **[Core Library](https://github.com/Ikhyeon-Cho/FastDEM/tree/main)** · **[ROS2](https://github.com/Ikhyeon-Cho/FastDEM/tree/ros2)**
 
 <br>
 
@@ -32,86 +29,50 @@
 
 * **Fast** — Real-time on embedded CPUs. Single thread, without GPU.
 * **Lightweight** — Minimal dependencies. No OpenCV, PCL, or Open3D.
-* **Library-First** — Clean C++ API, not a ROS node. Online (with TF) or offline (explicit transforms) support.
+* **Library-First** — Clean C++ API, not a ROS node. Scan-sequential mapping with transform providers or explicit transforms.
 * **Sensor-Aware** — Physics-based uncertainty models for LiDAR and RGB-D.
-* **Multiple Estimators** — Kalman Filter, Welford Mean, P² Quantile.
+* **Multiple Estimators** — Kalman Filter (parametric), P² Quantile (non-parametric).
 * **Local + Global Mapping** — Robot-centric or map-centric modes.
 * **Post-processing functions** — Raycasting, Inpainting, Spike removal, Uncertainty fusion, etc.
 
 ---
 
-## How Fast?
-
-<p align="center">The mapping itself runs at <b>~130 Hz</b> — fast enough to leave ample headroom for post-processing.</p>
-
-<p align="center">
-  <img src="assets/fastdem_jetson_benchmark.svg" width="95%" />
-</p>
-
-<p align="center"><i>Measured with Velodyne VLP-16 (~30K pts/scan) · 15×15 m map at 0.1 m resolution</i></p>
-
----
-
-## Quick Start
+## Start with ROS1
 
 ### 1. Installation
+
+**Prerequisites:** Ubuntu 20.04, [ROS Noetic](http://wiki.ros.org/noetic/Installation)
 
 **Install dependencies**
 
 ```bash
 sudo apt install libeigen3-dev libyaml-cpp-dev libspdlog-dev
+sudo apt install ros-noetic-grid-map-msgs ros-noetic-tf2-eigen
 ```
 
 **Clone and build**
 
 ```bash
-git clone https://github.com/Ikhyeon-Cho/FastDEM.git
-cd FastDEM/fastdem
-mkdir -p build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
+cd ~/catkin_ws/src
+git clone -b ros1 https://github.com/Ikhyeon-Cho/FastDEM.git
+catkin build fastdem_ros --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
-### 2. Standalone C++ Usage
+### 2. Run
 
-Ideal for custom SLAM pipelines or non-ROS systems.
-
-```cpp
-#include <fastdem/fastdem.hpp>
-
-int main() {
-    // 1. Setup map and mapper
-    fastdem::ElevationMap map;
-    map.setGeometry(15.0f, 15.0f, 0.1f);
-
-    fastdem::FastDEM mapper(map);
-    mapper.setHeightFilter(-1.0f, 2.0f)
-          .setDistanceFilter(0.5f, 10.0f)
-          .setEstimatorType(fastdem::EstimationType::Kalman)
-          .setSensorModel(fastdem::SensorType::LiDAR);
-    // -- or: FastDEM mapper(map, MappingConfig::load("config/default.yaml"));
-
-    // 2. Integration Loop
-    while (true) {
-        // T_base_sensor: Sensor extrinsic (Sensor -> Robot)
-        // T_world_base: Robot pose (Robot -> World)
-        mapper.integrate(cloud, T_base_sensor, T_world_base);
-
-        // Access the 2.5D elevation map
-        float elevation = map.elevationAt(position);
-    }
-}
+```bash
+roslaunch fastdem_ros run.launch rviz:=true
 ```
 
-See [`fastdem/examples/`](fastdem/examples/) for more usage patterns.
+For global (fixed-origin) mapping:
+
+```bash
+roslaunch fastdem_ros run.launch global_mapping:=true rviz:=true
+```
 
 ### 3. Configuration
 
-All default settings are in [`config/default.yaml`](fastdem/config/default.yaml).
-
-### 4. Run with ROS
-
-See [ros1](https://github.com/Ikhyeon-Cho/FastDEM/tree/ros1) and [ros2](https://github.com/Ikhyeon-Cho/FastDEM/tree/ros2) branches. These are just a thin ROS wrapper of core `fastdem::FastDEM` features.
+All default settings are in [`fastdem_ros/config/local_mapping.yaml`](fastdem_ros/config/local_mapping.yaml).
 
 ---
 

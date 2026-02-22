@@ -45,11 +45,12 @@ class LiDARSensorModel : public SensorModel {
    */
   LiDARSensorModel(float range_noise = 0.02f, float angular_noise = 0.001f);
 
-  Eigen::Matrix3f computeSensorCovariance(
+  Eigen::Matrix3f computeCovariance(
       const Eigen::Vector3f& point_sensor) const override;
 
  private:
   static constexpr float fallback_variance_ = 0.01f;  // [m²]
+  static constexpr float min_variance_ = 1e-6f;       // [m²] positive-definite floor
 
   float range_noise_;    ///< Range uncertainty σ_r [m]
   float angular_noise_;  ///< Angular uncertainty σ_θ [rad]
@@ -57,9 +58,10 @@ class LiDARSensorModel : public SensorModel {
 
 inline LiDARSensorModel::LiDARSensorModel(float range_noise,
                                           float angular_noise)
-    : range_noise_(range_noise), angular_noise_(angular_noise) {}
+    : range_noise_(std::abs(range_noise)),
+      angular_noise_(std::abs(angular_noise)) {}
 
-inline Eigen::Matrix3f LiDARSensorModel::computeSensorCovariance(
+inline Eigen::Matrix3f LiDARSensorModel::computeCovariance(
     const Eigen::Vector3f& point_sensor) const {
   const float dist_sq = point_sensor.squaredNorm();
 
@@ -71,13 +73,15 @@ inline Eigen::Matrix3f LiDARSensorModel::computeSensorCovariance(
   const Eigen::Vector3f beam_dir = point_sensor / distance;
 
   // Radial variance (along beam): σ_r²
-  const float var_radial = range_noise_ * range_noise_;
-
   // Lateral variance (perpendicular to beam): (d × σ_θ)²
-  const float var_lateral =
-      (distance * angular_noise_) * (distance * angular_noise_);
+  // Clamped to min_variance to guarantee positive-definite covariance
+  const float var_radial =
+      std::max(range_noise_ * range_noise_, min_variance_);
+  const float var_lateral = std::max(
+      (distance * angular_noise_) * (distance * angular_noise_), min_variance_);
 
   // Full covariance: Σ = σ_lat² × I + (σ_rad² - σ_lat²) × (d × d^T)
+  // Eigenvalues: var_radial (beam), var_lateral (perpendicular) — both ≥ ε
   Eigen::Matrix3f cov = var_lateral * Eigen::Matrix3f::Identity();
   cov += (var_radial - var_lateral) * (beam_dir * beam_dir.transpose());
 

@@ -8,16 +8,16 @@
 
 #include "grid_map_core/GridMap.hpp"
 
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <iostream>
+#include <stdexcept>
+
 #include "grid_map_core/CubicInterpolation.hpp"
 #include "grid_map_core/GridMapMath.hpp"
 #include "grid_map_core/SubmapGeometry.hpp"
 #include "grid_map_core/iterators/GridMapIterator.hpp"
-
-#include <cmath>
-#include <algorithm>
-#include <cassert>
-#include <iostream>
-#include <stdexcept>
 
 using std::cout;
 using std::endl;
@@ -41,13 +41,15 @@ GridMap::GridMap(const std::vector<std::string>& layers) {
 
 GridMap::GridMap() : GridMap(std::vector<std::string>()) {}
 
-void GridMap::setGeometry(const Length& length, const double resolution, const Position& position) {
+void GridMap::setGeometry(const Length& length, const double resolution,
+                          const Position& position) {
   assert(length(0) > 0.0);
   assert(length(1) > 0.0);
   assert(resolution > 0.0);
 
   Size size;
-  size(0) = static_cast<int>(round(length(0) / resolution));  // There is no round() function in Eigen.
+  size(0) = static_cast<int>(
+      round(length(0) / resolution));  // There is no round() function in Eigen.
   size(1) = static_cast<int>(round(length(1) / resolution));
   resize(size);
   clearAll();
@@ -59,7 +61,8 @@ void GridMap::setGeometry(const Length& length, const double resolution, const P
 }
 
 void GridMap::setGeometry(const SubmapGeometry& geometry) {
-  setGeometry(geometry.getLength(), geometry.getResolution(), geometry.getPosition());
+  setGeometry(geometry.getLength(), geometry.getResolution(),
+              geometry.getPosition());
 }
 
 void GridMap::setBasicLayers(const std::vector<std::string>& basicLayers) {
@@ -70,13 +73,12 @@ const std::vector<std::string>& GridMap::getBasicLayers() const {
   return basicLayers_;
 }
 
-bool GridMap::hasBasicLayers() const {
-  return !basicLayers_.empty();
-}
+bool GridMap::hasBasicLayers() const { return !basicLayers_.empty(); }
 
 bool GridMap::hasSameLayers(const GridMap& other) const {
-  return std::all_of(layers_.begin(), layers_.end(),
-                     [&](const std::string& layer){return other.exists(layer);});
+  return std::all_of(
+      layers_.begin(), layers_.end(),
+      [&](const std::string& layer) { return other.exists(layer); });
 }
 
 void GridMap::add(const std::string& layer, const float value) {
@@ -105,7 +107,8 @@ const Matrix& GridMap::get(const std::string& layer) const {
   try {
     return data_.at(layer);
   } catch (const std::out_of_range& exception) {
-    throw std::out_of_range("GridMap::get(...) : No map layer '" + layer + "' available.");
+    throw std::out_of_range("GridMap::get(...) : No map layer '" + layer +
+                            "' available.");
   }
 }
 
@@ -113,7 +116,8 @@ Matrix& GridMap::get(const std::string& layer) {
   try {
     return data_.at(layer);
   } catch (const std::out_of_range& exception) {
-    throw std::out_of_range("GridMap::get(...) : No map layer of type '" + layer + "' available.");
+    throw std::out_of_range("GridMap::get(...) : No map layer of type '" +
+                            layer + "' available.");
   }
 }
 
@@ -121,9 +125,7 @@ const Matrix& GridMap::operator[](const std::string& layer) const {
   return get(layer);
 }
 
-Matrix& GridMap::operator[](const std::string& layer) {
-  return get(layer);
-}
+Matrix& GridMap::operator[](const std::string& layer) { return get(layer); }
 
 bool GridMap::erase(const std::string& layer) {
   const auto dataIterator = data_.find(layer);
@@ -138,7 +140,8 @@ bool GridMap::erase(const std::string& layer) {
   }
   layers_.erase(layerIterator);
 
-  const auto basicLayerIterator = std::find(basicLayers_.begin(), basicLayers_.end(), layer);
+  const auto basicLayerIterator =
+      std::find(basicLayers_.begin(), basicLayers_.end(), layer);
   if (basicLayerIterator != basicLayers_.end()) {
     basicLayers_.erase(basicLayerIterator);
   }
@@ -146,20 +149,19 @@ bool GridMap::erase(const std::string& layer) {
   return true;
 }
 
-const std::vector<std::string>& GridMap::getLayers() const {
-  return layers_;
-}
+const std::vector<std::string>& GridMap::getLayers() const { return layers_; }
 
 float& GridMap::atPosition(const std::string& layer, const Position& position) {
   Index index;
   if (getIndex(position, index)) {
     return at(layer, index);
   }
-  throw std::out_of_range("GridMap::atPosition(...) : Position is out of range.");
+  throw std::out_of_range(
+      "GridMap::atPosition(...) : Position is out of range.");
 }
 
-float GridMap::atPosition(const std::string& layer, const Position& position, InterpolationMethods interpolationMethod) const {
-
+float GridMap::atPosition(const std::string& layer, const Position& position,
+                          InterpolationMethods interpolationMethod) const {
   bool skipNextSwitchCase = false;
   switch (interpolationMethod) {
     case InterpolationMethods::INTER_CUBIC_CONVOLUTION: {
@@ -185,10 +187,9 @@ float GridMap::atPosition(const std::string& layer, const Position& position, In
     }
     case InterpolationMethods::INTER_LINEAR: {
       float value;
-      if (atPositionLinearInterpolated(layer, position, value)){
+      if (atPositionLinearInterpolated(layer, position, value)) {
         return value;
-      }
-      else {
+      } else {
         interpolationMethod = InterpolationMethods::INTER_NEAREST;
       }
       [[fallthrough]];
@@ -198,7 +199,8 @@ float GridMap::atPosition(const std::string& layer, const Position& position, In
       if (getIndex(position, index)) {
         return at(layer, index);
       } else {
-        throw std::out_of_range("GridMap::atPosition(...) : Position is out of range.");
+        throw std::out_of_range(
+            "GridMap::atPosition(...) : Position is out of range.");
       }
       break;
     }
@@ -213,7 +215,8 @@ float& GridMap::at(const std::string& layer, const Index& index) {
   try {
     return data_.at(layer)(index(0), index(1));
   } catch (const std::out_of_range& exception) {
-    throw std::out_of_range("GridMap::at(...) : No map layer '" + layer + "' available.");
+    throw std::out_of_range("GridMap::at(...) : No map layer '" + layer +
+                            "' available.");
   }
 }
 
@@ -221,43 +224,47 @@ float GridMap::at(const std::string& layer, const Index& index) const {
   try {
     return data_.at(layer)(index(0), index(1));
   } catch (const std::out_of_range& exception) {
-    throw std::out_of_range("GridMap::at(...) : No map layer '" + layer + "' available.");
+    throw std::out_of_range("GridMap::at(...) : No map layer '" + layer +
+                            "' available.");
   }
 }
 
 bool GridMap::getIndex(const Position& position, Index& index) const {
-  return getIndexFromPosition(index, position, length_, position_, resolution_, size_, startIndex_);
+  return getIndexFromPosition(index, position, length_, position_, resolution_,
+                              size_, startIndex_);
 }
 
 bool GridMap::getPosition(const Index& index, Position& position) const {
-  return getPositionFromIndex(position, index, length_, position_, resolution_, size_, startIndex_);
+  return getPositionFromIndex(position, index, length_, position_, resolution_,
+                              size_, startIndex_);
 }
 
 bool GridMap::isInside(const Position& position) const {
   return checkIfPositionWithinMap(position, length_, position_);
 }
 
-bool GridMap::isValid(DataType value) const {
-  return isfinite(value);
-}
+bool GridMap::isValid(DataType value) const { return isfinite(value); }
 
-bool GridMap::isValid(const Index& index) const {
-  return isValid(index, basicLayers_);
+bool GridMap::isValid(const Index& /*index*/) const {
+  return true;
 }
 
 bool GridMap::isValid(const Index& index, const std::string& layer) const {
   return isValid(at(layer, index));
 }
 
-bool GridMap::isValid(const Index& index, const std::vector<std::string>& layers) const {
+bool GridMap::isValid(const Index& index,
+                      const std::vector<std::string>& layers) const {
   if (layers.empty()) {
     return false;
   }
-  return std::all_of(layers.begin(), layers.end(),
-              [&](const std::string& layer){return isValid(index, layer);});
+  return std::all_of(
+      layers.begin(), layers.end(),
+      [&](const std::string& layer) { return isValid(index, layer); });
 }
 
-bool GridMap::getPosition3(const std::string& layer, const Index& index, Position3& position) const {
+bool GridMap::getPosition3(const std::string& layer, const Index& index,
+                           Position3& position) const {
   const auto value = at(layer, index);
   if (!isValid(value)) {
     return false;
@@ -269,9 +276,13 @@ bool GridMap::getPosition3(const std::string& layer, const Index& index, Positio
   return true;
 }
 
-bool GridMap::getVector(const std::string& layerPrefix, const Index& index, Eigen::Vector3d& vector) const {
-  Eigen::Vector3d temp{at(layerPrefix + "x", index), at(layerPrefix + "y", index), at(layerPrefix + "z", index)};
-  if (!isValid(temp[0]) || !isValid(temp[1]) || !isValid(temp[2])) { // NOLINT (implicit-float-conversion)
+bool GridMap::getVector(const std::string& layerPrefix, const Index& index,
+                        Eigen::Vector3d& vector) const {
+  Eigen::Vector3d temp{at(layerPrefix + "x", index),
+                       at(layerPrefix + "y", index),
+                       at(layerPrefix + "z", index)};
+  if (!isValid(temp[0]) || !isValid(temp[1]) ||
+      !isValid(temp[2])) {  // NOLINT (implicit-float-conversion)
     return false;
   } else {
     vector = temp;
@@ -279,12 +290,14 @@ bool GridMap::getVector(const std::string& layerPrefix, const Index& index, Eige
   }
 }
 
-GridMap GridMap::getSubmap(const Position& position, const Length& length, bool& isSuccess) const {
+GridMap GridMap::getSubmap(const Position& position, const Length& length,
+                           bool& isSuccess) const {
   Index index;
   return getSubmap(position, length, index, isSuccess);
 }
 
-GridMap GridMap::getSubmap(const Position& position, const Length& length, Index& /*indexInSubmap*/, bool& isSuccess) const {
+GridMap GridMap::getSubmap(const Position& position, const Length& length,
+                           Index& /*indexInSubmap*/, bool& isSuccess) const {
   // Submap to generate.
   GridMap submap(layers_);
   submap.setBasicLayers(basicLayers_);
@@ -302,7 +315,9 @@ GridMap GridMap::getSubmap(const Position& position, const Length& length, Index
   // Copy data.
   std::vector<BufferRegion> bufferRegions;
 
-  if (!getBufferRegionsForSubmap(bufferRegions, submapInformation.getStartIndex(), submap.getSize(), size_, startIndex_)) {
+  if (!getBufferRegionsForSubmap(bufferRegions,
+                                 submapInformation.getStartIndex(),
+                                 submap.getSize(), size_, startIndex_)) {
     cout << "Cannot access submap of this size." << endl;
     isSuccess = false;
     return GridMap{layers_};
@@ -314,13 +329,20 @@ GridMap GridMap::getSubmap(const Position& position, const Length& length, Index
       Size size = bufferRegion.getSize();
 
       if (bufferRegion.getQuadrant() == BufferRegion::Quadrant::TopLeft) {
-        submap.data_[data.first].topLeftCorner(size(0), size(1)) = data.second.block(index(0), index(1), size(0), size(1));
-      } else if (bufferRegion.getQuadrant() == BufferRegion::Quadrant::TopRight) {
-        submap.data_[data.first].topRightCorner(size(0), size(1)) = data.second.block(index(0), index(1), size(0), size(1));
-      } else if (bufferRegion.getQuadrant() == BufferRegion::Quadrant::BottomLeft) {
-        submap.data_[data.first].bottomLeftCorner(size(0), size(1)) = data.second.block(index(0), index(1), size(0), size(1));
-      } else if (bufferRegion.getQuadrant() == BufferRegion::Quadrant::BottomRight) {
-        submap.data_[data.first].bottomRightCorner(size(0), size(1)) = data.second.block(index(0), index(1), size(0), size(1));
+        submap.data_[data.first].topLeftCorner(size(0), size(1)) =
+            data.second.block(index(0), index(1), size(0), size(1));
+      } else if (bufferRegion.getQuadrant() ==
+                 BufferRegion::Quadrant::TopRight) {
+        submap.data_[data.first].topRightCorner(size(0), size(1)) =
+            data.second.block(index(0), index(1), size(0), size(1));
+      } else if (bufferRegion.getQuadrant() ==
+                 BufferRegion::Quadrant::BottomLeft) {
+        submap.data_[data.first].bottomLeftCorner(size(0), size(1)) =
+            data.second.block(index(0), index(1), size(0), size(1));
+      } else if (bufferRegion.getQuadrant() ==
+                 BufferRegion::Quadrant::BottomRight) {
+        submap.data_[data.first].bottomRightCorner(size(0), size(1)) =
+            data.second.block(index(0), index(1), size(0), size(1));
       }
     }
   }
@@ -329,11 +351,14 @@ GridMap GridMap::getSubmap(const Position& position, const Length& length, Index
   return submap;
 }
 
-GridMap GridMap::getTransformedMap(const Eigen::Isometry3d& transform, const std::string& heightLayerName, const std::string& newFrameId,
+GridMap GridMap::getTransformedMap(const Eigen::Isometry3d& transform,
+                                   const std::string& heightLayerName,
+                                   const std::string& newFrameId,
                                    const double sampleRatio) const {
   // Check if height layer is valid.
   if (!exists(heightLayerName)) {
-    throw std::out_of_range("GridMap::getTransformedMap(...) : No map layer '" + heightLayerName + "' available.");
+    throw std::out_of_range("GridMap::getTransformedMap(...) : No map layer '" +
+                            heightLayerName + "' available.");
   }
 
   // Initialization.
@@ -346,10 +371,14 @@ GridMap GridMap::getTransformedMap(const Eigen::Isometry3d& transform, const std
   // Find edges in new coordinate frame.
   const double halfLengthX = length_.x() * 0.5;
   const double halfLengthY = length_.y() * 0.5;
-  const Position3 topLeftCorner(position_.x() + halfLengthX, position_.y() + halfLengthY, 0.0);
-  const Position3 topRightCorner(position_.x() + halfLengthX, position_.y() - halfLengthY, 0.0);
-  const Position3 bottomLeftCorner(position_.x() - halfLengthX, position_.y() + halfLengthY, 0.0);
-  const Position3 bottomRightCorner(position_.x() - halfLengthX, position_.y() - halfLengthY, 0.0);
+  const Position3 topLeftCorner(position_.x() + halfLengthX,
+                                position_.y() + halfLengthY, 0.0);
+  const Position3 topRightCorner(position_.x() + halfLengthX,
+                                 position_.y() - halfLengthY, 0.0);
+  const Position3 bottomLeftCorner(position_.x() - halfLengthX,
+                                   position_.y() + halfLengthY, 0.0);
+  const Position3 bottomRightCorner(position_.x() - halfLengthX,
+                                    position_.y() - halfLengthY, 0.0);
 
   std::vector<Position3> newEdges;
   newEdges.reserve(4);
@@ -369,8 +398,10 @@ GridMap GridMap::getTransformedMap(const Eigen::Isometry3d& transform, const std
   Length maxLengthFromCenter = Length(0.0, 0.0);
   for (const auto& newEdge : newEdges) {
     Position3 positionCenterToEdge = newEdge - newCenter;
-    maxLengthFromCenter.x() = std::fmax(std::fabs(positionCenterToEdge.x()), maxLengthFromCenter.x());
-    maxLengthFromCenter.y() = std::fmax(std::fabs(positionCenterToEdge.y()), maxLengthFromCenter.y());
+    maxLengthFromCenter.x() =
+        std::fmax(std::fabs(positionCenterToEdge.x()), maxLengthFromCenter.x());
+    maxLengthFromCenter.y() =
+        std::fmax(std::fabs(positionCenterToEdge.y()), maxLengthFromCenter.y());
   }
   Length newLength = 2.0 * maxLengthFromCenter;
 
@@ -379,7 +410,8 @@ GridMap GridMap::getTransformedMap(const Eigen::Isometry3d& transform, const std
   newMap.setBasicLayers(basicLayers_);
   newMap.setTimestamp(timestamp_);
   newMap.setFrameId(newFrameId);
-  newMap.setGeometry(newLength, resolution_, Position(newCenter.x(), newCenter.y()));
+  newMap.setGeometry(newLength, resolution_,
+                     Position(newCenter.x(), newCenter.y()));
   newMap.startIndex_.setZero();
 
   for (GridMapIterator iterator(*this); !iterator.isPastEnd(); ++iterator) {
@@ -394,10 +426,14 @@ GridMap GridMap::getTransformedMap(const Eigen::Isometry3d& transform, const std
     if (sampleRatio > 0.0) {
       positionSamples.reserve(5);
       positionSamples.push_back(center);
-      positionSamples.emplace_back(center.x() - sampleLength, center.y(), center.z());
-      positionSamples.emplace_back(center.x() + sampleLength, center.y(), center.z());
-      positionSamples.emplace_back(center.x(), center.y() - sampleLength, center.z());
-      positionSamples.emplace_back(center.x(), center.y() + sampleLength, center.z());
+      positionSamples.emplace_back(center.x() - sampleLength, center.y(),
+                                   center.z());
+      positionSamples.emplace_back(center.x() + sampleLength, center.y(),
+                                   center.z());
+      positionSamples.emplace_back(center.x(), center.y() - sampleLength,
+                                   center.z());
+      positionSamples.emplace_back(center.x(), center.y() + sampleLength,
+                                   center.z());
     } else {
       positionSamples.push_back(center);
     }
@@ -407,14 +443,17 @@ GridMap GridMap::getTransformedMap(const Eigen::Isometry3d& transform, const std
       const Position3 transformedPosition = transform * position;
 
       // Get new index.
-      if (!newMap.getIndex(Position(transformedPosition.x(), transformedPosition.y()), newIndex)) {
+      if (!newMap.getIndex(
+              Position(transformedPosition.x(), transformedPosition.y()),
+              newIndex)) {
         continue;
       }
 
       // Check if we have already assigned a value (preferably larger height
       // values -> inpainting).
       const auto newExistingValue = newMap.at(heightLayerName, newIndex);
-      if (!std::isnan(newExistingValue) && newExistingValue > transformedPosition.z()) {
+      if (!std::isnan(newExistingValue) &&
+          newExistingValue > transformedPosition.z()) {
         continue;
       }
 
@@ -435,11 +474,10 @@ GridMap GridMap::getTransformedMap(const Eigen::Isometry3d& transform, const std
   return newMap;
 }
 
-void GridMap::setPosition(const Position& position) {
-  position_ = position;
-}
+void GridMap::setPosition(const Position& position) { position_ = position; }
 
-bool GridMap::move(const Position& position, std::vector<BufferRegion>& newRegions) {
+bool GridMap::move(const Position& position,
+                   std::vector<BufferRegion>& newRegions) {
   Index indexShift;
   Position positionShift = position - position_;
   getIndexShiftFromPositionShift(indexShift, positionShift, resolution_);
@@ -452,7 +490,8 @@ bool GridMap::move(const Position& position, std::vector<BufferRegion>& newRegio
       if (abs(indexShift(i)) >= getSize()(i)) {
         // Entire map is dropped.
         clearAll();
-        newRegions.emplace_back(Index(0, 0), getSize(), BufferRegion::Quadrant::Undefined);
+        newRegions.emplace_back(Index(0, 0), getSize(),
+                                BufferRegion::Quadrant::Undefined);
       } else {
         // Drop cells out of map.
         int sign = (indexShift(i) > 0 ? 1 : -1);
@@ -466,10 +505,12 @@ bool GridMap::move(const Position& position, std::vector<BufferRegion>& newRegio
           // One region to drop.
           if (i == 0) {
             clearRows(index, nCells);
-            newRegions.emplace_back(Index(index, 0), Size(nCells, getSize()(1)), BufferRegion::Quadrant::Undefined);
+            newRegions.emplace_back(Index(index, 0), Size(nCells, getSize()(1)),
+                                    BufferRegion::Quadrant::Undefined);
           } else if (i == 1) {
             clearCols(index, nCells);
-            newRegions.emplace_back(Index(0, index), Size(getSize()(0), nCells), BufferRegion::Quadrant::Undefined);
+            newRegions.emplace_back(Index(0, index), Size(getSize()(0), nCells),
+                                    BufferRegion::Quadrant::Undefined);
           }
         } else {
           // Two regions to drop.
@@ -477,20 +518,28 @@ bool GridMap::move(const Position& position, std::vector<BufferRegion>& newRegio
           int firstNCells = getSize()(i) - firstIndex;
           if (i == 0) {
             clearRows(firstIndex, firstNCells);
-            newRegions.emplace_back(Index(firstIndex, 0), Size(firstNCells, getSize()(1)), BufferRegion::Quadrant::Undefined);
+            newRegions.emplace_back(Index(firstIndex, 0),
+                                    Size(firstNCells, getSize()(1)),
+                                    BufferRegion::Quadrant::Undefined);
           } else if (i == 1) {
             clearCols(firstIndex, firstNCells);
-            newRegions.emplace_back(Index(0, firstIndex), Size(getSize()(0), firstNCells), BufferRegion::Quadrant::Undefined);
+            newRegions.emplace_back(Index(0, firstIndex),
+                                    Size(getSize()(0), firstNCells),
+                                    BufferRegion::Quadrant::Undefined);
           }
 
           int secondIndex = 0;
           int secondNCells = nCells - firstNCells;
           if (i == 0) {
             clearRows(secondIndex, secondNCells);
-            newRegions.emplace_back(Index(secondIndex, 0), Size(secondNCells, getSize()(1)), BufferRegion::Quadrant::Undefined);
+            newRegions.emplace_back(Index(secondIndex, 0),
+                                    Size(secondNCells, getSize()(1)),
+                                    BufferRegion::Quadrant::Undefined);
           } else if (i == 1) {
             clearCols(secondIndex, secondNCells);
-            newRegions.emplace_back(Index(0, secondIndex), Size(getSize()(0), secondNCells), BufferRegion::Quadrant::Undefined);
+            newRegions.emplace_back(Index(0, secondIndex),
+                                    Size(getSize()(0), secondNCells),
+                                    BufferRegion::Quadrant::Undefined);
           }
         }
       }
@@ -511,7 +560,9 @@ bool GridMap::move(const Position& position) {
   return move(position, newRegions);
 }
 
-bool GridMap::addDataFrom(const GridMap& other, bool extendMap, bool overwriteData, bool copyAllLayers, std::vector<std::string> layers) {
+bool GridMap::addDataFrom(const GridMap& other, bool extendMap,
+                          bool overwriteData, bool copyAllLayers,
+                          std::vector<std::string> layers) {
   // Set the layers to copy.
   if (copyAllLayers) {
     layers = other.getLayers();
@@ -553,32 +604,41 @@ bool GridMap::addDataFrom(const GridMap& other, bool extendMap, bool overwriteDa
 
 bool GridMap::extendToInclude(const GridMap& other) {
   // Get dimension of maps.
-  Position topLeftCorner(position_.x() + length_.x() / 2.0, position_.y() + length_.y() / 2.0);
-  Position bottomRightCorner(position_.x() - length_.x() / 2.0, position_.y() - length_.y() / 2.0);
-  Position topLeftCornerOther(other.getPosition().x() + other.getLength().x() / 2.0, other.getPosition().y() + other.getLength().y() / 2.0);
-  Position bottomRightCornerOther(other.getPosition().x() - other.getLength().x() / 2.0,
-                                  other.getPosition().y() - other.getLength().y() / 2.0);
+  Position topLeftCorner(position_.x() + length_.x() / 2.0,
+                         position_.y() + length_.y() / 2.0);
+  Position bottomRightCorner(position_.x() - length_.x() / 2.0,
+                             position_.y() - length_.y() / 2.0);
+  Position topLeftCornerOther(
+      other.getPosition().x() + other.getLength().x() / 2.0,
+      other.getPosition().y() + other.getLength().y() / 2.0);
+  Position bottomRightCornerOther(
+      other.getPosition().x() - other.getLength().x() / 2.0,
+      other.getPosition().y() - other.getLength().y() / 2.0);
   // Check if map needs to be resized.
   bool resizeMap = false;
   Position extendedMapPosition = position_;
   Length extendedMapLength = length_;
   if (topLeftCornerOther.x() > topLeftCorner.x()) {
-    extendedMapPosition.x() += (topLeftCornerOther.x() - topLeftCorner.x()) / 2.0;
+    extendedMapPosition.x() +=
+        (topLeftCornerOther.x() - topLeftCorner.x()) / 2.0;
     extendedMapLength.x() += topLeftCornerOther.x() - topLeftCorner.x();
     resizeMap = true;
   }
   if (topLeftCornerOther.y() > topLeftCorner.y()) {
-    extendedMapPosition.y() += (topLeftCornerOther.y() - topLeftCorner.y()) / 2.0;
+    extendedMapPosition.y() +=
+        (topLeftCornerOther.y() - topLeftCorner.y()) / 2.0;
     extendedMapLength.y() += topLeftCornerOther.y() - topLeftCorner.y();
     resizeMap = true;
   }
   if (bottomRightCornerOther.x() < bottomRightCorner.x()) {
-    extendedMapPosition.x() -= (bottomRightCorner.x() - bottomRightCornerOther.x()) / 2.0;
+    extendedMapPosition.x() -=
+        (bottomRightCorner.x() - bottomRightCornerOther.x()) / 2.0;
     extendedMapLength.x() += bottomRightCorner.x() - bottomRightCornerOther.x();
     resizeMap = true;
   }
   if (bottomRightCornerOther.y() < bottomRightCorner.y()) {
-    extendedMapPosition.y() -= (bottomRightCorner.y() - bottomRightCornerOther.y()) / 2.0;
+    extendedMapPosition.y() -=
+        (bottomRightCorner.y() - bottomRightCornerOther.y()) / 2.0;
     extendedMapLength.y() += bottomRightCorner.y() - bottomRightCornerOther.y();
     resizeMap = true;
   }
@@ -626,53 +686,31 @@ bool GridMap::extendToInclude(const GridMap& other) {
   return true;
 }
 
-void GridMap::setTimestamp(const Time timestamp) {
-  timestamp_ = timestamp;
-}
+void GridMap::setTimestamp(const Time timestamp) { timestamp_ = timestamp; }
 
-Time GridMap::getTimestamp() const {
-  return timestamp_;
-}
+Time GridMap::getTimestamp() const { return timestamp_; }
 
-void GridMap::resetTimestamp() {
-  timestamp_ = 0.0;
-}
+void GridMap::resetTimestamp() { timestamp_ = 0.0; }
 
-void GridMap::setFrameId(const std::string& frameId) {
-  frameId_ = frameId;
-}
+void GridMap::setFrameId(const std::string& frameId) { frameId_ = frameId; }
 
-const std::string& GridMap::getFrameId() const {
-  return frameId_;
-}
+const std::string& GridMap::getFrameId() const { return frameId_; }
 
-const Length& GridMap::getLength() const {
-  return length_;
-}
+const Length& GridMap::getLength() const { return length_; }
 
-const Position& GridMap::getPosition() const {
-  return position_;
-}
+const Position& GridMap::getPosition() const { return position_; }
 
-double GridMap::getResolution() const {
-  return resolution_;
-}
+double GridMap::getResolution() const { return resolution_; }
 
-const Size& GridMap::getSize() const {
-  return size_;
-}
+const Size& GridMap::getSize() const { return size_; }
 
 void GridMap::setStartIndex(const Index& startIndex) {
   startIndex_ = startIndex;
 }
 
-const Index& GridMap::getStartIndex() const {
-  return startIndex_;
-}
+const Index& GridMap::getStartIndex() const { return startIndex_; }
 
-bool GridMap::isDefaultStartIndex() const {
-  return (startIndex_ == 0).all();
-}
+bool GridMap::isDefaultStartIndex() const { return (startIndex_ == 0).all(); }
 
 void GridMap::convertToDefaultStartIndex() {
   if (isDefaultStartIndex()) {
@@ -680,7 +718,8 @@ void GridMap::convertToDefaultStartIndex() {
   }
 
   std::vector<BufferRegion> bufferRegions;
-  if (!getBufferRegionsForSubmap(bufferRegions, startIndex_, size_, size_, startIndex_)) {
+  if (!getBufferRegionsForSubmap(bufferRegions, startIndex_, size_, size_,
+                                 startIndex_)) {
     throw std::out_of_range("Cannot access submap of this size.");
   }
 
@@ -691,13 +730,20 @@ void GridMap::convertToDefaultStartIndex() {
       Size size = bufferRegion.getSize();
 
       if (bufferRegion.getQuadrant() == BufferRegion::Quadrant::TopLeft) {
-        tempData.topLeftCorner(size(0), size(1)) = data.second.block(index(0), index(1), size(0), size(1));
-      } else if (bufferRegion.getQuadrant() == BufferRegion::Quadrant::TopRight) {
-        tempData.topRightCorner(size(0), size(1)) = data.second.block(index(0), index(1), size(0), size(1));
-      } else if (bufferRegion.getQuadrant() == BufferRegion::Quadrant::BottomLeft) {
-        tempData.bottomLeftCorner(size(0), size(1)) = data.second.block(index(0), index(1), size(0), size(1));
-      } else if (bufferRegion.getQuadrant() == BufferRegion::Quadrant::BottomRight) {
-        tempData.bottomRightCorner(size(0), size(1)) = data.second.block(index(0), index(1), size(0), size(1));
+        tempData.topLeftCorner(size(0), size(1)) =
+            data.second.block(index(0), index(1), size(0), size(1));
+      } else if (bufferRegion.getQuadrant() ==
+                 BufferRegion::Quadrant::TopRight) {
+        tempData.topRightCorner(size(0), size(1)) =
+            data.second.block(index(0), index(1), size(0), size(1));
+      } else if (bufferRegion.getQuadrant() ==
+                 BufferRegion::Quadrant::BottomLeft) {
+        tempData.bottomLeftCorner(size(0), size(1)) =
+            data.second.block(index(0), index(1), size(0), size(1));
+      } else if (bufferRegion.getQuadrant() ==
+                 BufferRegion::Quadrant::BottomRight) {
+        tempData.bottomRightCorner(size(0), size(1)) =
+            data.second.block(index(0), index(1), size(0), size(1));
       }
     }
     data.second = tempData;
@@ -720,10 +766,14 @@ Position GridMap::getClosestPositionInMap(const Position& position) const {
   // Find edges.
   const double halfLengthX = length_.x() * 0.5;
   const double halfLengthY = length_.y() * 0.5;
-  const Position3 topLeftCorner(position_.x() + halfLengthX, position_.y() + halfLengthY, 0.0);
-  const Position3 topRightCorner(position_.x() + halfLengthX, position_.y() - halfLengthY, 0.0);
-  const Position3 bottomLeftCorner(position_.x() - halfLengthX, position_.y() + halfLengthY, 0.0);
-  const Position3 bottomRightCorner(position_.x() - halfLengthX, position_.y() - halfLengthY, 0.0);
+  const Position3 topLeftCorner(position_.x() + halfLengthX,
+                                position_.y() + halfLengthY, 0.0);
+  const Position3 topRightCorner(position_.x() + halfLengthX,
+                                 position_.y() - halfLengthY, 0.0);
+  const Position3 bottomLeftCorner(position_.x() - halfLengthX,
+                                   position_.y() + halfLengthY, 0.0);
+  const Position3 bottomRightCorner(position_.x() - halfLengthX,
+                                    position_.y() - halfLengthY, 0.0);
 
   // Find constraints.
   const double maxX = topRightCorner.x();
@@ -732,12 +782,17 @@ Position GridMap::getClosestPositionInMap(const Position& position) const {
   const double minY = bottomRightCorner.y();
 
   // Clip to box constraints and correct for indexing precision.
-  // Points on the border can lead to invalid indices because the cells represent half open intervals, i.e. [...).
-  positionInMap.x() = std::fmin(positionInMap.x(), maxX - std::numeric_limits<double>::epsilon());
-  positionInMap.y() = std::fmin(positionInMap.y(), maxY - std::numeric_limits<double>::epsilon());
+  // Points on the border can lead to invalid indices because the cells
+  // represent half open intervals, i.e. [...).
+  positionInMap.x() = std::fmin(positionInMap.x(),
+                                maxX - std::numeric_limits<double>::epsilon());
+  positionInMap.y() = std::fmin(positionInMap.y(),
+                                maxY - std::numeric_limits<double>::epsilon());
 
-  positionInMap.x() = std::fmax(positionInMap.x(), minX + std::numeric_limits<double>::epsilon());
-  positionInMap.y() = std::fmax(positionInMap.y(), minY + std::numeric_limits<double>::epsilon());
+  positionInMap.x() = std::fmax(positionInMap.x(),
+                                minX + std::numeric_limits<double>::epsilon());
+  positionInMap.y() = std::fmax(positionInMap.y(),
+                                minY + std::numeric_limits<double>::epsilon());
 
   return positionInMap;
 }
@@ -746,7 +801,8 @@ void GridMap::clear(const std::string& layer) {
   try {
     data_.at(layer).setConstant(NAN);
   } catch (const std::out_of_range& exception) {
-    throw std::out_of_range("GridMap::clear(...) : No map layer '" + layer + "' available.");
+    throw std::out_of_range("GridMap::clear(...) : No map layer '" + layer +
+                            "' available.");
   }
 }
 
@@ -774,7 +830,9 @@ void GridMap::clearCols(unsigned int index, unsigned int nCols) {
   }
 }
 
-bool GridMap::atPositionLinearInterpolated(const std::string& layer, const Position& position, float& value) const {
+bool GridMap::atPositionLinearInterpolated(const std::string& layer,
+                                           const Position& position,
+                                           float& value) const {
   Position point;
   Index indices[4];
   bool idxTempDir;
@@ -784,14 +842,16 @@ bool GridMap::atPositionLinearInterpolated(const std::string& layer, const Posit
   getPosition(indices[0], point);
 
   if (position.x() >= point.x()) {
-    indices[1] = indices[0] + Index(-1, 0);  // Second point is above first point.
+    indices[1] =
+        indices[0] + Index(-1, 0);  // Second point is above first point.
     idxTempDir = true;
   } else {
     indices[1] = indices[0] + Index(+1, 0);
     idxTempDir = false;
   }
   if (position.y() >= point.y()) {
-    indices[2] = indices[0] + Index(0, -1);  // Third point is right of first point.
+    indices[2] =
+        indices[0] + Index(0, -1);  // Third point is right of first point.
     if (idxTempDir) {
       idxShift[0] = 0;
       idxShift[1] = 1;
@@ -829,7 +889,8 @@ bool GridMap::atPositionLinearInterpolated(const std::string& layer, const Posit
   float f[4];
 
   for (size_t i = 0; i < 4; ++i) {
-    const size_t indexLin = getLinearIndexFromIndex(indices[idxShift[i]], mapSize);
+    const size_t indexLin =
+        getLinearIndexFromIndex(indices[idxShift[i]], mapSize);
     if ((indexLin < startIndexLin) || (indexLin > endIndexLin)) {
       return false;
     }
@@ -840,9 +901,12 @@ bool GridMap::atPositionLinearInterpolated(const std::string& layer, const Posit
   const Position positionRed = (position - point) / resolution_;
   const Position positionRedFlip = Position(1., 1.) - positionRed;
 
-  
-  value = f[0] * positionRedFlip.x() * positionRedFlip.y() + f[1] * positionRed.x() * positionRedFlip.y() + // NOLINT (implicit-float-conversion)
-          f[2] * positionRedFlip.x() * positionRed.y() + f[3] * positionRed.x() * positionRed.y(); // NOLINT (implicit-float-conversion)
+  value = f[0] * positionRedFlip.x() * positionRedFlip.y() +
+          f[1] * positionRed.x() *
+              positionRedFlip.y() +  // NOLINT (implicit-float-conversion)
+          f[2] * positionRedFlip.x() * positionRed.y() +
+          f[3] * positionRed.x() *
+              positionRed.y();  // NOLINT (implicit-float-conversion)
   return true;
 }
 
@@ -853,12 +917,12 @@ void GridMap::resize(const Index& size) {
   }
 }
 
-
-bool GridMap::atPositionBicubicConvolutionInterpolated(const std::string& layer, const Position& position,
-                                            float& value) const
-{
+bool GridMap::atPositionBicubicConvolutionInterpolated(const std::string& layer,
+                                                       const Position& position,
+                                                       float& value) const {
   double interpolatedValue = 0.0;
-  if (!bicubic_conv::evaluateBicubicConvolutionInterpolation(*this, layer, position, &interpolatedValue)) {
+  if (!bicubic_conv::evaluateBicubicConvolutionInterpolation(
+          *this, layer, position, &interpolatedValue)) {
     return false;
   }
 
@@ -870,11 +934,12 @@ bool GridMap::atPositionBicubicConvolutionInterpolated(const std::string& layer,
   return true;
 }
 
-bool GridMap::atPositionBicubicInterpolated(const std::string& layer, const Position& position,
-                                            float& value) const
-{
+bool GridMap::atPositionBicubicInterpolated(const std::string& layer,
+                                            const Position& position,
+                                            float& value) const {
   double interpolatedValue = 0.0;
-  if (!bicubic::evaluateBicubicInterpolation(*this, layer, position, &interpolatedValue)) {
+  if (!bicubic::evaluateBicubicInterpolation(*this, layer, position,
+                                             &interpolatedValue)) {
     return false;
   }
 
@@ -884,8 +949,6 @@ bool GridMap::atPositionBicubicInterpolated(const std::string& layer, const Posi
   value = static_cast<float>(interpolatedValue);
 
   return true;
-
 }
-
 
 }  // namespace grid_map

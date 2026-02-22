@@ -88,10 +88,11 @@ void applyFeatureExtraction(ElevationMap& map, float analysis_radius,
       const Eigen::Vector3f mean = sum * inv_n;
       const Eigen::Matrix3f cov = sum_sq * inv_n - mean * mean.transpose();
 
-      // PCA
+      // PCA — skip degenerate patches (collinear or insufficient spread)
+      constexpr float kMinEigenvalue = 1e-8f;
       const auto pca = nanopcl::geometry::computePCA(cov);
       if (!pca.valid) continue;
-      if (pca.eigenvalues(1) < 1e-8f) continue;  // Degenerate (line)
+      if (pca.eigenvalues(1) < kMinEigenvalue) continue;
 
       // Normal vector (smallest eigenvector, flipped upward)
       Eigen::Vector3f normal = pca.eigenvectors.col(0);
@@ -102,7 +103,9 @@ void applyFeatureExtraction(ElevationMap& map, float analysis_radius,
       slope_mat(r, c) =
           std::acos(std::abs(normal.z())) * 180.0f / static_cast<float>(M_PI);
       roughness_mat(r, c) = std::sqrt(pca.eigenvalues(0));
-      curvature_mat(r, c) = std::abs(pca.eigenvalues(0) / cov.trace());
+      const float trace = cov.trace();
+      curvature_mat(r, c) =
+          (trace > 0.0f) ? std::abs(pca.eigenvalues(0) / trace) : 0.0f;
       nx_mat(r, c) = normal.x();
       ny_mat(r, c) = normal.y();
       nz_mat(r, c) = normal.z();

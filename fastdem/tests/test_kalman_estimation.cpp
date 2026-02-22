@@ -7,7 +7,7 @@
 
 using namespace fastdem;
 
-class KalmanEstimationTest : public ::testing::Test {
+class KalmanTest : public ::testing::Test {
  protected:
   ElevationMap map;
   grid_map::Index idx{0, 0};
@@ -15,20 +15,22 @@ class KalmanEstimationTest : public ::testing::Test {
   void SetUp() override { map.setGeometry(10.0f, 10.0f, 0.5f); }
 };
 
-TEST_F(KalmanEstimationTest, FirstMeasurementInitializesElevation) {
-  KalmanEstimation estimator(0.0001f, 0.01f, 0.0f);
-  estimator.initialize(map);
+TEST_F(KalmanTest, FirstMeasurementInitializesElevation) {
+  Kalman estimator(0.0001f, 0.01f, 0.0f);
+  estimator.ensureLayers(map);
+  estimator.bind(map);
 
   estimator.update(idx, 5.0f, 0.04f);
 
   EXPECT_FLOAT_EQ(map.at(layer::elevation, idx), 5.0f);
   EXPECT_FLOAT_EQ(map.at(layer::kalman_p, idx), 0.04f);
-  EXPECT_FLOAT_EQ(map.at(layer::sample_count, idx), 1.0f);
+  EXPECT_FLOAT_EQ(map.at(layer::n_points, idx), 1.0f);
 }
 
-TEST_F(KalmanEstimationTest, RepeatedLowVarianceMeasurementsReduceP) {
-  KalmanEstimation estimator(0.0001f, 1.0f, 0.0f);
-  estimator.initialize(map);
+TEST_F(KalmanTest, RepeatedLowVarianceMeasurementsReduceP) {
+  Kalman estimator(0.0001f, 1.0f, 0.0f);
+  estimator.ensureLayers(map);
+  estimator.bind(map);
 
   estimator.update(idx, 5.0f, 0.5f);
   float initial_p = map.at(layer::kalman_p, idx);
@@ -41,11 +43,12 @@ TEST_F(KalmanEstimationTest, RepeatedLowVarianceMeasurementsReduceP) {
   EXPECT_LT(final_p, initial_p);
 }
 
-TEST_F(KalmanEstimationTest, KalmanPClamping) {
+TEST_F(KalmanTest, KalmanPClamping) {
   float min_var = 0.001f;
   float max_var = 0.1f;
-  KalmanEstimation estimator(min_var, max_var, 0.0f);
-  estimator.initialize(map);
+  Kalman estimator(min_var, max_var, 0.0f);
+  estimator.ensureLayers(map);
+  estimator.bind(map);
 
   estimator.update(idx, 5.0f, 0.05f);
 
@@ -58,14 +61,15 @@ TEST_F(KalmanEstimationTest, KalmanPClamping) {
   EXPECT_LE(p, max_var);
 }
 
-TEST_F(KalmanEstimationTest, FinalizeComputesBoundsFromSampleVariance) {
-  KalmanEstimation estimator(0.0001f, 1.0f, 0.0f);
-  estimator.initialize(map);
+TEST_F(KalmanTest, FinalizeComputesBoundsFromSampleVariance) {
+  Kalman estimator(0.0001f, 1.0f, 0.0f);
+  estimator.ensureLayers(map);
+  estimator.bind(map);
 
   // Feed measurements with spread to build sample variance
   estimator.update(idx, 3.0f, 0.04f);
   estimator.update(idx, 7.0f, 0.04f);
-  estimator.finalize();
+  estimator.computeBounds();
 
   float elevation = map.at(layer::elevation, idx);
   float variance = map.at(layer::variance, idx);
@@ -73,33 +77,22 @@ TEST_F(KalmanEstimationTest, FinalizeComputesBoundsFromSampleVariance) {
 
   EXPECT_NEAR(map.at(layer::upper_bound, idx), elevation + 2.0f * sigma, 1e-5f);
   EXPECT_NEAR(map.at(layer::lower_bound, idx), elevation - 2.0f * sigma, 1e-5f);
-  EXPECT_NEAR(map.at(layer::uncertainty_range, idx), 4.0f * sigma, 1e-5f);
 }
 
-TEST_F(KalmanEstimationTest, MinMaxTracking) {
-  KalmanEstimation estimator(0.0001f, 0.01f, 0.0f);
-  estimator.initialize(map);
-
-  estimator.update(idx, 3.0f, 0.01f);
-  estimator.update(idx, 1.0f, 0.01f);
-  estimator.update(idx, 5.0f, 0.01f);
-
-  EXPECT_FLOAT_EQ(map.at(layer::elevation_min, idx), 1.0f);
-  EXPECT_FLOAT_EQ(map.at(layer::elevation_max, idx), 5.0f);
-}
-
-TEST_F(KalmanEstimationTest, ZeroMeasurementVarianceFallsBackToMaxVariance) {
+TEST_F(KalmanTest, ZeroMeasurementVarianceFallsBackToMaxVariance) {
   float max_var = 0.5f;
-  KalmanEstimation estimator(0.0001f, max_var, 0.0f);
-  estimator.initialize(map);
+  Kalman estimator(0.0001f, max_var, 0.0f);
+  estimator.ensureLayers(map);
+  estimator.bind(map);
 
   estimator.update(idx, 5.0f, 0.0f);
   EXPECT_FLOAT_EQ(map.at(layer::kalman_p, idx), max_var);
 }
 
-TEST_F(KalmanEstimationTest, ElevationConvergesToTrueValue) {
-  KalmanEstimation estimator(0.0001f, 1.0f, 0.0f);
-  estimator.initialize(map);
+TEST_F(KalmanTest, ElevationConvergesToTrueValue) {
+  Kalman estimator(0.0001f, 1.0f, 0.0f);
+  estimator.ensureLayers(map);
+  estimator.bind(map);
 
   estimator.update(idx, 10.0f, 1.0f);
 
@@ -110,9 +103,10 @@ TEST_F(KalmanEstimationTest, ElevationConvergesToTrueValue) {
   EXPECT_NEAR(map.at(layer::elevation, idx), 5.0f, 0.1f);
 }
 
-TEST_F(KalmanEstimationTest, SampleVarianceTracked) {
-  KalmanEstimation estimator(0.0001f, 1.0f, 0.0f);
-  estimator.initialize(map);
+TEST_F(KalmanTest, SampleVarianceTracked) {
+  Kalman estimator(0.0001f, 1.0f, 0.0f);
+  estimator.ensureLayers(map);
+  estimator.bind(map);
 
   EXPECT_TRUE(map.exists(layer::sample_mean));
   EXPECT_TRUE(map.exists(layer::variance));
@@ -124,9 +118,10 @@ TEST_F(KalmanEstimationTest, SampleVarianceTracked) {
   EXPECT_FLOAT_EQ(map.at(layer::variance, idx), 8.0f);
 }
 
-TEST_F(KalmanEstimationTest, VarianceIsSampleVarianceNotKalmanP) {
-  KalmanEstimation estimator(0.0001f, 1.0f, 0.0f);
-  estimator.initialize(map);
+TEST_F(KalmanTest, VarianceIsSampleVarianceNotKalmanP) {
+  Kalman estimator(0.0001f, 1.0f, 0.0f);
+  estimator.ensureLayers(map);
+  estimator.bind(map);
 
   // After many identical measurements, Kalman P → min_variance (~0)
   // but sample_variance stays 0 (no spread in measurements)

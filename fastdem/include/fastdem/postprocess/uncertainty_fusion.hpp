@@ -15,21 +15,22 @@
 #ifndef FASTDEM_POSTPROCESS_UNCERTAINTY_FUSION_HPP
 #define FASTDEM_POSTPROCESS_UNCERTAINTY_FUSION_HPP
 
-#include "fastdem/config/uncertainty_fusion.hpp"
+#include "fastdem/config/postprocess.hpp"
 #include "fastdem/elevation_map.hpp"
 
 namespace fastdem {
 
 /**
- * @brief Computes spatially-fused uncertainty_range using bilateral weighting.
+ * @brief Spatially fuses estimator-computed bounds using bilateral weighting.
  *
- * Replaces the simple per-cell 4σ uncertainty with a neighborhood-aware
- * estimate that preserves edges while smoothing uncertainty in flat areas.
+ * Takes per-cell upper_bound/lower_bound from the height estimator and
+ * produces neighborhood-aware bounds that preserve edges while smoothing
+ * uncertainty in flat areas.
  *
- * Input layers: elevation (height estimate), variance (sample variance)
- * Output layer: uncertainty_range (overwrites existing value)
+ * Input layers: upper_bound, lower_bound (from estimator computeBounds)
+ * Output layers: upper_bound, lower_bound (overwritten)
  *
- * @param map Height map to process (must have elevation, variance layers)
+ * @param map Height map to process (must have upper_bound, lower_bound layers)
  * @param config Spatial fusion configuration
  */
 void applyUncertaintyFusion(ElevationMap& map, const config::UncertaintyFusion& config);

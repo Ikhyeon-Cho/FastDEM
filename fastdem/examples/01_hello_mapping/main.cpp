@@ -7,7 +7,7 @@
  * Demonstrates:
  * - Creating ElevationMap and FastDEM
  * - Configuring with setter API
- * - Integrating point clouds (offline mode)
+ * - Integrating point clouds with explicit transforms
  * - Accessing elevation data
  */
 
@@ -33,7 +33,7 @@ int main() {
   FastDEM mapper(map);
   mapper.setHeightFilter(-1.0f, 2.0f)
       .setRangeFilter(0.5f, 10.0f)
-      .setEstimatorType(EstimationType::Welford)
+      .setEstimatorType(EstimationType::Kalman)
       .setSensorModel(SensorType::Constant);
 
   // 3. Generate and integrate

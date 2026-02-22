@@ -15,6 +15,7 @@ endif()
 ###############
 
 # External (System)
+find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 
@@ -74,6 +75,16 @@ option(FASTDEM_BUILD_EXAMPLES "Build fastdem examples" OFF)
 
 if(FASTDEM_BUILD_EXAMPLES)
   add_subdirectory(examples)
+endif()
+
+###########
+## Tools ##
+###########
+
+option(FASTDEM_BUILD_TOOLS "Build fastdem CLI tools" OFF)
+
+if(FASTDEM_BUILD_TOOLS)
+  add_subdirectory(tools)
 endif()
 
 ###########

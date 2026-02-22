@@ -1,0 +1,18 @@
+# FastDEM Post-processing Configuration
+inpainting:
+  enabled: false
+  max_iterations: 3
+  min_valid_neighbors: 2
+
+uncertainty_fusion:
+  enabled: true
+  search_radius: 0.15         # [m] neighbor search radius
+  spatial_sigma: 0.05          # [m] Gaussian distance decay
+  quantile_lower: 0.01         # 1st percentile
+  quantile_upper: 0.99         # 99th percentile
+  min_valid_neighbors: 3
+
+feature_extraction:
+  enabled: false
+  analysis_radius: 0.3         # [m] PCA neighbor radius
+  min_valid_neighbors: 4

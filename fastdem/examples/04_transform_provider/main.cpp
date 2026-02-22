@@ -2,11 +2,11 @@
 // Copyright (c) 2024 Ikhyeon Cho <tre0430@korea.ac.kr>
 
 /*
- * 04_transform_provider - Online mode with mock transform systems
+ * 04_transform_provider - Integration with transform providers
  *
  * Demonstrates:
  * - Implementing Calibration and Odometry interfaces
- * - Using online integrate() with automatic transform lookup
+ * - Using integrate() with automatic transform lookup
  * - Multi-frame integration with simulated robot motion
  */
 
@@ -70,7 +70,7 @@ int main() {
   // 3. Register mock transform systems
   auto calib = std::make_shared<MockCalibration>();
   auto odom = std::make_shared<MockOdometry>();
-  mapper.setCalibrationSystem(calib).setOdometrySystem(odom);
+  mapper.setCalibrationProvider(calib).setOdometryProvider(odom);
 
   std::cout << "Transform systems registered" << std::endl;
   std::cout << "  Calibration: sensor -> " << calib->getBaseFrame() << std::endl;
