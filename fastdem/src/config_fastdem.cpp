@@ -38,6 +38,13 @@ EstimationType parseEstimationType(const std::string& type) {
   return EstimationType::Kalman;
 }
 
+MappingMode parseMappingMode(const std::string& mode) {
+  if (mode == "local") return MappingMode::LOCAL;
+  if (mode == "global") return MappingMode::GLOBAL;
+  spdlog::warn("[Config] Unknown mapping mode '{}', defaulting to local", mode);
+  return MappingMode::LOCAL;
+}
+
 SensorType parseSensorType(const std::string& type) {
   if (type == "lidar" || type == "laser") return SensorType::LiDAR;
   if (type == "rgbd") return SensorType::RGBD;
@@ -53,6 +60,9 @@ Config parse(const YAML::Node& root) {
   // Mapping (estimation parameters)
   if (auto n = root["mapping"]) {
     auto& m = cfg.mapping;
+    std::string mode_str;
+    load(n, "mode", mode_str);
+    if (!mode_str.empty()) m.mode = parseMappingMode(mode_str);
     std::string estimation_str;
     load(n, "type", estimation_str);
     if (!estimation_str.empty())
@@ -73,6 +83,14 @@ Config parse(const YAML::Node& root) {
     }
   }
 
+  // Point filter
+  if (auto n = root["point_filter"]) {
+    load(n, "z_min", cfg.point_filter.z_min);
+    load(n, "z_max", cfg.point_filter.z_max);
+    load(n, "range_min", cfg.point_filter.range_min);
+    load(n, "range_max", cfg.point_filter.range_max);
+  }
+
   // Raycasting (log-odds ghost removal)
   if (auto n = root["raycasting"]) {
     load(n, "enabled", cfg.raycasting.enabled);
@@ -89,13 +107,19 @@ Config parse(const YAML::Node& root) {
     load(n, "type", sensor_str);
     if (!sensor_str.empty())
       cfg.sensor_model.type = parseSensorType(sensor_str);
-    load(n, "range_noise", cfg.sensor_model.range_noise);
-    load(n, "angular_noise", cfg.sensor_model.angular_noise);
-    load(n, "normal_a", cfg.sensor_model.normal_a);
-    load(n, "normal_b", cfg.sensor_model.normal_b);
-    load(n, "normal_c", cfg.sensor_model.normal_c);
-    load(n, "lateral_factor", cfg.sensor_model.lateral_factor);
-    load(n, "constant_uncertainty", cfg.sensor_model.constant_uncertainty);
+    if (auto l = n["lidar"]) {
+      load(l, "range_noise", cfg.sensor_model.lidar.range_noise);
+      load(l, "angular_noise", cfg.sensor_model.lidar.angular_noise);
+    }
+    if (auto r = n["rgbd"]) {
+      load(r, "normal_a", cfg.sensor_model.rgbd.normal_a);
+      load(r, "normal_b", cfg.sensor_model.rgbd.normal_b);
+      load(r, "normal_c", cfg.sensor_model.rgbd.normal_c);
+      load(r, "lateral_factor", cfg.sensor_model.rgbd.lateral_factor);
+    }
+    if (auto c = n["constant"]) {
+      load(c, "uncertainty", cfg.sensor_model.constant.uncertainty);
+    }
   }
 
   return cfg;
@@ -171,8 +195,16 @@ void validate(Config& cfg) {
   warn_clamp("mapping.p2.elevation_marker", m.mapping.p2.elevation_marker,
              0, 4);
 
-  // P2 quantile markers must be monotonically non-decreasing
-  const auto& p2 = m.mapping.p2;
+  // P2 quantile markers must be in [0, 1] and monotonically non-decreasing
+  auto& p2 = m.mapping.p2;
+  float* dns[] = {&p2.dn0, &p2.dn1, &p2.dn2, &p2.dn3, &p2.dn4};
+  for (int i = 0; i < 5; ++i) {
+    if (*dns[i] < 0.0f || *dns[i] > 1.0f) {
+      spdlog::warn("[Config] mapping.p2.dn{} ({}) out of [0, 1], clamping", i,
+                   *dns[i]);
+      *dns[i] = std::clamp(*dns[i], 0.0f, 1.0f);
+    }
+  }
   if (p2.dn0 > p2.dn1 || p2.dn1 > p2.dn2 || p2.dn2 > p2.dn3 ||
       p2.dn3 > p2.dn4) {
     throw std::invalid_argument(
@@ -184,45 +216,45 @@ void validate(Config& cfg) {
   }
 
   // Sensor model parameters must be positive
-  if (m.sensor_model.range_noise <= 0.0f) {
+  if (m.sensor_model.lidar.range_noise <= 0.0f) {
     spdlog::warn(
-        "[Config] sensor.range_noise ({}) must be > 0, clamping to 0.02",
-        m.sensor_model.range_noise);
-    m.sensor_model.range_noise = 0.02f;
+        "[Config] sensor.lidar.range_noise ({}) must be > 0, clamping to 0.02",
+        m.sensor_model.lidar.range_noise);
+    m.sensor_model.lidar.range_noise = 0.02f;
   }
-  if (m.sensor_model.angular_noise < 0.0f) {
+  if (m.sensor_model.lidar.angular_noise < 0.0f) {
     spdlog::warn(
-        "[Config] sensor.angular_noise ({}) must be >= 0, clamping to 0",
-        m.sensor_model.angular_noise);
-    m.sensor_model.angular_noise = 0.0f;
+        "[Config] sensor.lidar.angular_noise ({}) must be >= 0, clamping to 0",
+        m.sensor_model.lidar.angular_noise);
+    m.sensor_model.lidar.angular_noise = 0.0f;
   }
-  if (m.sensor_model.constant_uncertainty <= 0.0f) {
+  if (m.sensor_model.constant.uncertainty <= 0.0f) {
     spdlog::warn(
-        "[Config] sensor.constant_uncertainty ({}) must be > 0, "
+        "[Config] sensor.constant.uncertainty ({}) must be > 0, "
         "clamping to 0.1",
-        m.sensor_model.constant_uncertainty);
-    m.sensor_model.constant_uncertainty = 0.1f;
+        m.sensor_model.constant.uncertainty);
+    m.sensor_model.constant.uncertainty = 0.1f;
   }
-  if (m.sensor_model.normal_a < 0.0f) {
-    spdlog::warn("[Config] sensor.normal_a ({}) must be >= 0, clamping to 0",
-                 m.sensor_model.normal_a);
-    m.sensor_model.normal_a = 0.0f;
+  if (m.sensor_model.rgbd.normal_a < 0.0f) {
+    spdlog::warn("[Config] sensor.rgbd.normal_a ({}) must be >= 0, clamping to 0",
+                 m.sensor_model.rgbd.normal_a);
+    m.sensor_model.rgbd.normal_a = 0.0f;
   }
-  if (m.sensor_model.normal_b < 0.0f) {
-    spdlog::warn("[Config] sensor.normal_b ({}) must be >= 0, clamping to 0",
-                 m.sensor_model.normal_b);
-    m.sensor_model.normal_b = 0.0f;
+  if (m.sensor_model.rgbd.normal_b < 0.0f) {
+    spdlog::warn("[Config] sensor.rgbd.normal_b ({}) must be >= 0, clamping to 0",
+                 m.sensor_model.rgbd.normal_b);
+    m.sensor_model.rgbd.normal_b = 0.0f;
   }
-  if (m.sensor_model.normal_c < 0.0f) {
-    spdlog::warn("[Config] sensor.normal_c ({}) must be >= 0, clamping to 0",
-                 m.sensor_model.normal_c);
-    m.sensor_model.normal_c = 0.0f;
+  if (m.sensor_model.rgbd.normal_c < 0.0f) {
+    spdlog::warn("[Config] sensor.rgbd.normal_c ({}) must be >= 0, clamping to 0",
+                 m.sensor_model.rgbd.normal_c);
+    m.sensor_model.rgbd.normal_c = 0.0f;
   }
-  if (m.sensor_model.lateral_factor < 0.0f) {
+  if (m.sensor_model.rgbd.lateral_factor < 0.0f) {
     spdlog::warn(
-        "[Config] sensor.lateral_factor ({}) must be >= 0, clamping to 0",
-        m.sensor_model.lateral_factor);
-    m.sensor_model.lateral_factor = 0.0f;
+        "[Config] sensor.rgbd.lateral_factor ({}) must be >= 0, clamping to 0",
+        m.sensor_model.rgbd.lateral_factor);
+    m.sensor_model.rgbd.lateral_factor = 0.0f;
   }
 
 }

@@ -58,20 +58,19 @@ class SimpleWeightedECDF {
    * @param p Quantile (0.0 to 1.0)
    * @return Weighted quantile value, or NAN if no samples
    */
-  float quantile(float p) const {
+  float quantile(float p) {
     if (samples_.empty()) return NAN;
     if (samples_.size() == 1) return samples_[0].value;
 
-    // Sort by value (makes a copy for non-destructive operation)
-    auto sorted = samples_;
-    std::sort(sorted.begin(), sorted.end(),
+    // Sort by value (in-place; caller should not reuse after this)
+    std::sort(samples_.begin(), samples_.end(),
               [](const Sample& a, const Sample& b) {
                 return a.value < b.value;
               });
 
     // Compute total weight
     float total_weight = 0.0f;
-    for (const auto& s : sorted) {
+    for (const auto& s : samples_) {
       total_weight += s.weight;
     }
 
@@ -81,14 +80,14 @@ class SimpleWeightedECDF {
     const float target = p * total_weight;
     float cumulative = 0.0f;
 
-    for (const auto& s : sorted) {
+    for (const auto& s : samples_) {
       cumulative += s.weight;
       if (cumulative >= target) {
         return s.value;
       }
     }
 
-    return sorted.back().value;
+    return samples_.back().value;
   }
 
  private:

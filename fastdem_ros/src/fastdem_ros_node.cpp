@@ -66,12 +66,6 @@ class MappingNode {
 
     // Mapper
     mapper_ = std::make_unique<FastDEM>(map_, cfg_.pipeline);
-    mapper_->setMappingMode(cfg_.mapping_mode);
-
-    // Set scan data limit
-    mapper_->setHeightFilter(cfg_.point_filter.z_min, cfg_.point_filter.z_max);
-    mapper_->setRangeFilter(cfg_.point_filter.range_min,
-                            cfg_.point_filter.range_max);
 
     // ROS TF provides both Calibration and Odometry values
     auto tf = std::make_shared<TFBridge>(cfg_.tf.base_frame, cfg_.tf.map_frame);
@@ -110,8 +104,9 @@ class MappingNode {
     static bool first_scan = true;
     if (first_scan) {
       spdlog::info("First scan received. Mapping started...");
-      if (cfg_.uncertainty_fusion.enabled || cfg_.inpainting.enabled ||
-          cfg_.feature_extraction.enabled)
+      if (cfg_.postprocess.uncertainty_fusion.enabled ||
+          cfg_.postprocess.inpainting.enabled ||
+          cfg_.postprocess.feature_extraction.enabled)
         timer_post_process_ =
             nh_.createTimer(ros::Duration(1.0 / cfg_.topics.post_process_rate),
                             &MappingNode::postProcessCallback, this);
@@ -133,15 +128,15 @@ class MappingNode {
     }
 
     // Post-processing on snapshot (lock-free)
-    if (cfg_.uncertainty_fusion.enabled)
-      applyUncertaintyFusion(map_raw, cfg_.uncertainty_fusion);
-    if (cfg_.inpainting.enabled)
-      applyInpainting(map_raw, cfg_.inpainting.max_iterations,
-                      cfg_.inpainting.min_valid_neighbors, /*inplace=*/true);
-    if (cfg_.feature_extraction.enabled)
-      applyFeatureExtraction(map_raw,
-                             cfg_.feature_extraction.analysis_radius,  //
-                             cfg_.feature_extraction.min_valid_neighbors);
+    const auto& pp = cfg_.postprocess;
+    if (pp.uncertainty_fusion.enabled)
+      applyUncertaintyFusion(map_raw, pp.uncertainty_fusion);
+    if (pp.inpainting.enabled)
+      applyInpainting(map_raw, pp.inpainting.max_iterations,
+                      pp.inpainting.min_valid_neighbors, /*inplace=*/true);
+    if (pp.feature_extraction.enabled)
+      applyFeatureExtraction(map_raw, pp.feature_extraction.analysis_radius,
+                             pp.feature_extraction.min_valid_neighbors);
 
     // Compute derived layer for visualization
     grid_map::Matrix range_mat =
@@ -152,7 +147,7 @@ class MappingNode {
     if (pub_post_map_.getNumSubscribers() > 0)
       pub_post_map_.publish(ros1::toPointCloud2(map_raw));
     if (pub_post_gridmap_.getNumSubscribers() > 0 &&
-        cfg_.mapping_mode != fastdem::MappingMode::GLOBAL)
+        cfg_.pipeline.mapping.mode != fastdem::MappingMode::GLOBAL)
       pub_post_gridmap_.publish(ros1::toGridMap(map_raw));
   }
 
@@ -161,8 +156,9 @@ class MappingNode {
   void publishMap(const ros::TimerEvent&) {
     // Core layers (from map_)
     const bool want_map = pub_map_.getNumSubscribers() > 0;
-    const bool want_gridmap = pub_gridmap_.getNumSubscribers() > 0 &&
-                              cfg_.mapping_mode != fastdem::MappingMode::GLOBAL;
+    const bool want_gridmap =
+        pub_gridmap_.getNumSubscribers() > 0 &&
+        cfg_.pipeline.mapping.mode != fastdem::MappingMode::GLOBAL;
     const bool want_boundary = pub_boundary_.getNumSubscribers() > 0;
     if (want_map || want_gridmap || want_boundary) {
       std::shared_lock lock(map_mutex_);

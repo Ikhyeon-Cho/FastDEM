@@ -37,11 +37,7 @@ struct NodeConfig {
     double resolution{0.1};
   } map;
 
-  fastdem::MappingMode mapping_mode{fastdem::MappingMode::LOCAL};
-  config::PointFilter point_filter;
-  config::Inpainting inpainting;
-  config::UncertaintyFusion uncertainty_fusion;
-  config::FeatureExtraction feature_extraction;
+  config::PostProcess postprocess;
 
   /// Parse everything from a single YAML file.
   static NodeConfig load(const std::string& config_path) {
@@ -78,43 +74,9 @@ struct NodeConfig {
       read(n, "resolution", cfg.map.resolution);
     }
 
-    // Application settings
-    if (auto n = yaml["mapping_mode"]) {
-      auto s = n.as<std::string>();
-      if (s == "global")
-        cfg.mapping_mode = fastdem::MappingMode::GLOBAL;
-      else
-        cfg.mapping_mode = fastdem::MappingMode::LOCAL;
-    }
-    if (auto n = yaml["point_filter"]) {
-      read(n, "z_min", cfg.point_filter.z_min);
-      read(n, "z_max", cfg.point_filter.z_max);
-      read(n, "range_min", cfg.point_filter.range_min);
-      read(n, "range_max", cfg.point_filter.range_max);
-    }
-    if (auto n = yaml["inpainting"]) {
-      read(n, "enabled", cfg.inpainting.enabled);
-      read(n, "max_iterations", cfg.inpainting.max_iterations);
-      read(n, "min_valid_neighbors", cfg.inpainting.min_valid_neighbors);
-    }
-    if (auto n = yaml["uncertainty_fusion"]) {
-      read(n, "enabled", cfg.uncertainty_fusion.enabled);
-      read(n, "search_radius", cfg.uncertainty_fusion.search_radius);
-      read(n, "spatial_sigma", cfg.uncertainty_fusion.spatial_sigma);
-      read(n, "quantile_lower", cfg.uncertainty_fusion.quantile_lower);
-      read(n, "quantile_upper", cfg.uncertainty_fusion.quantile_upper);
-      read(n, "min_valid_neighbors",
-           cfg.uncertainty_fusion.min_valid_neighbors);
-    }
-    if (auto n = yaml["feature_extraction"]) {
-      read(n, "enabled", cfg.feature_extraction.enabled);
-      read(n, "analysis_radius", cfg.feature_extraction.analysis_radius);
-      read(n, "min_valid_neighbors",
-           cfg.feature_extraction.min_valid_neighbors);
-    }
-
-    // Pipeline config (library — validates internally)
+    // Library configs (parsed + validated internally)
     cfg.pipeline = fastdem::parseConfig(yaml);
+    cfg.postprocess = fastdem::config::parsePostProcess(yaml);
 
     // Validate node-level config
     cfg.validate();

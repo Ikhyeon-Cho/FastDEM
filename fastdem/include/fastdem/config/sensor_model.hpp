@@ -15,23 +15,25 @@ enum class SensorType {
 
 namespace config {
 
-/// Sensor model parameters
-/// all models share the struct, only relevant fields used
+/// Sensor model parameters (grouped by sensor type)
 struct SensorModel {
   SensorType type = SensorType::LiDAR;
 
-  // LiDAR
-  float range_noise = 0.02f;     ///< Range uncertainty σ_r [m]
-  float angular_noise = 0.001f;  ///< Angular uncertainty σ_θ [rad]
+  struct LiDAR {
+    float range_noise = 0.02f;     ///< Range uncertainty σ_r [m]
+    float angular_noise = 0.001f;  ///< Angular uncertainty σ_θ [rad]
+  } lidar;
 
-  // RGB-D (Nguyen et al. 2012)
-  float normal_a = 0.001f;        ///< Base depth noise [m]
-  float normal_b = 0.002f;        ///< Quadratic coefficient [m⁻¹]
-  float normal_c = 0.4f;          ///< Optimal depth [m]
-  float lateral_factor = 0.001f;  ///< Lateral noise factor
+  struct RGBD {
+    float normal_a = 0.001f;        ///< Base depth noise [m]
+    float normal_b = 0.002f;        ///< Quadratic coefficient [m⁻¹]
+    float normal_c = 0.4f;          ///< Optimal depth [m]
+    float lateral_factor = 0.001f;  ///< Lateral noise factor
+  } rgbd;
 
-  // Constant
-  float constant_uncertainty = 0.1f;  ///< Fixed σ [m]
+  struct Constant {
+    float uncertainty = 0.03f;  ///< Fixed σ [m]
+  } constant;
 };
 
 }  // namespace config

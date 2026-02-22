@@ -4,6 +4,12 @@
 #ifndef FASTDEM_CONFIG_POSTPROCESS_HPP
 #define FASTDEM_CONFIG_POSTPROCESS_HPP
 
+#include <string>
+
+namespace YAML {
+class Node;
+}
+
 namespace fastdem::config {
 
 /// Ghost obstacle removal via log-odds free-space accumulation.
@@ -39,6 +45,16 @@ struct FeatureExtraction {
   float analysis_radius = 0.3f;  ///< PCA neighbor radius [m]
   int min_valid_neighbors = 4;
 };
+
+/// Post-processing configuration aggregate.
+struct PostProcess {
+  Inpainting inpainting;
+  UncertaintyFusion uncertainty_fusion;
+  FeatureExtraction feature_extraction;
+};
+
+PostProcess parsePostProcess(const YAML::Node& root);
+PostProcess loadPostProcess(const std::string& path);
 
 }  // namespace fastdem::config
 

@@ -17,6 +17,7 @@
 #define FASTDEM_MAPPING_KALMAN_ESTIMATION_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 
 #include "fastdem/elevation_map.hpp"
@@ -90,11 +91,13 @@ class Kalman {
     sample_m2_mat_ = &map.get(layer::sample_m2);
     upper_mat_ = &map.get(layer::upper_bound);
     lower_mat_ = &map.get(layer::lower_bound);
+    bound_ = true;
   }
 
   /// Update elevation estimate at a single cell.
   void update(const grid_map::Index& index, float measurement,
               float measurement_variance) {
+    assert(bound_ && "Kalman::bind() must be called before update()");
     const int i = index(0);
     const int j = index(1);
 
@@ -133,15 +136,16 @@ class Kalman {
       const float new_mean = sample_mean + (delta / count);
       const float delta2 = z - new_mean;
       m2 += delta * delta2;
-      sample_var = m2 / (count - 1.0f);
+      sample_var = (count > 1.0f) ? m2 / (count - 1.0f) : 0.0f;
       sample_mean = new_mean;
     }
   }
 
   /// Compute confidence bounds from accumulated statistics.
   void computeBounds() {
+    assert(bound_ && "Kalman::bind() must be called before computeBounds()");
     // σ = sqrt(sample variance)
-    Eigen::ArrayXXf sigma = variance_mat_->array().sqrt();
+    Eigen::ArrayXXf sigma = variance_mat_->array().max(0.0f).sqrt();
 
     // Confidence bounds: elevation ± 2σ
     *upper_mat_ = elevation_mat_->array() + 2.0f * sigma;
@@ -166,6 +170,8 @@ class Kalman {
   // Derived layer matrices
   grid_map::Matrix* upper_mat_ = nullptr;
   grid_map::Matrix* lower_mat_ = nullptr;
+
+  bool bound_ = false;
 };
 
 }  // namespace fastdem

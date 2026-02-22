@@ -25,9 +25,9 @@ logger:
   level: "info"  # info, warn, error, debug
   
 # ─── Mapping Pipeline ───────────────────────────────
-mapping_mode: "local"  # local | global
 mapping:
-  type: "kalman_filter"      # kalman_filter | p2_quantile
+  mode: "global"               # local | global
+  type: "kalman_filter"        # kalman_filter | p2_quantile
   kalman:
     min_variance: 0.0001     # [m²]
     max_variance: 0.01       # [m²]
@@ -41,18 +41,18 @@ mapping:
     elevation_marker: 3
     max_sample_count: 0
 
-rasterization:
-  method: "max"              # max | min | mean
-
 sensor_model:
   type: "lidar"              # constant | lidar | rgbd
-  range_noise: 0.02          # [m]
-  angular_noise: 0.001       # [rad]
-  normal_a: 0.001            # [m] (RGB-D)
-  normal_b: 0.002            # [m⁻¹] (RGB-D)
-  normal_c: 0.4              # [m] (RGB-D)
-  lateral_factor: 0.001      # (RGB-D)
-  constant_uncertainty: 0.03 # [m]
+  lidar:
+    range_noise: 0.02        # [m] σ_r
+    angular_noise: 0.001     # [rad] σ_θ
+  rgbd:
+    normal_a: 0.001          # [m] base depth noise
+    normal_b: 0.002          # [m⁻¹] quadratic coefficient
+    normal_c: 0.4            # [m] optimal depth
+    lateral_factor: 0.001    # lateral noise factor
+  constant:
+    uncertainty: 0.03        # [m] σ
 
 # ─── Post-processing ───────────────────────────────
 raycasting:

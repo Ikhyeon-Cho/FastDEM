@@ -35,6 +35,7 @@ namespace fastdem {
 namespace {
 
 constexpr float kMinRayLength = 1e-4f;
+constexpr float kInfinity = 1e30f;  // Effectively infinite t for axis-aligned rays
 
 /**
  * @brief Trace ray using DDA grid traversal.
@@ -89,8 +90,8 @@ void traceRay(const ElevationMap& map, float resolution,
     t_delta_r = static_cast<float>(step_r) / dr;
   } else {
     step_r = 0;
-    t_max_r = 1e30f;
-    t_delta_r = 1e30f;
+    t_max_r = kInfinity;
+    t_delta_r = kInfinity;
   }
 
   if (std::abs(dc) > 1e-8f) {
@@ -100,8 +101,8 @@ void traceRay(const ElevationMap& map, float resolution,
     t_delta_c = static_cast<float>(step_c) / dc;
   } else {
     step_c = 0;
-    t_max_c = 1e30f;
-    t_delta_c = 1e30f;
+    t_max_c = kInfinity;
+    t_delta_c = kInfinity;
   }
 
   // Traverse ray cells

@@ -1,6 +1,6 @@
 # FastDEM Configuration
 mapping:
-  mode: "local"                # local | global
+  mode: "global"                # local | global
   type: "kalman_filter"        # kalman_filter | p2_quantile
   kalman:
     min_variance: 0.0001     # [m²] prevents over-confidence

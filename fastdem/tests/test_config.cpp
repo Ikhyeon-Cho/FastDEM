@@ -12,6 +12,7 @@
 #include <fstream>
 
 #include "fastdem/config/fastdem.hpp"
+#include "fastdem/config/postprocess.hpp"
 
 using namespace fastdem;
 
@@ -69,7 +70,7 @@ TEST(ConfigLoadTest, PartialYamlPreservesDefaults) {
   // Unspecified values remain at defaults
   Config defaults;
   EXPECT_EQ(cfg.mapping.mode, defaults.mapping.mode);
-  EXPECT_FLOAT_EQ(cfg.sensor_model.range_noise, defaults.sensor_model.range_noise);
+  EXPECT_FLOAT_EQ(cfg.sensor_model.lidar.range_noise, defaults.sensor_model.lidar.range_noise);
 }
 
 TEST(ConfigLoadTest, AllEstimationTypes) {
@@ -96,6 +97,21 @@ TEST(ConfigLoadTest, AllSensorTypes) {
   EXPECT_EQ(constant.sensor_model.type, SensorType::Constant);
 }
 
+TEST(ConfigLoadTest, MappingModeParsed) {
+  auto path = writeTempYaml(
+      "mapping:\n"
+      "  mode: global\n",
+      "test_mode_nested.yaml");
+  auto cfg = loadConfig(path);
+  EXPECT_EQ(cfg.mapping.mode, MappingMode::GLOBAL);
+}
+
+TEST(ConfigLoadTest, MappingModeDefaultIsLocal) {
+  auto path = writeTempYaml("# empty\n", "test_mode_default.yaml");
+  auto cfg = loadConfig(path);
+  EXPECT_EQ(cfg.mapping.mode, MappingMode::LOCAL);
+}
+
 TEST(ConfigLoadTest, KalmanParameters) {
   auto path = writeTempYaml(
       "mapping:\n"
@@ -114,8 +130,32 @@ TEST(ConfigLoadTest, KalmanParameters) {
 
 // ─── Validation: Fatal Errors ────────────────────────────────────────────────
 
-// point_filter is no longer parsed by loadConfig/parseConfig.
-// Filter bounds are set by the application via setHeightFilter/setRangeFilter.
+TEST(ConfigLoadTest, PointFilterParsed) {
+  auto path = writeTempYaml(
+      "point_filter:\n"
+      "  z_min: -0.5\n"
+      "  z_max: 2.0\n"
+      "  range_min: 0.5\n"
+      "  range_max: 20.0\n",
+      "test_point_filter.yaml");
+  auto cfg = loadConfig(path);
+
+  EXPECT_FLOAT_EQ(cfg.point_filter.z_min, -0.5f);
+  EXPECT_FLOAT_EQ(cfg.point_filter.z_max, 2.0f);
+  EXPECT_FLOAT_EQ(cfg.point_filter.range_min, 0.5f);
+  EXPECT_FLOAT_EQ(cfg.point_filter.range_max, 20.0f);
+}
+
+TEST(ConfigLoadTest, MissingPointFilterUsesDefaults) {
+  auto path = writeTempYaml("# no point_filter\n", "test_no_pf.yaml");
+  auto cfg = loadConfig(path);
+
+  Config defaults;
+  EXPECT_FLOAT_EQ(cfg.point_filter.z_min, defaults.point_filter.z_min);
+  EXPECT_FLOAT_EQ(cfg.point_filter.z_max, defaults.point_filter.z_max);
+  EXPECT_FLOAT_EQ(cfg.point_filter.range_min, defaults.point_filter.range_min);
+  EXPECT_FLOAT_EQ(cfg.point_filter.range_max, defaults.point_filter.range_max);
+}
 
 TEST(ConfigValidationTest, KalmanMinVarGeMaxVarThrows) {
   auto path = writeTempYaml(
@@ -145,28 +185,31 @@ TEST(ConfigValidationTest, P2MarkersNotSortedThrows) {
 TEST(ConfigValidationTest, NegativeRangeNoiseClamped) {
   auto path = writeTempYaml(
       "sensor_model:\n"
-      "  range_noise: -0.5\n",
+      "  lidar:\n"
+      "    range_noise: -0.5\n",
       "test_neg_noise.yaml");
   auto cfg = loadConfig(path);
-  EXPECT_GT(cfg.sensor_model.range_noise, 0.0f);
+  EXPECT_GT(cfg.sensor_model.lidar.range_noise, 0.0f);
 }
 
 TEST(ConfigValidationTest, NegativeAngularNoiseClamped) {
   auto path = writeTempYaml(
       "sensor_model:\n"
-      "  angular_noise: -1.0\n",
+      "  lidar:\n"
+      "    angular_noise: -1.0\n",
       "test_neg_angular.yaml");
   auto cfg = loadConfig(path);
-  EXPECT_GE(cfg.sensor_model.angular_noise, 0.0f);
+  EXPECT_GE(cfg.sensor_model.lidar.angular_noise, 0.0f);
 }
 
 TEST(ConfigValidationTest, NegativeConstantUncertaintyClamped) {
   auto path = writeTempYaml(
       "sensor_model:\n"
-      "  constant_uncertainty: -0.1\n",
+      "  constant:\n"
+      "    uncertainty: -0.1\n",
       "test_neg_const.yaml");
   auto cfg = loadConfig(path);
-  EXPECT_GT(cfg.sensor_model.constant_uncertainty, 0.0f);
+  EXPECT_GT(cfg.sensor_model.constant.uncertainty, 0.0f);
 }
 
 TEST(ConfigValidationTest, NegativeProcessNoiseClamped) {
@@ -178,6 +221,116 @@ TEST(ConfigValidationTest, NegativeProcessNoiseClamped) {
   auto cfg = loadConfig(path);
   EXPECT_GE(cfg.mapping.kalman.process_noise, 0.0f);
 }
+
+// ─── PostProcess Loading Tests ───────────────────────────────────────────────
+
+TEST(PostProcessLoadTest, AllFieldsParsed) {
+  auto path = writeTempYaml(
+      "inpainting:\n"
+      "  enabled: true\n"
+      "  max_iterations: 5\n"
+      "  min_valid_neighbors: 3\n"
+      "uncertainty_fusion:\n"
+      "  enabled: true\n"
+      "  search_radius: 0.2\n"
+      "  spatial_sigma: 0.1\n"
+      "  quantile_lower: 0.05\n"
+      "  quantile_upper: 0.95\n"
+      "  min_valid_neighbors: 4\n"
+      "feature_extraction:\n"
+      "  enabled: true\n"
+      "  analysis_radius: 0.5\n"
+      "  min_valid_neighbors: 6\n",
+      "test_postprocess_all.yaml");
+  auto cfg = config::loadPostProcess(path);
+
+  EXPECT_TRUE(cfg.inpainting.enabled);
+  EXPECT_EQ(cfg.inpainting.max_iterations, 5);
+  EXPECT_EQ(cfg.inpainting.min_valid_neighbors, 3);
+
+  EXPECT_TRUE(cfg.uncertainty_fusion.enabled);
+  EXPECT_FLOAT_EQ(cfg.uncertainty_fusion.search_radius, 0.2f);
+  EXPECT_FLOAT_EQ(cfg.uncertainty_fusion.spatial_sigma, 0.1f);
+  EXPECT_FLOAT_EQ(cfg.uncertainty_fusion.quantile_lower, 0.05f);
+  EXPECT_FLOAT_EQ(cfg.uncertainty_fusion.quantile_upper, 0.95f);
+  EXPECT_EQ(cfg.uncertainty_fusion.min_valid_neighbors, 4);
+
+  EXPECT_TRUE(cfg.feature_extraction.enabled);
+  EXPECT_FLOAT_EQ(cfg.feature_extraction.analysis_radius, 0.5f);
+  EXPECT_EQ(cfg.feature_extraction.min_valid_neighbors, 6);
+}
+
+TEST(PostProcessLoadTest, EmptyYamlUsesDefaults) {
+  auto path = writeTempYaml("# empty\n", "test_postprocess_empty.yaml");
+  auto cfg = config::loadPostProcess(path);
+
+  EXPECT_FALSE(cfg.inpainting.enabled);
+  EXPECT_FALSE(cfg.uncertainty_fusion.enabled);
+  EXPECT_FALSE(cfg.feature_extraction.enabled);
+}
+
+TEST(PostProcessLoadTest, LoadPostProcessYaml) {
+  auto cfg = config::loadPostProcess(FASTDEM_CONFIG_DIR "/postprocess.yaml");
+
+  EXPECT_TRUE(cfg.uncertainty_fusion.enabled);
+  EXPECT_FALSE(cfg.inpainting.enabled);
+  EXPECT_FALSE(cfg.feature_extraction.enabled);
+}
+
+// ─── Validation: Non-Fatal Clamping ──────────────────────────────────────────
+
+// ─── PostProcess Validation Tests ─────────────────────────────────────────────
+
+TEST(PostProcessValidationTest, NegativeSearchRadiusClamped) {
+  auto path = writeTempYaml(
+      "uncertainty_fusion:\n"
+      "  search_radius: -0.5\n",
+      "test_pp_neg_radius.yaml");
+  auto cfg = config::loadPostProcess(path);
+  EXPECT_GT(cfg.uncertainty_fusion.search_radius, 0.0f);
+}
+
+TEST(PostProcessValidationTest, ZeroSpatialSigmaClamped) {
+  auto path = writeTempYaml(
+      "uncertainty_fusion:\n"
+      "  spatial_sigma: 0.0\n",
+      "test_pp_zero_sigma.yaml");
+  auto cfg = config::loadPostProcess(path);
+  EXPECT_GT(cfg.uncertainty_fusion.spatial_sigma, 0.0f);
+}
+
+TEST(PostProcessValidationTest, InvertedQuantilesReset) {
+  auto path = writeTempYaml(
+      "uncertainty_fusion:\n"
+      "  quantile_lower: 0.95\n"
+      "  quantile_upper: 0.05\n",
+      "test_pp_inv_quantile.yaml");
+  auto cfg = config::loadPostProcess(path);
+  EXPECT_LT(cfg.uncertainty_fusion.quantile_lower,
+             cfg.uncertainty_fusion.quantile_upper);
+}
+
+TEST(PostProcessValidationTest, NegativeAnalysisRadiusClamped) {
+  auto path = writeTempYaml(
+      "feature_extraction:\n"
+      "  analysis_radius: -1.0\n",
+      "test_pp_neg_analysis.yaml");
+  auto cfg = config::loadPostProcess(path);
+  EXPECT_GT(cfg.feature_extraction.analysis_radius, 0.0f);
+}
+
+TEST(PostProcessValidationTest, NegativeMinNeighborsClamped) {
+  auto path = writeTempYaml(
+      "inpainting:\n"
+      "  max_iterations: -2\n"
+      "  min_valid_neighbors: -1\n",
+      "test_pp_neg_neighbors.yaml");
+  auto cfg = config::loadPostProcess(path);
+  EXPECT_GE(cfg.inpainting.max_iterations, 1);
+  EXPECT_GE(cfg.inpainting.min_valid_neighbors, 1);
+}
+
+// ─── Validation: Non-Fatal Clamping ──────────────────────────────────────────
 
 TEST(ConfigValidationTest, ElevationMarkerOutOfRangeClamped) {
   auto path = writeTempYaml(

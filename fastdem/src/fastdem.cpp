@@ -42,7 +42,7 @@ FastDEM& FastDEM::setSensorModel(SensorType type) {
   return *this;
 }
 
-FastDEM& FastDEM::setSensorModel(std::unique_ptr<SensorModel> model) {
+FastDEM& FastDEM::setSensorModel(std::unique_ptr<SensorModel> model) noexcept {
   sensor_model_ = std::move(model);
   return *this;
 }
@@ -65,12 +65,12 @@ FastDEM& FastDEM::enableRaycasting(bool enabled) noexcept {
 }
 
 FastDEM& FastDEM::setCalibrationProvider(
-    std::shared_ptr<Calibration> calibration) {
+    std::shared_ptr<Calibration> calibration) noexcept {
   calibration_ = std::move(calibration);
   return *this;
 }
 
-FastDEM& FastDEM::setOdometryProvider(std::shared_ptr<Odometry> odometry) {
+FastDEM& FastDEM::setOdometryProvider(std::shared_ptr<Odometry> odometry) noexcept {
   odometry_ = std::move(odometry);
   return *this;
 }
@@ -121,8 +121,10 @@ bool FastDEM::integrate(std::shared_ptr<PointCloud> cloud) {
 bool FastDEM::integrate(const PointCloud& cloud,
                         const Eigen::Isometry3d& T_base_sensor,
                         const Eigen::Isometry3d& T_world_base) {
-  // Explicit-transform validation
-  if (cloud.empty()) return false;
+  if (cloud.empty()) {
+    spdlog::warn("[FastDEM] Received empty cloud. Skipping...");
+    return false;
+  }
 
   return integrateImpl(cloud, T_base_sensor, T_world_base);
 }

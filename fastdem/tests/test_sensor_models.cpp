@@ -17,7 +17,7 @@ using namespace fastdem;
 TEST(CreateSensorModelTest, CreateLiDAR) {
   config::SensorModel cfg;
   cfg.type = SensorType::LiDAR;
-  cfg.range_noise = 0.03f;
+  cfg.lidar.range_noise = 0.03f;
   auto model = createSensorModel(cfg);
 
   // LiDAR model: beam along X at 10m → cov(0,0) = range_noise²
@@ -28,19 +28,19 @@ TEST(CreateSensorModelTest, CreateLiDAR) {
 TEST(CreateSensorModelTest, CreateRGBD) {
   config::SensorModel cfg;
   cfg.type = SensorType::RGBD;
-  cfg.normal_a = 0.002f;
-  cfg.normal_c = 0.5f;
+  cfg.rgbd.normal_a = 0.002f;
+  cfg.rgbd.normal_c = 0.5f;
   auto model = createSensorModel(cfg);
 
   // At optimal depth c: var_norm = a²
-  auto cov = model->computeCovariance(Eigen::Vector3f(0, 0, cfg.normal_c));
-  EXPECT_NEAR(cov(2, 2), cfg.normal_a * cfg.normal_a, 1e-8f);
+  auto cov = model->computeCovariance(Eigen::Vector3f(0, 0, cfg.rgbd.normal_c));
+  EXPECT_NEAR(cov(2, 2), cfg.rgbd.normal_a * cfg.rgbd.normal_a, 1e-8f);
 }
 
 TEST(CreateSensorModelTest, CreateConstant) {
   config::SensorModel cfg;
   cfg.type = SensorType::Constant;
-  cfg.constant_uncertainty = 0.2f;
+  cfg.constant.uncertainty = 0.2f;
   auto model = createSensorModel(cfg);
 
   auto cov = model->computeCovariance(Eigen::Vector3f(1, 2, 3));

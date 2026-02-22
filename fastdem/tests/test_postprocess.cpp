@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+#include "fastdem/postprocess/feature_extraction.hpp"
 #include "fastdem/postprocess/inpainting.hpp"
 #include "fastdem/postprocess/raycasting.hpp"
 #include "fastdem/postprocess/spatial_smoothing.hpp"
@@ -267,4 +268,132 @@ TEST_F(PostprocessTest, SpatialSmoothingRemovesSpike) {
 TEST_F(PostprocessTest, SpatialSmoothingSkipsMissingLayer) {
   // Should not crash on non-existent layer
   applySpatialSmoothing(map, "nonexistent_layer");
+}
+
+// ─── Feature Extraction ────────────────────────────────────────────────────
+
+TEST_F(PostprocessTest, FeatureExtractionCreatesAllLayers) {
+  // Fill a flat plane at z = 1.0
+  map.get(layer::elevation).setConstant(1.0f);
+
+  applyFeatureExtraction(map, /*analysis_radius=*/0.6f,
+                         /*min_valid_neighbors=*/4);
+
+  EXPECT_TRUE(map.exists(layer::step));
+  EXPECT_TRUE(map.exists(layer::slope));
+  EXPECT_TRUE(map.exists(layer::roughness));
+  EXPECT_TRUE(map.exists(layer::curvature));
+  EXPECT_TRUE(map.exists(layer::normal_x));
+  EXPECT_TRUE(map.exists(layer::normal_y));
+  EXPECT_TRUE(map.exists(layer::normal_z));
+}
+
+TEST_F(PostprocessTest, FeatureExtractionFlatPlane) {
+  // Flat plane: slope ≈ 0, roughness ≈ 0, normal ≈ (0, 0, 1)
+  map.get(layer::elevation).setConstant(1.0f);
+
+  applyFeatureExtraction(map, 0.6f, 4);
+
+  auto center = centerIndex();
+  EXPECT_NEAR(map.at(layer::slope, center), 0.0f, 1.0f);      // < 1 degree
+  EXPECT_NEAR(map.at(layer::roughness, center), 0.0f, 0.001f);
+  EXPECT_NEAR(map.at(layer::step, center), 0.0f, 0.001f);
+  EXPECT_NEAR(map.at(layer::normal_z, center), 1.0f, 0.01f);
+}
+
+TEST_F(PostprocessTest, FeatureExtractionTiltedPlane) {
+  // Tilted plane: z increases with row → slope > 0
+  const auto idx = map.indexer();
+  for (int row = 0; row < idx.rows; ++row) {
+    for (int col = 0; col < idx.cols; ++col) {
+      auto [r, c] = idx(row, col);
+      map.at(layer::elevation, grid_map::Index(r, c)) =
+          static_cast<float>(row) * idx.resolution * 0.5f;  // 0.5 rise/run
+    }
+  }
+
+  applyFeatureExtraction(map, 0.6f, 4);
+
+  auto center = centerIndex();
+  float slope = map.at(layer::slope, center);
+  EXPECT_GT(slope, 10.0f);   // Clearly non-zero slope
+  EXPECT_LT(slope, 45.0f);   // atan(0.5) ≈ 26.6°
+}
+
+TEST_F(PostprocessTest, FeatureExtractionStepDetection) {
+  // Half the map at z=0, half at z=1 → step should be ~1.0 near boundary
+  const auto idx = map.indexer();
+  for (int row = 0; row < idx.rows; ++row) {
+    for (int col = 0; col < idx.cols; ++col) {
+      auto [r, c] = idx(row, col);
+      map.at(layer::elevation, grid_map::Index(r, c)) =
+          (col < idx.cols / 2) ? 0.0f : 1.0f;
+    }
+  }
+
+  applyFeatureExtraction(map, 0.6f, 4);
+
+  // Check a cell near the boundary (center column)
+  auto center = centerIndex();
+  float step_val = map.at(layer::step, center);
+  EXPECT_GT(step_val, 0.5f);  // Should detect the step
+}
+
+TEST_F(PostprocessTest, FeatureExtractionHandlesUninitializedMap) {
+  // Default-constructed map — should not crash
+  ElevationMap empty_map;
+  applyFeatureExtraction(empty_map);
+}
+
+TEST_F(PostprocessTest, FeatureExtractionSkipsNaNCells) {
+  // All NaN — no features computed, but layers created
+  applyFeatureExtraction(map, 0.6f, 4);
+
+  EXPECT_TRUE(map.exists(layer::slope));
+  auto center = centerIndex();
+  EXPECT_FALSE(std::isfinite(map.at(layer::slope, center)));
+}
+
+TEST_F(PostprocessTest, FeatureExtractionInsufficientNeighbors) {
+  // Single isolated cell — not enough neighbors
+  auto center = centerIndex();
+  map.at(layer::elevation, center) = 1.0f;
+
+  applyFeatureExtraction(map, 0.6f, /*min_valid_neighbors=*/4);
+
+  // Should remain NaN due to insufficient neighbors
+  EXPECT_FALSE(std::isfinite(map.at(layer::slope, center)));
+}
+
+TEST_F(PostprocessTest, FeatureExtractionNormalPointsUp) {
+  // For any surface, normal_z should be positive (flipped upward)
+  const auto idx = map.indexer();
+  for (int row = 0; row < idx.rows; ++row) {
+    for (int col = 0; col < idx.cols; ++col) {
+      auto [r, c] = idx(row, col);
+      map.at(layer::elevation, grid_map::Index(r, c)) =
+          static_cast<float>(row) * idx.resolution;
+    }
+  }
+
+  applyFeatureExtraction(map, 0.6f, 4);
+
+  auto center = centerIndex();
+  if (std::isfinite(map.at(layer::normal_z, center))) {
+    EXPECT_GT(map.at(layer::normal_z, center), 0.0f);
+  }
+}
+
+TEST_F(PostprocessTest, FeatureExtractionCurvatureBounded) {
+  // Curvature = |λ₀| / trace(cov), should be in [0, 1]
+  map.get(layer::elevation).setConstant(1.0f);
+  auto center = centerIndex();
+  map.at(layer::elevation, center) = 2.0f;  // bump
+
+  applyFeatureExtraction(map, 0.6f, 4);
+
+  if (std::isfinite(map.at(layer::curvature, center))) {
+    EXPECT_GE(map.at(layer::curvature, center), 0.0f);
+    EXPECT_LE(map.at(layer::curvature, center), 1.0f);
+  }
 }

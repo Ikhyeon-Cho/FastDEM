@@ -15,6 +15,7 @@
 #define FASTDEM_MAPPING_QUANTILE_ESTIMATION_HPP
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 
 #include "fastdem/elevation_map.hpp"
@@ -81,13 +82,15 @@ class P2Quantile {
    */
   P2Quantile(float dn0, float dn1, float dn2, float dn3, float dn4,
              int elevation_marker, float max_sample_count = 0.0f)
-      : elevation_marker_(elevation_marker),
-        max_sample_count_(max_sample_count) {
-    dn_[0] = dn0;
-    dn_[1] = dn1;
-    dn_[2] = dn2;
-    dn_[3] = dn3;
-    dn_[4] = dn4;
+      : elevation_marker_(std::clamp(elevation_marker, 0, 4)),
+        max_sample_count_(std::max(max_sample_count, 0.0f)) {
+    dn_[0] = std::clamp(dn0, 0.0f, 1.0f);
+    dn_[1] = std::clamp(dn1, 0.0f, 1.0f);
+    dn_[2] = std::clamp(dn2, 0.0f, 1.0f);
+    dn_[3] = std::clamp(dn3, 0.0f, 1.0f);
+    dn_[4] = std::clamp(dn4, 0.0f, 1.0f);
+    // Enforce monotonic ordering: dn[i] >= dn[i-1]
+    for (int i = 1; i < 5; ++i) dn_[i] = std::max(dn_[i], dn_[i - 1]);
   }
 
   /// Create required layers on the map. Call once before first update.
@@ -131,11 +134,13 @@ class P2Quantile {
 
     upper_mat_ = &map.get(layer::upper_bound);
     lower_mat_ = &map.get(layer::lower_bound);
+    bound_ = true;
   }
 
   /// Update P² quantile estimate at a single cell.
   void update(const grid_map::Index& index, float measurement,
               [[maybe_unused]] float measurement_variance) {
+    assert(bound_ && "P2Quantile::bind() must be called before update()");
     const int i = index(0);
     const int j = index(1);
     const float x = measurement;
@@ -159,6 +164,7 @@ class P2Quantile {
 
   /// Compute bounds and variance from accumulated quantiles.
   void computeBounds() {
+    assert(bound_ && "P2Quantile::bind() must be called before computeBounds()");
     const int elev_idx = std::clamp(elevation_marker_, 0, 4);
 
     // Vectorized computation using Eigen arrays
@@ -241,15 +247,21 @@ class P2Quantile {
   }
 
   float parabolic(const float* q, const float* n, int i, int sign) const {
+    const float d_right = n[i + 1] - n[i];
+    const float d_left = n[i] - n[i - 1];
+    const float d_span = n[i + 1] - n[i - 1];
+    if (d_right == 0.0f || d_left == 0.0f || d_span == 0.0f) return q[i];
     float s = static_cast<float>(sign);
-    float t1 = (n[i] - n[i - 1] + s) * (q[i + 1] - q[i]) / (n[i + 1] - n[i]);
-    float t2 = (n[i + 1] - n[i] - s) * (q[i] - q[i - 1]) / (n[i] - n[i - 1]);
-    return q[i] + s * (t1 + t2) / (n[i + 1] - n[i - 1]);
+    float t1 = (d_left + s) * (q[i + 1] - q[i]) / d_right;
+    float t2 = (d_right - s) * (q[i] - q[i - 1]) / d_left;
+    return q[i] + s * (t1 + t2) / d_span;
   }
 
   float linear(const float* q, const float* n, int i, int sign) const {
     int j = i + sign;
-    return q[i] + static_cast<float>(sign) * (q[j] - q[i]) / (n[j] - n[i]);
+    const float dn = n[j] - n[i];
+    if (dn == 0.0f) return q[i];
+    return q[i] + static_cast<float>(sign) * (q[j] - q[i]) / dn;
   }
 
   int elevation_marker_ = 3;    // Which marker to use as elevation output (0-4)
@@ -268,6 +280,8 @@ class P2Quantile {
   // Derived layer matrices
   grid_map::Matrix* upper_mat_ = nullptr;
   grid_map::Matrix* lower_mat_ = nullptr;
+
+  bool bound_ = false;
 };
 
 }  // namespace fastdem

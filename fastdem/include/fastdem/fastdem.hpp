@@ -77,7 +77,7 @@ class FastDEM {
   FastDEM& setSensorModel(SensorType type);
 
   /// Set custom sensor model (user-defined subclass)
-  FastDEM& setSensorModel(std::unique_ptr<SensorModel> model);
+  FastDEM& setSensorModel(std::unique_ptr<SensorModel> model) noexcept;
 
   /// Set height filter range in base frame [meters]
   FastDEM& setHeightFilter(float z_min, float z_max) noexcept;
@@ -89,10 +89,10 @@ class FastDEM {
   FastDEM& enableRaycasting(bool enabled = true) noexcept;
 
   /// Set calibration provider (sensor → base static transform)
-  FastDEM& setCalibrationProvider(std::shared_ptr<Calibration> calibration);
+  FastDEM& setCalibrationProvider(std::shared_ptr<Calibration> calibration) noexcept;
 
   /// Set odometry provider (base → world dynamic transform)
-  FastDEM& setOdometryProvider(std::shared_ptr<Odometry> odometry);
+  FastDEM& setOdometryProvider(std::shared_ptr<Odometry> odometry) noexcept;
 
   /// Set transform provider that implements both interfaces (e.g., ROS TF)
   template <typename T>
@@ -101,6 +101,9 @@ class FastDEM {
     setOdometryProvider(system);
     return *this;
   }
+
+  /// Access current configuration (read-only)
+  const Config& config() const noexcept { return cfg_; }
 
   /// Check if transform providers are set (both required)
   bool hasTransformProvider() const noexcept;

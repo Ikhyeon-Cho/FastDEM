@@ -80,6 +80,7 @@
 #include <unordered_map>
 
 #include "../lib/nanoPCL/benchmarks/benchmark_common.hpp"
+#include "fastdem/mapping/grid_index_hash.hpp"
 
 using namespace npcl;
 
@@ -97,17 +98,8 @@ struct MapConfig {
 // Index Hash for unordered_map
 // -----------------------------------------------------------------------------
 
-struct IndexHash {
-  std::size_t operator()(const grid_map::Index& idx) const {
-    return std::hash<int>()(idx(0)) ^ (std::hash<int>()(idx(1)) << 16);
-  }
-};
-
-struct IndexEqual {
-  bool operator()(const grid_map::Index& a, const grid_map::Index& b) const {
-    return a(0) == b(0) && a(1) == b(1);
-  }
-};
+using fastdem::IndexHash;
+using fastdem::IndexEqual;
 
 // -----------------------------------------------------------------------------
 // Method 1: Point-wise Update (Current Implementation)

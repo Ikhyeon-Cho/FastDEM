@@ -22,19 +22,20 @@ namespace fastdem {
 std::unique_ptr<SensorModel> createSensorModel(const config::SensorModel& cfg) {
   switch (cfg.type) {
     case SensorType::LiDAR:
-      return std::make_unique<LiDARSensorModel>(cfg.range_noise,
-                                                cfg.angular_noise);
+      return std::make_unique<LiDARSensorModel>(cfg.lidar.range_noise,
+                                                cfg.lidar.angular_noise);
     case SensorType::RGBD:
       return std::make_unique<RGBDSensorModel>(
-          cfg.normal_a, cfg.normal_b, cfg.normal_c, cfg.lateral_factor);
+          cfg.rgbd.normal_a, cfg.rgbd.normal_b, cfg.rgbd.normal_c,
+          cfg.rgbd.lateral_factor);
     case SensorType::Constant:
       return std::make_unique<ConstantUncertaintyModel>(
-          cfg.constant_uncertainty);
+          cfg.constant.uncertainty);
     default:
       spdlog::warn("[SensorModel] Unknown type ({}), falling back to LiDAR",
                    static_cast<int>(cfg.type));
-      return std::make_unique<LiDARSensorModel>(cfg.range_noise,
-                                                cfg.angular_noise);
+      return std::make_unique<LiDARSensorModel>(cfg.lidar.range_noise,
+                                                cfg.lidar.angular_noise);
   }
 }
 

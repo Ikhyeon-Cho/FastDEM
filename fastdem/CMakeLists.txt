@@ -15,6 +15,7 @@ endif()
 ###############
 
 # External (System)
+find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(spdlog REQUIRED)
 
