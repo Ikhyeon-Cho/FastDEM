@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>fastdem_ros</name>
+  <version>0.5.0</version>
+  <description>ROS2 wrapper for FastDEM elevation mapping library</description>
+  <maintainer email="tre0430@korea.ac.kr">Ikhyeon Cho</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- ROS2 dependencies -->
+  <depend>rclcpp</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_eigen</depend>
+  <depend>sensor_msgs</depend>
+  <depend>grid_map_msgs</depend>
+  <depend>visualization_msgs</depend>
+
+  <!-- Core library (Pure CMake package) -->
+  <build_depend>fastdem</build_depend>
+  <depend>yaml-cpp</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
