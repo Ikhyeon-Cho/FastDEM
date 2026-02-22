@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>fastdem_ros</name>
-  <version>0.5.0</version>
+  <version>0.3.0</version>
   <description>ROS wrapper for FastDEM elevation mapping library</description>
   <maintainer email="tre0430@korea.ac.kr">Ikhyeon Cho</maintainer>
   <license>BSD-3-Clause</license>

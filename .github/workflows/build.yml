@@ -1,13 +1,67 @@
 name: build
 on: [push, pull_request]
+
 jobs:
-  build:
+  core:
+    name: C++ Core
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt install -y libeigen3-dev libyaml-cpp-dev libspdlog-dev
+      - run: sudo apt-get install -y libeigen3-dev libyaml-cpp-dev libspdlog-dev
       - run: |
-          cd fastdem
-          mkdir -p build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cd fastdem && mkdir -p build && cd build
+          cmake .. -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
           make -j$(nproc)
+          ctest --output-on-failure
+
+  ros1:
+    name: ROS1 Noetic
+    runs-on: ubuntu-latest
+    container: ros:noetic-ros-base
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          apt-get update -qq
+          apt-get install -y -qq libeigen3-dev libyaml-cpp-dev libspdlog-dev
+          apt-get install -y -qq ros-noetic-grid-map-msgs ros-noetic-tf2-ros ros-noetic-tf2-eigen
+      - run: |
+          cd fastdem && mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/fastdem
+          make -j$(nproc)
+          make install
+      - run: |
+          source /opt/ros/noetic/setup.bash
+          export CMAKE_PREFIX_PATH=/opt/fastdem:$CMAKE_PREFIX_PATH
+          mkdir -p /tmp/catkin_ws/src
+          ln -s $GITHUB_WORKSPACE/ros1 /tmp/catkin_ws/src/fastdem_ros
+          cd /tmp/catkin_ws
+          catkin_make --cmake-args -DCMAKE_BUILD_TYPE=Release
+
+  ros2:
+    name: ROS2 Humble
+    runs-on: ubuntu-latest
+    container: ros:humble-ros-base
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          apt-get update -qq
+          apt-get install -y -qq libeigen3-dev libyaml-cpp-dev libspdlog-dev
+          apt-get install -y -qq ros-humble-grid-map-msgs ros-humble-tf2-ros ros-humble-tf2-eigen
+      - run: |
+          cd fastdem && mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/fastdem
+          make -j$(nproc)
+          make install
+      - run: |
+          source /opt/ros/humble/setup.bash
+          export CMAKE_PREFIX_PATH=/opt/fastdem:$CMAKE_PREFIX_PATH
+          mkdir -p /tmp/ros2_ws/src
+          ln -s $GITHUB_WORKSPACE/ros2 /tmp/ros2_ws/src/fastdem_ros
+          cd /tmp/ros2_ws
+          colcon build --packages-up-to fastdem_ros
