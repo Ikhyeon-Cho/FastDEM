@@ -84,7 +84,8 @@ class TFBridge : public Calibration, public Odometry {
         lookupTransformMsg(world_frame_, base_frame_, lookup_time);
 
     // Validate: lookup succeeded and within time tolerance
-    if (tf_msg_opt) {
+    // Skip staleness check when timestamp_ns == 0 (latest transform request)
+    if (tf_msg_opt && timestamp_ns != 0) {
       double time_diff =
           std::abs((lookup_time - tf_msg_opt->header.stamp).toSec());
       if (time_diff > max_stale_time_) {

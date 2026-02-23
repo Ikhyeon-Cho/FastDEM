@@ -59,16 +59,16 @@ include_directories(
 #############
 
 # Main elevation mapping node
-add_executable(fastdem_ros_node
+add_executable(fastdem_node
   src/fastdem_ros_node.cpp
 )
 
-target_link_libraries(fastdem_ros_node
+target_link_libraries(fastdem_node
   ${catkin_LIBRARIES}
   fastdem::fastdem
 )
 
-add_dependencies(fastdem_ros_node
+add_dependencies(fastdem_node
   ${${PROJECT_NAME}_EXPORTED_TARGETS}
   ${catkin_EXPORTED_TARGETS}
 )

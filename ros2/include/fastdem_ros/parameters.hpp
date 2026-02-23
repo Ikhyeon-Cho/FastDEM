@@ -10,6 +10,7 @@
 #include <fastdem/config/fastdem.hpp>
 #include <fastdem/config/postprocess.hpp>
 #include <string>
+#include <vector>
 
 namespace fastdem::ros2 {
 
@@ -18,8 +19,9 @@ struct NodeConfig {
   std::string logger_level{"info"};
 
   struct Topics {
-    std::string input_scan{"/points"};
+    std::vector<std::string> input_scans{"/points"};
     double publish_rate{10.0};
+    double global_publish_rate{1.0};
     double post_process_rate{2.0};
   } topics;
 
@@ -40,6 +42,15 @@ struct NodeConfig {
 
   config::PostProcess postprocess;
 
+  struct Visualization {
+    struct FeatureExtraction {
+      struct Normals {
+        float arrow_length{0.15f};
+        int stride{1};
+      } normals;
+    } feature_extraction;
+  } visualization;
+
   /// Parse everything from a single YAML file.
   static NodeConfig load(const std::string& config_path) {
     if (config_path.empty()) {
@@ -54,8 +65,13 @@ struct NodeConfig {
 
     // ROS transport
     if (auto n = yaml["topics"]) {
-      read(n, "input_scan", cfg.topics.input_scan);
+      if (n["input_scans"]) {
+        cfg.topics.input_scans.clear();
+        for (const auto& item : n["input_scans"])
+          cfg.topics.input_scans.push_back(item.as<std::string>());
+      }
       read(n, "publish_rate", cfg.topics.publish_rate);
+      read(n, "global_publish_rate", cfg.topics.global_publish_rate);
       read(n, "post_process_rate", cfg.topics.post_process_rate);
     }
     if (auto n = yaml["tf"]) {
@@ -75,6 +91,16 @@ struct NodeConfig {
       read(n, "resolution", cfg.map.resolution);
     }
 
+    // Visualization
+    if (auto n = yaml["visualization"]) {
+      if (auto fe = n["feature_extraction"]) {
+        if (auto nm = fe["normals"]) {
+          read(nm, "arrow_length", cfg.visualization.feature_extraction.normals.arrow_length);
+          read(nm, "stride", cfg.visualization.feature_extraction.normals.stride);
+        }
+      }
+    }
+
     // Library configs (parsed + validated internally)
     cfg.pipeline = fastdem::parseConfig(yaml);
     cfg.postprocess = fastdem::config::parsePostProcess(yaml);
@@ -87,8 +113,8 @@ struct NodeConfig {
 
  private:
   void validate() const {
-    if (topics.input_scan.empty())
-      throw std::invalid_argument("input_scan topic is empty");
+    if (topics.input_scans.empty())
+      throw std::invalid_argument("input_scans must not be empty");
     if (map.width <= 0.0 || map.height <= 0.0 || map.resolution <= 0.0)
       throw std::invalid_argument(
           "Invalid map geometry (all must be > 0): width=" +
@@ -97,6 +123,9 @@ struct NodeConfig {
     if (topics.publish_rate <= 0.0)
       throw std::invalid_argument("Invalid publish_rate: " +
                                   std::to_string(topics.publish_rate));
+    if (topics.global_publish_rate <= 0.0)
+      throw std::invalid_argument("Invalid global_publish_rate: " +
+                                  std::to_string(topics.global_publish_rate));
     if (tf.max_wait_time < 0.0)
       throw std::invalid_argument("Invalid max_wait_time: " +
                                   std::to_string(tf.max_wait_time));

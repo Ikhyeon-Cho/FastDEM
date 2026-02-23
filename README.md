@@ -1,27 +1,23 @@
-<div align="center">
-
 # FastDEM
 
 <a href="https://github.com/Ikhyeon-Cho/FastDEM"><img src="https://img.shields.io/badge/C++17-00599C?logo=cplusplus&logoColor=white" /></a>
 <a href="#start-with-ros1"><img src="https://img.shields.io/badge/ROS1-Noetic-blue" /></a>
 <a href="#start-with-ros2"><img src="https://img.shields.io/badge/ROS2-Humble+-teal" /></a>
 <a href=""><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" /></a>
-<br>
 <a href="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml"><img src="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml/badge.svg" /></a>
 
-> ***Ultra-fast 2.5D elevation mapping** on **embedded** CPUs — **100+ Hz** on Jetson Orin*
+<!-- TODO: 로고 추가 후 주석 해제 -->
+<!-- <img src="assets/logo.svg" width="400" alt="FastDEM" /> -->
 
-**[ROS1](#start-with-ros1)** · **[ROS2](#start-with-ros2)** · **[C++ Library](#use-fastdem-as-a-c-library)**
+<p align="center"><i><b>Ultra-fast 2.5D elevation mapping</b> on <b>embedded</b> CPUs — <b>100+ Hz</b> on Jetson Orin</i></p>
 
-<br>
+<p align="center"><b><a href="#start-with-ros1">ROS1</a></b> · <b><a href="#start-with-ros2">ROS2</a></b> · <b><a href="#use-fastdem-as-a-c-library">C++ Library</a></b></p>
 
 <p align="center">
   <img src="assets/fastdem_laser_local.gif" width="49%" alt="FastDEM real-time elevation mapping with LiDAR point cloud" />
   <img src="assets/fastdem_rgbd_local.gif" width="48.3%" alt="FastDEM elevation mapping with RGB-D camera" />
   <img src="assets/fastdem_rgbd_global.gif" width="97.5%" alt="FastDEM global elevation mapping in outdoor environment" />
 </p>
-
-</div>
 
 FastDEM is an ultra-fast 2.5D elevation mapping library for mobile robots.
 It builds dense elevation maps from LiDAR and RGB-D point clouds at 100+ Hz
@@ -56,7 +52,7 @@ on embedded CPUs (e.g. Jetson Orin), without GPU.
 
 ## Performance
 
-The mapping pipeline runs at **~10 ms** on embedded CPUs — fast enough to leave ample headroom for post-processing.
+The mapping pipeline runs at **~10 ms** on embedded CPUs — fast enough to leave ample room for post-processing.
 
 <p align="center">
   <img src="assets/fastdem_jetson_benchmark.svg" width="95%" alt="FastDEM benchmark on Jetson Orin" />
@@ -112,10 +108,10 @@ sudo apt install ros-humble-grid-map-msgs ros-humble-tf2-eigen
 # Clone and build
 cd ~/ros2_ws/src
 git clone https://github.com/Ikhyeon-Cho/FastDEM.git
-colcon build --packages-up-to fastdem_ros
+colcon build --packages-up-to fastdem_ros2
 
 # Run (add global_mapping:=true for map-centric mode)
-ros2 launch fastdem_ros run.launch.py rviz:=true
+ros2 launch fastdem_ros2 run.launch.py rviz:=true
 ```
 
 Configuration: [`ros2/config/local_mapping.yaml`](ros2/config/local_mapping.yaml) · [`ros2/config/global_mapping.yaml`](ros2/config/global_mapping.yaml)

@@ -85,7 +85,8 @@ class TFBridge : public Calibration, public Odometry {
         lookupTransformMsg(world_frame_, base_frame_, lookup_time);
 
     // Validate: lookup succeeded and within time tolerance
-    if (tf_msg_opt) {
+    // Skip staleness check when timestamp_ns == 0 (latest transform request)
+    if (tf_msg_opt && timestamp_ns != 0) {
       auto stamp_ns =
           static_cast<uint64_t>(tf_msg_opt->header.stamp.sec) * 1000000000ULL +
           static_cast<uint64_t>(tf_msg_opt->header.stamp.nanosec);

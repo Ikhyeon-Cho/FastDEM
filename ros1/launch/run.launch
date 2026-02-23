@@ -4,7 +4,7 @@
     <arg name="rviz" default="false" />
 
     <!-- FastDEM Mapping Node -->
-    <node name="fastdem" pkg="fastdem_ros" type="fastdem_ros_node" output="screen">
+    <node name="fastdem" pkg="fastdem_ros" type="fastdem_node" output="screen">
         <param name="config_file" value="$(find fastdem_ros)/config/local_mapping.yaml"
                unless="$(arg global_mapping)" />
         <param name="config_file" value="$(find fastdem_ros)/config/global_mapping.yaml"
@@ -14,6 +14,10 @@
     </node>
 
     <!-- RViz (optional) -->
-    <node pkg="rviz" type="rviz" name="rviz" if="$(arg rviz)"
-          args="-d $(find fastdem_ros)/launch/rviz/fastdem_ros.rviz" />
+    <node pkg="rviz" type="rviz" name="rviz"
+          if="$(eval arg('rviz') and not arg('global_mapping'))"
+          args="-d $(find fastdem_ros)/launch/rviz/fastdem_local.rviz" />
+    <node pkg="rviz" type="rviz" name="rviz"
+          if="$(eval arg('rviz') and arg('global_mapping'))"
+          args="-d $(find fastdem_ros)/launch/rviz/fastdem_global.rviz" />
 </launch>

@@ -1,8 +1,9 @@
 # FastDEM ROS Configuration
 topics:
-  input_scan: "/points"
-  publish_rate: 1.0        # [Hz]
-  post_process_rate: 1.0   # [Hz] inpainting, feature extraction
+  input_scans: ["/points"]   # multi-sensor: ["/lidar/points", "/realsense/points"]
+  publish_rate: 5.0          # [Hz] local view around robot
+  global_publish_rate: 1.0   # [Hz] full global map
+  post_process_rate: 1.0     # [Hz] 0 = service-only (no auto timer)
 
 tf:
   base_frame: "base_link"
@@ -19,7 +20,7 @@ point_filter:
   z_min: -0.5       # [m] min height in base frame
   z_max: 2.0        # [m] max height in base frame
   range_min: 0.5    # [m] min range from sensor
-  range_max: 20.0   # [m] max range from sensor
+  range_max: 10.0   # [m] max range from sensor
 
 logger:
   level: "info"  # info, warn, error, debug
@@ -78,5 +79,14 @@ uncertainty_fusion:
 
 feature_extraction:
   enabled: false
-  analysis_radius: 0.3       # [m]
+  analysis_radius: 0.2       # [m]
   min_valid_neighbors: 4
+  step_lower_percentile: 0.05
+  step_upper_percentile: 0.95
+
+# ─── Visualization ────────────────────────────────
+visualization:
+  feature_extraction:
+    normals:
+      arrow_length: 0.3    # [m] normal vector line length
+      stride: 3             # cell stride (1=all, 2=every 2nd, ...)

@@ -62,6 +62,6 @@ jobs:
           source /opt/ros/humble/setup.bash
           export CMAKE_PREFIX_PATH=/opt/fastdem:$CMAKE_PREFIX_PATH
           mkdir -p /tmp/ros2_ws/src
-          ln -s $GITHUB_WORKSPACE/ros2 /tmp/ros2_ws/src/fastdem_ros
+          ln -s $GITHUB_WORKSPACE/ros2 /tmp/ros2_ws/src/fastdem_ros2
           cd /tmp/ros2_ws
-          colcon build --packages-up-to fastdem_ros
+          colcon build --packages-up-to fastdem_ros2
