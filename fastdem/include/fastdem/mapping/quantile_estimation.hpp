@@ -162,26 +162,19 @@ class P2Quantile {
     (*elevation_mat_)(i, j) = (count >= 5.0f) ? q[elev_idx] : x;
   }
 
-  /// Compute bounds and variance from accumulated quantiles.
-  void computeBounds() {
-    assert(bound_ && "P2Quantile::bind() must be called before computeBounds()");
+  /// Compute bounds and variance at a single cell.
+  void computeBounds(const grid_map::Index& index) {
+    assert(bound_ &&
+           "P2Quantile::bind() must be called before computeBounds()");
+    const int i = index(0);
+    const int j = index(1);
     const int elev_idx = std::clamp(elevation_marker_, 0, 4);
-
-    // Vectorized computation using Eigen arrays
-    auto q1 = q_mat_[1]->array();
-    auto q3 = q_mat_[3]->array();
-
-    // Map markers to output layers
-    *elevation_mat_ = *q_mat_[elev_idx];  // elevation = q[elev_idx]
-
-    // σ estimate: (84th - 16th) / 2
-    Eigen::ArrayXXf sigma = (q3 - q1) / 2.0f;
-    variance_mat_->array() = sigma.square();
-
-    // Confidence bounds: directly from quantiles (no normal distribution
-    // assumption)
-    *lower_mat_ = *q_mat_[0];  // 1st percentile
-    *upper_mat_ = *q_mat_[4];  // 99th percentile
+    (*elevation_mat_)(i, j) = (*q_mat_[elev_idx])(i, j);
+    const float sigma =
+        ((*q_mat_[3])(i, j) - (*q_mat_[1])(i, j)) / 2.0f;
+    (*variance_mat_)(i, j) = sigma * sigma;
+    (*lower_mat_)(i, j) = (*q_mat_[0])(i, j);
+    (*upper_mat_)(i, j) = (*q_mat_[4])(i, j);
   }
 
  private:

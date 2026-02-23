@@ -67,6 +67,19 @@ void validate(PostProcess& cfg) {
                       cfg.feature_extraction.analysis_radius, 0.3f);
   warn_clamp_min("feature_extraction.min_valid_neighbors",
                  cfg.feature_extraction.min_valid_neighbors, 3);
+
+  auto& sl = cfg.feature_extraction.step_lower_percentile;
+  auto& su = cfg.feature_extraction.step_upper_percentile;
+  sl = std::clamp(sl, 0.0f, 1.0f);
+  su = std::clamp(su, 0.0f, 1.0f);
+  if (sl >= su) {
+    spdlog::warn(
+        "[PostProcess] feature_extraction.step_lower_percentile ({}) >= "
+        "step_upper_percentile ({}), resetting to defaults",
+        sl, su);
+    sl = 0.05f;
+    su = 0.95f;
+  }
 }
 
 }  // namespace detail
@@ -95,6 +108,10 @@ PostProcess parsePostProcess(const YAML::Node& root) {
     detail::load(n, "analysis_radius", cfg.feature_extraction.analysis_radius);
     detail::load(n, "min_valid_neighbors",
                  cfg.feature_extraction.min_valid_neighbors);
+    detail::load(n, "step_lower_percentile",
+                 cfg.feature_extraction.step_lower_percentile);
+    detail::load(n, "step_upper_percentile",
+                 cfg.feature_extraction.step_upper_percentile);
   }
 
   detail::validate(cfg);

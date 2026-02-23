@@ -95,7 +95,7 @@ TEST_F(P2QuantileTest, NormalDistributionMedianApproximatesMean) {
     estimator.update(idx, dist(gen), 0.0f);
   }
 
-  estimator.computeBounds();
+  estimator.computeBounds(idx);
 
   // q[2] is median (50th percentile), should approximate true mean
   float median = map.at(layer::p2_q2, idx);
@@ -110,7 +110,7 @@ TEST_F(P2QuantileTest, FinalizeComputesBounds) {
     estimator.update(idx, dist(gen), 0.0f);
   }
 
-  estimator.computeBounds();
+  estimator.computeBounds(idx);
 
   float lower = map.at(layer::lower_bound, idx);
   float upper = map.at(layer::upper_bound, idx);

@@ -101,9 +101,8 @@ void ElevationMapping::estimate(const CellObservations& observations) {
 
         for (const auto& [index, cell] : observations) {
           estimator.update(index, cell.min_z, cell.min_z_var);
+          estimator.computeBounds(index);
         }
-
-        estimator.computeBounds();
       },
       height_estimator_);
 }

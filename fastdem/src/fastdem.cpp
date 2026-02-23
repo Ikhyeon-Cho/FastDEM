@@ -24,6 +24,8 @@ FastDEM::FastDEM(ElevationMap& map, const Config& cfg) : map_(map), cfg_(cfg) {
 
 FastDEM::~FastDEM() = default;
 
+void FastDEM::reset() { map_.clearAll(); }
+
 FastDEM& FastDEM::setMappingMode(MappingMode mode) {
   cfg_.mapping.mode = mode;
   mapping_ = createElevationMapping(map_, cfg_.mapping);
@@ -188,11 +190,11 @@ PointCloud FastDEM::preprocessScan(const PointCloud& cloud,
   return points;
 }
 
-void FastDEM::onPreprocessed(CloudCallback callback) {
+void FastDEM::onScanPreprocessed(CloudCallback callback) {
   on_preprocessed_ = std::move(callback);
 }
 
-void FastDEM::onRasterized(CloudCallback callback) {
+void FastDEM::onScanRasterized(CloudCallback callback) {
   on_rasterized_ = std::move(callback);
 }
 

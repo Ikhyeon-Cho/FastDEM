@@ -29,7 +29,9 @@ constexpr auto normal_z = "_normal_z";
 /// normal_z
 void applyFeatureExtraction(ElevationMap& map,
                             float analysis_radius = 0.3f,
-                            int min_valid_neighbors = 4);
+                            int min_valid_neighbors = 4,
+                            float step_lower_percentile = 0.05f,
+                            float step_upper_percentile = 0.95f);
 
 }  // namespace fastdem
 

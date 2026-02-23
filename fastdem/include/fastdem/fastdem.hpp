@@ -37,12 +37,12 @@ namespace fastdem {
  *
  * ## Pipeline (integrate)
  *
- *   SensorModel → preprocessScan → onPreprocessed
+ *   SensorModel → preprocessScan → onScanPreprocessed
  *       → ElevationMapping (rasterize + estimate) → Raycasting
  *
  * ## Callbacks
  *
- * Optional callback can be registered via onPreprocessed()
+ * Optional callback can be registered via onScanPreprocessed()
  * to observe intermediate results (e.g., for visualization or debugging).
  *
  * ## Thread safety
@@ -102,6 +102,9 @@ class FastDEM {
     return *this;
   }
 
+  /// Reset map data (clear all layers). Geometry and config are preserved.
+  void reset();
+
   /// Access current configuration (read-only)
   const Config& config() const noexcept { return cfg_; }
 
@@ -118,11 +121,11 @@ class FastDEM {
 
   /// Register callback: fired after preprocessing (covariance + transform +
   /// filter), before map update
-  void onPreprocessed(CloudCallback callback);
+  void onScanPreprocessed(CloudCallback callback);
 
   /// Register callback: fired after rasterization (one point per cell,
   /// z = min height), before raycasting
-  void onRasterized(CloudCallback callback);
+  void onScanRasterized(CloudCallback callback);
 
  private:
   /// Transform, filter, and rotate covariances to map frame

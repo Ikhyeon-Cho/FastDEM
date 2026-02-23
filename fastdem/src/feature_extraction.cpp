@@ -15,8 +15,9 @@
 
 #include "fastdem/postprocess/feature_extraction.hpp"
 
+#include <algorithm>
 #include <cmath>
-#include <limits>
+#include <vector>
 
 #include <nanopcl/geometry/pca.hpp>
 
@@ -25,7 +26,9 @@
 namespace fastdem {
 
 void applyFeatureExtraction(ElevationMap& map, float analysis_radius,
-                            int min_valid_neighbors) {
+                            int min_valid_neighbors,
+                            float step_lower_percentile,
+                            float step_upper_percentile) {
   if (!map.exists(layer::elevation)) return;
 
   // Ensure output layers exist
@@ -49,6 +52,10 @@ void applyFeatureExtraction(ElevationMap& map, float analysis_radius,
   const auto idx = map.indexer();
   const auto neighbors = idx.circleNeighbors(analysis_radius);
 
+  // Reusable buffer for percentile-based step computation
+  std::vector<float> z_vals;
+  z_vals.reserve(neighbors.size());
+
   for (int row = 0; row < idx.rows; ++row) {
     for (int col = 0; col < idx.cols; ++col) {
       auto [r, c] = idx(row, col);
@@ -56,11 +63,10 @@ void applyFeatureExtraction(ElevationMap& map, float analysis_radius,
       const float center_z = elev(r, c);
       if (!std::isfinite(center_z)) continue;
 
-      // Accumulate neighbors (single pass: covariance + z min/max)
+      // Accumulate neighbors (single pass: covariance + z values)
       Eigen::Vector3f sum = Eigen::Vector3f::Zero();
       Eigen::Matrix3f sum_sq = Eigen::Matrix3f::Zero();
-      float z_min = std::numeric_limits<float>::max();
-      float z_max = std::numeric_limits<float>::lowest();
+      z_vals.clear();
       int count = 0;
 
       for (const auto& [dr, dc, dist_sq] : neighbors) {
@@ -70,14 +76,13 @@ void applyFeatureExtraction(ElevationMap& map, float analysis_radius,
         const float nz = elev(nr, nc);
         if (!std::isfinite(nz)) continue;
 
-        // Grid-relative coordinates (offset-subtracted for stability)
-        const Eigen::Vector3f d(dc * idx.resolution, -dr * idx.resolution,
+        // World-frame displacement (grid_map: row→-x, col→-y)
+        const Eigen::Vector3f d(-dr * idx.resolution, -dc * idx.resolution,
                                 nz - center_z);
 
         sum += d;
         sum_sq.noalias() += d * d.transpose();
-        z_min = std::min(z_min, nz);
-        z_max = std::max(z_max, nz);
+        z_vals.push_back(nz);
         ++count;
       }
 
@@ -98,8 +103,12 @@ void applyFeatureExtraction(ElevationMap& map, float analysis_radius,
       Eigen::Vector3f normal = pca.eigenvectors.col(0);
       if (normal.z() < 0.0f) normal = -normal;
 
-      // Write features
-      step_mat(r, c) = z_max - z_min;
+      // Step: percentile-based range (robust to outliers)
+      std::sort(z_vals.begin(), z_vals.end());
+      const int lo = static_cast<int>(step_lower_percentile * (count - 1));
+      const int hi = static_cast<int>(step_upper_percentile * (count - 1));
+      step_mat(r, c) = z_vals[hi] - z_vals[lo];
+
       slope_mat(r, c) =
           std::acos(std::abs(normal.z())) * 180.0f / static_cast<float>(M_PI);
       roughness_mat(r, c) = std::sqrt(pca.eigenvalues(0));

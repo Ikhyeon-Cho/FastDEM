@@ -42,8 +42,10 @@ struct UncertaintyFusion {
 /// Local PCA-based terrain feature extraction.
 struct FeatureExtraction {
   bool enabled = false;
-  float analysis_radius = 0.3f;  ///< PCA neighbor radius [m]
+  float analysis_radius = 0.3f;      ///< PCA neighbor radius [m]
   int min_valid_neighbors = 4;
+  float step_lower_percentile = 0.05f;  ///< Lower percentile for step [0,1]
+  float step_upper_percentile = 0.95f;  ///< Upper percentile for step [0,1]
 };
 
 /// Post-processing configuration aggregate.

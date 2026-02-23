@@ -69,7 +69,7 @@ TEST_F(KalmanTest, FinalizeComputesBoundsFromSampleVariance) {
   // Feed measurements with spread to build sample variance
   estimator.update(idx, 3.0f, 0.04f);
   estimator.update(idx, 7.0f, 0.04f);
-  estimator.computeBounds();
+  estimator.computeBounds(idx);
 
   float elevation = map.at(layer::elevation, idx);
   float variance = map.at(layer::variance, idx);

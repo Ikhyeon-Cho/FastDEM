@@ -16,3 +16,5 @@ feature_extraction:
   enabled: false
   analysis_radius: 0.3         # [m] PCA neighbor radius
   min_valid_neighbors: 4
+  step_lower_percentile: 0.05  # robust step: lower bound (0.0 = min)
+  step_upper_percentile: 0.95  # robust step: upper bound (1.0 = max)

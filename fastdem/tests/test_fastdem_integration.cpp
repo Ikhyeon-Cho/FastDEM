@@ -324,7 +324,7 @@ TEST_F(FastDEMIntegrationTest, PreprocessedCallbackFired) {
 
   bool called = false;
   size_t received_size = 0;
-  mapper.onPreprocessed([&](const PointCloud& cloud) {
+  mapper.onScanPreprocessed([&](const PointCloud& cloud) {
     called = true;
     received_size = cloud.size();
   });
@@ -342,7 +342,7 @@ TEST_F(FastDEMIntegrationTest, RasterizedCallbackFired) {
       .setSensorModel(SensorType::Constant);
 
   bool called = false;
-  mapper.onRasterized([&](const PointCloud& /*cloud*/) {
+  mapper.onScanRasterized([&](const PointCloud& /*cloud*/) {
     called = true;
   });
 

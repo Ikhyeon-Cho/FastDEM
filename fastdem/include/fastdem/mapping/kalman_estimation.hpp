@@ -141,15 +141,15 @@ class Kalman {
     }
   }
 
-  /// Compute confidence bounds from accumulated statistics.
-  void computeBounds() {
+  /// Compute confidence bounds at a single cell.
+  void computeBounds(const grid_map::Index& index) {
     assert(bound_ && "Kalman::bind() must be called before computeBounds()");
-    // σ = sqrt(sample variance)
-    Eigen::ArrayXXf sigma = variance_mat_->array().max(0.0f).sqrt();
-
-    // Confidence bounds: elevation ± 2σ
-    *upper_mat_ = elevation_mat_->array() + 2.0f * sigma;
-    *lower_mat_ = elevation_mat_->array() - 2.0f * sigma;
+    const int i = index(0);
+    const int j = index(1);
+    const float sigma =
+        std::sqrt(std::max(0.0f, (*variance_mat_)(i, j)));
+    (*upper_mat_)(i, j) = (*elevation_mat_)(i, j) + 2.0f * sigma;
+    (*lower_mat_)(i, j) = (*elevation_mat_)(i, j) - 2.0f * sigma;
   }
 
  private:

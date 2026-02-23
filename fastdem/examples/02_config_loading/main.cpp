@@ -25,10 +25,10 @@ int main() {
 
   // 1. Load configs from YAML presets
   auto config_local = loadConfig(EXAMPLE_CONFIG_DIR "/default.yaml");
-  auto config_global = loadConfig(EXAMPLE_CONFIG_DIR "/global.yaml");
+  auto config_global = loadConfig(EXAMPLE_CONFIG_DIR "/global_mapping.yaml");
 
   std::cout << "Loaded LOCAL preset (default.yaml)" << std::endl;
-  std::cout << "Loaded GLOBAL preset (global.yaml)\n" << std::endl;
+  std::cout << "Loaded GLOBAL preset (global_mapping.yaml)\n" << std::endl;
 
   // 2. Create maps
   ElevationMap map_local;

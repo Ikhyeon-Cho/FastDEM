@@ -130,6 +130,11 @@ install(DIRECTORY lib/nanoPCL/thirdparty/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
+install(DIRECTORY lib/stb/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/stb
+  FILES_MATCHING PATTERN "*.h"
+)
+
 # Install exported targets file
 install(EXPORT ${PROJECT_NAME}Targets
   FILE ${PROJECT_NAME}Targets.cmake
