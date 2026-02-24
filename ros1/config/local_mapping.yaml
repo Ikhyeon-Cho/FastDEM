@@ -2,7 +2,7 @@
 topics:
   input_scans: ["/points"] # multi-sensor: ["/lidar/points", "/realsense/points"]
   publish_rate: 10.0       # [Hz]
-  post_process_rate: 0.0   # [Hz] 0 = service-only (no auto timer)
+  post_process_rate: 10.0   # [Hz] 0 = service-only (no auto timer)
 
 tf:
   base_frame: "base_link"

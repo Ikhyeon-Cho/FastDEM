@@ -179,6 +179,11 @@ class MappingNode {
     auto cloud = std::make_shared<PointCloud>(nanopcl::from(*msg));
     std::unique_lock lock(map_mutex_);
     mapper_->integrate(cloud);
+
+    static size_t frame_count = 0;
+    if (++frame_count % mapper_->profiler().windowSize() == 0) {
+      mapper_->profiler().printTable();
+    }
   }
 
   // ==================== Post-processing ====================
@@ -187,12 +192,24 @@ class MappingNode {
     const auto& pp = cfg_.postprocess;
     runPostProcess(pp.uncertainty_fusion.enabled, pp.inpainting.enabled,
                    pp.feature_extraction.enabled);
+
+    static size_t pp_count = 0;
+    if (++pp_count % pp_profiler_.windowSize() == 0) {
+      pp_profiler_.printTable();
+    }
   }
 
   void runPostProcess(bool do_uf, bool do_inpainting, bool do_fe) {
+    auto _total = pp_profiler_.scope("Total");
+
     ElevationMap map_copy;
+    std::shared_lock lock(map_mutex_, std::defer_lock);
     {
-      std::shared_lock lock(map_mutex_);
+      auto _t = pp_profiler_.scope("Lock Wait");
+      lock.lock();
+    }
+    {
+      auto _t = pp_profiler_.scope("Snapshot");
       if (map_.isEmpty()) return;
       map_copy = map_.snapshot(
           {layer::elevation, layer::upper_bound, layer::lower_bound});
@@ -200,15 +217,22 @@ class MappingNode {
 
     // Post-processing on snapshot (lock-free)
     const auto& pp = cfg_.postprocess;
-    if (do_uf) applyUncertaintyFusion(map_copy, pp.uncertainty_fusion);
-    if (do_inpainting)
+    if (do_uf) {
+      auto _t = pp_profiler_.scope("Uncertainty Fusion");
+      applyUncertaintyFusion(map_copy, pp.uncertainty_fusion);
+    }
+    if (do_inpainting) {
+      auto _t = pp_profiler_.scope("Inpainting");
       applyInpainting(map_copy, pp.inpainting.max_iterations,
                       pp.inpainting.min_valid_neighbors, /*inplace=*/true);
-    if (do_fe)
+    }
+    if (do_fe) {
+      auto _t = pp_profiler_.scope("Feature Extraction");
       applyFeatureExtraction(map_copy, pp.feature_extraction.analysis_radius,
                              pp.feature_extraction.min_valid_neighbors,
                              pp.feature_extraction.step_lower_percentile,
                              pp.feature_extraction.step_upper_percentile);
+    }
 
     // Compute derived layer for visualization
     grid_map::Matrix range_mat =
@@ -347,6 +371,7 @@ class MappingNode {
   std::unique_ptr<FastDEM> mapper_;
   std::shared_ptr<TFBridge> tf_;
   mutable std::shared_mutex map_mutex_;
+  bm::Profiler pp_profiler_;  // Post-processing profiler
 
   // ROS handles
   std::vector<ros::Subscriber> scan_subs_;

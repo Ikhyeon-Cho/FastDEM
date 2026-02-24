@@ -21,6 +21,9 @@
 // Configs
 #include "fastdem/config/fastdem.hpp"
 
+// Benchmark
+#include "benchmark/profiler.hpp"
+
 // Data types
 #include "fastdem/elevation_map.hpp"
 #include "fastdem/point_types.hpp"
@@ -127,6 +130,10 @@ class FastDEM {
   /// z = min height), before raycasting
   void onScanRasterized(CloudCallback callback);
 
+  /// Access profiler for benchmark reporting
+  const bm::Profiler& profiler() const { return profiler_; }
+  bm::Profiler& profiler() { return profiler_; }
+
  private:
   /// Transform, filter, and rotate covariances to map frame
   PointCloud preprocessScan(const PointCloud& cloud,
@@ -155,6 +162,9 @@ class FastDEM {
   // Optional callbacks
   CloudCallback on_preprocessed_;
   CloudCallback on_rasterized_;
+
+  // Profiling
+  bm::Profiler profiler_;
 };
 
 }  // namespace fastdem
