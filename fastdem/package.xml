@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>fastdem</name>
-  <version>0.3.0</version>
+  <version>0.3.1</version>
   <description>FastDEM - Fast Digital Elevation Mapping library</description>
 
   <maintainer email="tre0430@korea.ac.kr">Ikhyeon Cho</maintainer>

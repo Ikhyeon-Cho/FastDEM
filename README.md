@@ -1,17 +1,26 @@
-# FastDEM
+<p align="center">
+  <a href="https://github.com/Ikhyeon-Cho/FastDEM">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/fastdem_logo_dark.png" />
+      <source media="(prefers-color-scheme: light)" srcset="assets/fastdem_logo_light.png" />
+      <img src="assets/fastdem_logo_light.png" width="500" alt="FastDEM" />
+    </picture>
+  </a>
+</p>
 
-<a href="https://github.com/Ikhyeon-Cho/FastDEM"><img src="https://img.shields.io/badge/C++17-00599C?logo=cplusplus&logoColor=white" /></a>
-<a href="#start-with-ros1"><img src="https://img.shields.io/badge/ROS1-Noetic-blue" /></a>
-<a href="#start-with-ros2"><img src="https://img.shields.io/badge/ROS2-Humble+-teal" /></a>
-<a href=""><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" /></a>
-<a href="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml"><img src="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml/badge.svg" /></a>
 
-<!-- TODO: 로고 추가 후 주석 해제 -->
-<!-- <img src="assets/logo.svg" width="400" alt="FastDEM" /> -->
+<p align="center">
+  <a href="https://github.com/Ikhyeon-Cho/FastDEM"><img src="https://img.shields.io/badge/C++17-00599C?logo=cplusplus&logoColor=white" /></a>
+  <a href="#start-with-ros1"><img src="https://img.shields.io/badge/ROS1-Noetic-blue" /></a>
+  <a href="#start-with-ros2"><img src="https://img.shields.io/badge/ROS2-Humble+-teal" /></a>
+  <a href="https://github.com/Ikhyeon-Cho/FastDEM/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-%2328A745" /></a>
+  <a href="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml"><img src="https://github.com/Ikhyeon-Cho/FastDEM/actions/workflows/build.yml/badge.svg" /></a>
+</p>
 
-<p align="center"><i><b>Ultra-fast 2.5D elevation mapping</b> on <b>embedded</b> CPUs — <b>100+ Hz</b> on Jetson Orin</i></p>
+> <p align="center"><i><b>Ultra-fast elevation mapping</b> on <b>embedded</b> robots — <b>100+ Hz</b> on Jetson Orin</i></p>
 
 <p align="center"><b><a href="#start-with-ros1">ROS1</a></b> · <b><a href="#start-with-ros2">ROS2</a></b> · <b><a href="#use-fastdem-as-a-c-library">C++ Library</a></b></p>
+
 
 <p align="center">
   <img src="assets/fastdem_laser_local.gif" width="49%" alt="FastDEM real-time elevation mapping with LiDAR point cloud" />
@@ -19,34 +28,23 @@
   <img src="assets/fastdem_rgbd_global.gif" width="97.5%" alt="FastDEM global elevation mapping in outdoor environment" />
 </p>
 
-FastDEM is an ultra-fast 2.5D elevation mapping library for mobile robots.
-It builds dense elevation maps from LiDAR and RGB-D point clouds at 100+ Hz
-on embedded CPUs (e.g. Jetson Orin), without GPU.
 
-*Formerly known as `height_mapping`.*
+FastDEM is a lightweight C++17 library that builds dense elevation maps from LiDAR and RGB-D point clouds in real time, without GPU. It supports both robot-centric local mapping and fixed-origin global mapping, with built-in post-processing for terrain analysis.
+
+**See also:**
+- **[LeSTA](https://github.com/Ikhyeon-Cho/LeSTA)** — Self-supervised traversability learning for mobile robots (*RA-L 2024*)
 
 ---
 
-<!-- ## Related Projects
-
-**Traversability Analysis**
-- **[LeSTA](https://github.com/Ikhyeon-Cho/LeSTA)** — Self-supervised traversability learning from robot navigation experiences (RA-L 2024)
-- **[FastTrav](https://github.com/Ikhyeon-Cho/FastTrav)** — Classical online traversability analysis with geometry-based terrain features
-
-**Point Cloud Library**
-- **[nanoPCL](https://github.com/Ikhyeon-Cho/nanoPCL)** — Lightweight point cloud library for embedded systems
-
---- -->
-
 ## Features
 
-* ***Fast*** — 100+ Hz on Jetson Orin. ~10ms per scan.
-* ***Lightweight*** — Minimal dependencies. No OpenCV, PCL, or Open3D.
+* ***Fast*** — 100+ Hz on Jetson Orin. ~10ms per scan, on CPU alone.
+* ***Lightweight*** — Only three system dependencies. No PCL, OpenCV, or GPU required.
 * ***ROS-agnostic*** — Clean C++ API, with optional ROS support.
-* ***Sensor-Aware*** — Physics-based sensor models for LiDAR and RGB-D.
+* ***Sensor-Aware*** — Physics-based sensor models for LiDAR and RGB-D range measurements.
 * ***Multiple Estimators*** — Kalman Filter (parametric), P² Quantile estimator (non-parametric).
 * ***Local + Global Mapping*** — Robot-centric or map-centric terrain mapping.
-* ***Post-processing*** — Raycasting, Uncertainty fusion, Inpainting, Feature extraction, etc.
+* ***Post-processing*** — Raycasting, Uncertainty fusion, Inpainting, Feature extraction, and more.
 
 ---
 
@@ -68,10 +66,6 @@ The mapping pipeline runs at **~10 ms** on embedded CPUs — fast enough to leav
 - **yaml-cpp** — Configuration parsing
 - **spdlog** — Logging
 
-```bash
-sudo apt install libeigen3-dev libyaml-cpp-dev libspdlog-dev
-```
-
 ---
 
 ## Start with ROS1
@@ -79,7 +73,8 @@ sudo apt install libeigen3-dev libyaml-cpp-dev libspdlog-dev
 **Prerequisites:** Ubuntu 20.04, [ROS Noetic](http://wiki.ros.org/noetic/Installation)
 
 ```bash
-# ROS dependencies
+# Dependencies
+sudo apt install libeigen3-dev libyaml-cpp-dev libspdlog-dev
 sudo apt install ros-noetic-grid-map-msgs ros-noetic-tf2-eigen
 
 # Clone and build
@@ -102,7 +97,8 @@ Configuration: [`ros1/config/local_mapping.yaml`](ros1/config/local_mapping.yaml
 *Other ROS2 distributions may also work but are not yet tested.*
 
 ```bash
-# ROS dependencies
+# Dependencies
+sudo apt install libeigen3-dev libyaml-cpp-dev libspdlog-dev
 sudo apt install ros-humble-grid-map-msgs ros-humble-tf2-eigen
 
 # Clone and build
@@ -123,6 +119,10 @@ Configuration: [`ros2/config/local_mapping.yaml`](ros2/config/local_mapping.yaml
 FastDEM can be used without ROS as a standalone C++ library.
 
 ```bash
+# Dependencies
+sudo apt install libeigen3-dev libyaml-cpp-dev libspdlog-dev
+
+# Clone and build
 git clone https://github.com/Ikhyeon-Cho/FastDEM.git
 cd FastDEM/fastdem
 mkdir build && cd build
