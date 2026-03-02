@@ -68,7 +68,7 @@ TEST_F(NpzTest, RoundTrip) {
 }
 
 TEST_F(NpzTest, RoundTripWithStartIndex) {
-  map.setStartIndex(grid_map::Index(5, 3));
+  map.setStartIndex(nanogrid::Index(5, 3));
 
   ASSERT_TRUE(io::saveNpz(tmp_path, map));
 
@@ -248,7 +248,7 @@ TEST_F(PngTest, NormalizeMinMax) {
 }
 
 TEST_F(PngTest, AlignToWorldDisabled) {
-  map.setStartIndex(grid_map::Index(3, 2));
+  map.setStartIndex(nanogrid::Index(3, 2));
   io::PngExportConfig cfg;
   cfg.align_to_world = false;
   ASSERT_TRUE(io::savePng(tmp_path, map, layer::elevation, cfg));

@@ -45,8 +45,8 @@ constexpr float kInfinity = 1e30f;  // Effectively infinite t for axis-aligned r
  */
 void traceRay(const ElevationMap& map, float resolution,
               const Eigen::Vector3f& start, const Eigen::Vector3f& end,
-              grid_map::Matrix& ray_min_mat,
-              std::vector<grid_map::Index>& ray_cells) {
+              nanogrid::Matrix& ray_min_mat,
+              std::vector<nanogrid::Index>& ray_cells) {
   const float dx = end.x() - start.x();
   const float dy = end.y() - start.y();
   const float ray_len_2d = std::sqrt(dx * dx + dy * dy);
@@ -119,7 +119,7 @@ void traceRay(const ElevationMap& map, float resolution,
       float& cur_min = ray_min_mat(mr, mc);
       if (std::isnan(cur_min)) {
         cur_min = height;
-        ray_cells.emplace_back(grid_map::Index(mr, mc));
+        ray_cells.emplace_back(nanogrid::Index(mr, mc));
       } else if (height < cur_min) {
         cur_min = height;
       }
@@ -147,7 +147,7 @@ void traceRay(const ElevationMap& map, float resolution,
  *
  * @return Unique cell indices traversed by rays.
  */
-std::vector<grid_map::Index> processScan(ElevationMap& map,
+std::vector<nanogrid::Index> processScan(ElevationMap& map,
                                          const PointCloud& scan,
                                          const Eigen::Vector3f& sensor_origin,
                                          const config::Raycasting& config) {
@@ -155,14 +155,14 @@ std::vector<grid_map::Index> processScan(ElevationMap& map,
   auto& min_height_mat = map.get(layer::raycasting);
   const float resolution = map.getResolution();
 
-  std::vector<grid_map::Index> ray_cells;
+  std::vector<nanogrid::Index> ray_cells;
 
   for (size_t i : scan.indices()) {
     const Eigen::Vector3f pt = scan.point(i);
 
     // Observed evidence: point inside map → cell is alive
-    grid_map::Index idx;
-    if (map.getIndex(grid_map::Position(pt.x(), pt.y()), idx)) {
+    nanogrid::Index idx;
+    if (map.getIndex(nanogrid::Position(pt.x(), pt.y()), idx)) {
       float& logodds = logodds_mat(idx(0), idx(1));
       if (std::isnan(logodds)) logodds = 0.0f;
       logodds =
@@ -186,7 +186,7 @@ std::vector<grid_map::Index> processScan(ElevationMap& map,
  * logodds fall below clear_threshold are cleared.
  */
 void resolveGhostCells(ElevationMap& map,
-                       const std::vector<grid_map::Index>& ray_cells,
+                       const std::vector<nanogrid::Index>& ray_cells,
                        const config::Raycasting& config) {
   const auto& min_height_mat = map.get(layer::raycasting);
   const auto& elevation_mat = map.get(layer::elevation);
@@ -227,7 +227,7 @@ void applyRaycasting(ElevationMap& map, const PointCloud& scan,
     spdlog::warn("[Raycasting] Missing required layer: elevation.");
     return;
   }
-  if (!map.isInside(grid_map::Position(sensor_origin.x(), sensor_origin.y()))) {
+  if (!map.isInside(nanogrid::Position(sensor_origin.x(), sensor_origin.y()))) {
     spdlog::warn("[Raycasting] Sensor origin outside map bounds");
     return;
   }

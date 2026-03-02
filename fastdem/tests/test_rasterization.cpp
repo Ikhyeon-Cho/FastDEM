@@ -24,10 +24,10 @@ TEST(FromPointCloudTest, WritesElevationToMap) {
 
   fromPointCloud(cloud, map);
 
-  EXPECT_TRUE(map.hasElevationAt(grid_map::Position(0.0, 0.0)));
-  EXPECT_FLOAT_EQ(map.elevationAt(grid_map::Position(0.0, 0.0)), 2.5f);
-  EXPECT_TRUE(map.hasElevationAt(grid_map::Position(1.5, 1.5)));
-  EXPECT_FLOAT_EQ(map.elevationAt(grid_map::Position(1.5, 1.5)), 3.0f);
+  EXPECT_TRUE(map.hasElevationAt(nanogrid::Position(0.0, 0.0)));
+  EXPECT_FLOAT_EQ(map.elevationAt(nanogrid::Position(0.0, 0.0)), 2.5f);
+  EXPECT_TRUE(map.hasElevationAt(nanogrid::Position(1.5, 1.5)));
+  EXPECT_FLOAT_EQ(map.elevationAt(nanogrid::Position(1.5, 1.5)), 3.0f);
 }
 
 TEST(FromPointCloudTest, MaxSelectsHighestInCell) {
@@ -39,7 +39,7 @@ TEST(FromPointCloudTest, MaxSelectsHighestInCell) {
 
   fromPointCloud(cloud, map, RasterMethod::Max);
 
-  EXPECT_FLOAT_EQ(map.elevationAt(grid_map::Position(0.2, 0.2)), 5.0f);
+  EXPECT_FLOAT_EQ(map.elevationAt(nanogrid::Position(0.2, 0.2)), 5.0f);
 }
 
 TEST(FromPointCloudTest, IntensityWrittenWhenLayerExists) {
@@ -51,8 +51,8 @@ TEST(FromPointCloudTest, IntensityWrittenWhenLayerExists) {
 
   fromPointCloud(cloud, map);
 
-  grid_map::Index index;
-  map.getIndex(grid_map::Position(0.0, 0.0), index);
+  nanogrid::Index index;
+  map.getIndex(nanogrid::Position(0.0, 0.0), index);
   EXPECT_FLOAT_EQ(map.at(layer::intensity, index), 0.7f);
 }
 
@@ -65,14 +65,14 @@ TEST(FromPointCloudTest, AutoSizedMapFitsCloud) {
   auto map = fromPointCloud(cloud, 0.5f);
 
   // All points should be inside the map
-  EXPECT_TRUE(map.isInside(grid_map::Position(-5.0, -3.0)));
-  EXPECT_TRUE(map.isInside(grid_map::Position(5.0, 3.0)));
-  EXPECT_TRUE(map.isInside(grid_map::Position(0.0, 0.0)));
+  EXPECT_TRUE(map.isInside(nanogrid::Position(-5.0, -3.0)));
+  EXPECT_TRUE(map.isInside(nanogrid::Position(5.0, 3.0)));
+  EXPECT_TRUE(map.isInside(nanogrid::Position(0.0, 0.0)));
 
   // All points should have elevation
-  EXPECT_TRUE(map.hasElevationAt(grid_map::Position(-5.0, -3.0)));
-  EXPECT_TRUE(map.hasElevationAt(grid_map::Position(5.0, 3.0)));
-  EXPECT_TRUE(map.hasElevationAt(grid_map::Position(0.0, 0.0)));
+  EXPECT_TRUE(map.hasElevationAt(nanogrid::Position(-5.0, -3.0)));
+  EXPECT_TRUE(map.hasElevationAt(nanogrid::Position(5.0, 3.0)));
+  EXPECT_TRUE(map.hasElevationAt(nanogrid::Position(0.0, 0.0)));
 }
 
 TEST(FromPointCloudTest, AutoSizedEmptyCloudReturnsEmptyMap) {
@@ -90,7 +90,7 @@ TEST(FromPointCloudTest, MinSelectsLowestInCell) {
 
   fromPointCloud(cloud, map, RasterMethod::Min);
 
-  EXPECT_FLOAT_EQ(map.elevationAt(grid_map::Position(0.2, 0.2)), 1.0f);
+  EXPECT_FLOAT_EQ(map.elevationAt(nanogrid::Position(0.2, 0.2)), 1.0f);
 }
 
 TEST(FromPointCloudTest, MeanComputesAverageInCell) {
@@ -101,7 +101,7 @@ TEST(FromPointCloudTest, MeanComputesAverageInCell) {
 
   fromPointCloud(cloud, map, RasterMethod::Mean);
 
-  EXPECT_FLOAT_EQ(map.elevationAt(grid_map::Position(0.1, 0.1)), 3.0f);
+  EXPECT_FLOAT_EQ(map.elevationAt(nanogrid::Position(0.1, 0.1)), 3.0f);
 }
 
 TEST(FromPointCloudTest, ColorWrittenWhenLayerExists) {
@@ -113,14 +113,14 @@ TEST(FromPointCloudTest, ColorWrittenWhenLayerExists) {
 
   fromPointCloud(cloud, map);
 
-  grid_map::Index index;
-  map.getIndex(grid_map::Position(0.0, 0.0), index);
+  nanogrid::Index index;
+  map.getIndex(nanogrid::Position(0.0, 0.0), index);
   float packed = map.at(layer::color, index);
   EXPECT_FALSE(std::isnan(packed));
 
   // colorValueToVector(float, Vector3f) returns [0, 1] range
   Eigen::Vector3f rgb;
-  grid_map::colorValueToVector(packed, rgb);
+  nanogrid::colorValueToVector(packed, rgb);
   EXPECT_NEAR(rgb(0), 1.0f, 1.0f / 255.0f);           // R: 255
   EXPECT_NEAR(rgb(1), 128.0f / 255.0f, 1.0f / 255.0f); // G: 128
   EXPECT_NEAR(rgb(2), 64.0f / 255.0f, 1.0f / 255.0f);  // B: 64
@@ -165,8 +165,8 @@ TEST(FromPointCloudStatsTest, MinMaxCountCorrect) {
 
   fromPointCloud(cloud, map, RasterMethod::Max);
 
-  grid_map::Index index;
-  ASSERT_TRUE(map.getIndex(grid_map::Position(0.2, 0.2), index));
+  nanogrid::Index index;
+  ASSERT_TRUE(map.getIndex(nanogrid::Position(0.2, 0.2), index));
 
   EXPECT_FLOAT_EQ(map.at(layer::elevation_min, index), 2.0f);
   EXPECT_FLOAT_EQ(map.at(layer::elevation_max, index), 6.0f);
@@ -184,8 +184,8 @@ TEST(FromPointCloudStatsTest, VarianceIsWelfordSampleVariance) {
 
   fromPointCloud(cloud, map, RasterMethod::Mean);
 
-  grid_map::Index index;
-  ASSERT_TRUE(map.getIndex(grid_map::Position(0.2, 0.2), index));
+  nanogrid::Index index;
+  ASSERT_TRUE(map.getIndex(nanogrid::Position(0.2, 0.2), index));
 
   EXPECT_NEAR(map.at(layer::variance, index), 4.0f, 1e-5f);
 }
@@ -197,8 +197,8 @@ TEST(FromPointCloudStatsTest, SinglePointVarianceIsZero) {
 
   fromPointCloud(cloud, map);
 
-  grid_map::Index index;
-  ASSERT_TRUE(map.getIndex(grid_map::Position(0.0, 0.0), index));
+  nanogrid::Index index;
+  ASSERT_TRUE(map.getIndex(nanogrid::Position(0.0, 0.0), index));
 
   EXPECT_FLOAT_EQ(map.at(layer::variance, index), 0.0f);
   EXPECT_FLOAT_EQ(map.at(layer::n_points, index), 1.0f);
@@ -213,8 +213,8 @@ TEST(FromPointCloudStatsTest, MinMethodWritesMinElevation) {
 
   fromPointCloud(cloud, map, RasterMethod::Min);
 
-  grid_map::Index index;
-  ASSERT_TRUE(map.getIndex(grid_map::Position(0.2, 0.2), index));
+  nanogrid::Index index;
+  ASSERT_TRUE(map.getIndex(nanogrid::Position(0.2, 0.2), index));
 
   // elevation = min_z
   EXPECT_FLOAT_EQ(map.at(layer::elevation, index), 1.0f);
@@ -231,8 +231,8 @@ TEST(FromPointCloudStatsTest, MeanMethodWritesMeanElevation) {
 
   fromPointCloud(cloud, map, RasterMethod::Mean);
 
-  grid_map::Index index;
-  ASSERT_TRUE(map.getIndex(grid_map::Position(0.2, 0.2), index));
+  nanogrid::Index index;
+  ASSERT_TRUE(map.getIndex(nanogrid::Position(0.2, 0.2), index));
 
   EXPECT_FLOAT_EQ(map.at(layer::elevation, index), 4.0f);
 }
@@ -259,8 +259,8 @@ TEST(FromPointCloudStatsTest, IntensityLayerAutoCreated) {
   fromPointCloud(cloud, map);
 
   EXPECT_TRUE(map.exists(layer::intensity));
-  grid_map::Index index;
-  ASSERT_TRUE(map.getIndex(grid_map::Position(0.0, 0.0), index));
+  nanogrid::Index index;
+  ASSERT_TRUE(map.getIndex(nanogrid::Position(0.0, 0.0), index));
   EXPECT_FLOAT_EQ(map.at(layer::intensity, index), 0.7f);
 }
 
@@ -274,8 +274,8 @@ TEST(FromPointCloudStatsTest, NaNPointsSkipped) {
 
   fromPointCloud(cloud, map);
 
-  grid_map::Index index;
-  ASSERT_TRUE(map.getIndex(grid_map::Position(0.0, 0.0), index));
+  nanogrid::Index index;
+  ASSERT_TRUE(map.getIndex(nanogrid::Position(0.0, 0.0), index));
 
   // Only the two non-NaN points should be counted
   EXPECT_FLOAT_EQ(map.at(layer::n_points, index), 2.0f);
@@ -365,8 +365,8 @@ TEST(BuildDEMTest, BasicPipeline) {
 
   EXPECT_TRUE(map.isInitialized());
   EXPECT_TRUE(map.exists(layer::elevation));
-  EXPECT_TRUE(map.hasElevationAt(grid_map::Position(0.0, 0.0)));
-  EXPECT_NEAR(map.elevationAt(grid_map::Position(0.0, 0.0)), 0.0f, 0.1f);
+  EXPECT_TRUE(map.hasElevationAt(nanogrid::Position(0.0, 0.0)));
+  EXPECT_NEAR(map.elevationAt(nanogrid::Position(0.0, 0.0)), 0.0f, 0.1f);
 }
 
 TEST(BuildDEMTest, InpaintingFillsHoles) {
@@ -388,7 +388,7 @@ TEST(BuildDEMTest, InpaintingFillsHoles) {
 
   EXPECT_TRUE(map.isInitialized());
   // The center hole should be filled by inpainting
-  EXPECT_TRUE(map.hasElevationAt(grid_map::Position(0.0, 0.0)));
+  EXPECT_TRUE(map.hasElevationAt(nanogrid::Position(0.0, 0.0)));
 }
 
 TEST(BuildDEMTest, ResolutionApplied) {

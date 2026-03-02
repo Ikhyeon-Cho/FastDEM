@@ -116,8 +116,7 @@ void applyUncertaintyFusion(ElevationMap& map,
   auto& upper_mat = map.get(layer::upper_bound);
   auto& lower_mat = map.get(layer::lower_bound);
 
-  const auto idx = map.indexer();
-  const auto neighbors = idx.circleNeighbors(config.search_radius);
+  const auto reg = map.region(config.search_radius);
 
   // Pre-compute Gaussian constant for spatial weight
   const float inv_2sigma_spatial_sq =
@@ -130,61 +129,53 @@ void applyUncertaintyFusion(ElevationMap& map,
   // Two separate ECDFs for lower and upper bounds
   SimpleWeightedECDF lower_ecdf;
   SimpleWeightedECDF upper_ecdf;
-  lower_ecdf.reserve(neighbors.size());
-  upper_ecdf.reserve(neighbors.size());
+  lower_ecdf.reserve(reg.entries.size());
+  upper_ecdf.reserve(reg.entries.size());
 
-  for (int row = 0; row < idx.rows; ++row) {
-    for (int col = 0; col < idx.cols; ++col) {
-      auto [r, c] = idx(row, col);
+  for (auto cell : map.cells()) {
+    const float center_upper = upper_mat(cell.index);
+    const float center_lower = lower_mat(cell.index);
 
-      const float center_upper = upper_mat(r, c);
-      const float center_lower = lower_mat(r, c);
+    // Skip invalid cells
+    if (!std::isfinite(center_upper) || !std::isfinite(center_lower)) continue;
 
-      // Skip invalid cells
-      if (!std::isfinite(center_upper) || !std::isfinite(center_lower))
+    lower_ecdf.clear();
+    upper_ecdf.clear();
+    int valid_count = 0;
+
+    // Gather weighted samples from neighbors
+    for (auto n : map.neighbors(cell, reg)) {
+      const float neighbor_upper = upper_mat(n.index);
+      const float neighbor_lower = lower_mat(n.index);
+
+      // Skip invalid neighbors
+      if (!std::isfinite(neighbor_upper) || !std::isfinite(neighbor_lower))
         continue;
 
-      lower_ecdf.clear();
-      upper_ecdf.clear();
-      int valid_count = 0;
+      // Spatial weight (Gaussian distance decay)
+      const float w_spatial = std::exp(-n.dist_sq * inv_2sigma_spatial_sq);
 
-      // Gather weighted samples from neighbors
-      for (const auto& [dr, dc, dist_sq] : neighbors) {
-        if (!idx.contains(row + dr, col + dc)) continue;
-        auto [nr, nc] = idx(row + dr, col + dc);
+      // Inverse range weight (narrow bounds = more certain → higher weight)
+      constexpr float epsilon = 1e-4f;
+      const float range = neighbor_upper - neighbor_lower;
+      const float w_range = 1.0f / (range + epsilon);
 
-        const float neighbor_upper = upper_mat(nr, nc);
-        const float neighbor_lower = lower_mat(nr, nc);
+      const float weight = w_spatial * w_range;
 
-        // Skip invalid neighbors
-        if (!std::isfinite(neighbor_upper) || !std::isfinite(neighbor_lower))
-          continue;
+      // Add estimator-computed bounds directly to ECDF
+      lower_ecdf.add(neighbor_lower, weight);
+      upper_ecdf.add(neighbor_upper, weight);
 
-        // Spatial weight (Gaussian distance decay)
-        const float w_spatial = std::exp(-dist_sq * inv_2sigma_spatial_sq);
+      ++valid_count;
+    }
 
-        // Inverse range weight (narrow bounds = more certain → higher weight)
-        constexpr float epsilon = 1e-4f;
-        const float range = neighbor_upper - neighbor_lower;
-        const float w_range = 1.0f / (range + epsilon);
-
-        const float weight = w_spatial * w_range;
-
-        // Add estimator-computed bounds directly to ECDF
-        lower_ecdf.add(neighbor_lower, weight);
-        upper_ecdf.add(neighbor_upper, weight);
-
-        ++valid_count;
-      }
-
-      // Compute fused bounds if enough neighbors
-      if (valid_count >= config.min_valid_neighbors) {
-        const float lower = lower_ecdf.quantile(config.quantile_lower);
-        const float upper = upper_ecdf.quantile(config.quantile_upper);
-        if (std::isfinite(lower) && std::isfinite(upper)) {
-          upper_buffer(r, c) = upper;
-          lower_buffer(r, c) = lower;
-        }
+    // Compute fused bounds if enough neighbors
+    if (valid_count >= config.min_valid_neighbors) {
+      const float lower = lower_ecdf.quantile(config.quantile_lower);
+      const float upper = upper_ecdf.quantile(config.quantile_upper);
+      if (std::isfinite(lower) && std::isfinite(upper)) {
+        upper_buffer(cell.index) = upper;
+        lower_buffer(cell.index) = lower;
       }
     }
   }

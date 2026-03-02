@@ -4,7 +4,7 @@
 /*
  * elevation_map.hpp
  *
- * 2.5D elevation map built on grid_map.
+ * 2.5D elevation map built on nanoGrid.
  * Includes layer name constants.
  *
  *  Created on: Dec 2024
@@ -17,9 +17,10 @@
 #define FASTDEM_ELEVATION_MAP_HPP
 
 #include <cmath>
-#include <grid_map_core/grid_map_core.hpp>
+#include <nanogrid/nanogrid.hpp>
 #include <initializer_list>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace fastdem {
@@ -44,76 +45,24 @@ inline bool isInternal(const std::string& name) {
 }
 }  // namespace layer
 
-// ─── MapIndexer ─────────────────────────────────────────────────────────────
-
-class ElevationMap;  // forward declaration
-
-/**
- * @brief Lightweight helper for iterating over ElevationMap grid cells.
- *
- * Handles the circular buffer index mapping internally so callers can iterate
- * with plain (row, col) loops and access Eigen matrices without knowing about
- * the underlying buffer layout.
- *
- */
-struct MapIndexer {
-  const int rows, cols;
-  const float resolution;
-
-  explicit MapIndexer(const ElevationMap& map);
-
-  /// Grid (row, col) → matrix position for Eigen access.
-  std::pair<int, int> operator()(int row, int col) const {
-    int r = row + sr_;
-    if (r >= rows) r -= rows;
-    int c = col + sc_;
-    if (c >= cols) c -= cols;
-    return {r, c};
-  }
-
-  /// Check if (row, col) is within [0, rows) × [0, cols).
-  bool contains(int row, int col) const {
-    return row >= 0 && row < rows && col >= 0 && col < cols;
-  }
-
-  /// Relative cell offset within a circular radius.
-  struct Neighbor {
-    int dr, dc;
-    float dist_sq;  ///< Squared distance in meters.
-  };
-
-  /// Precompute neighbor offsets within a circular radius.
-  /// @note Includes the center cell (dr=0, dc=0, dist_sq=0).
-  std::vector<Neighbor> circleNeighbors(float radius) const {
-    std::vector<Neighbor> offsets;
-    const int r_cells = static_cast<int>(std::ceil(radius / resolution));
-    const float radius_sq = radius * radius;
-    for (int dr = -r_cells; dr <= r_cells; ++dr) {
-      for (int dc = -r_cells; dc <= r_cells; ++dc) {
-        const float dsq =
-            resolution * resolution * static_cast<float>(dr * dr + dc * dc);
-        if (dsq <= radius_sq) offsets.push_back({dr, dc, dsq});
-      }
-    }
-    return offsets;
-  }
-
- private:
-  int sr_, sc_;
-};
+/// Cell-indexed hash map (sparse point-to-cell accumulation).
+template <typename T>
+using CellMap =
+    std::unordered_map<nanogrid::Index, T, nanogrid::IndexHash,
+                       nanogrid::IndexEqual>;
 
 // ─── ElevationMap ───────────────────────────────────────────────────────────
 
 /**
  * @brief 2.5D elevation map for terrain representation.
  *
- * ElevationMap extends grid_map::GridMap with predefined layers for elevation
+ * ElevationMap extends nanogrid::GridMap with predefined layers for elevation
  * mapping: elevation, variance, count, etc. It provides
  * convenient methods for elevation access and map management.
  *
  * @note All elevation values are in meters. NaN indicates unmeasured cells.
  */
-class ElevationMap : public grid_map::GridMap {
+class ElevationMap : public nanogrid::GridMap {
  public:
   ElevationMap();
 
@@ -126,31 +75,31 @@ class ElevationMap : public grid_map::GridMap {
 
   bool isEmpty() const;
 
-  bool isEmptyAt(const grid_map::Index& index) const;
+  bool isEmptyAt(const nanogrid::Index& index) const;
 
-  void clearAt(const grid_map::Index& index);
+  void clearAt(const nanogrid::Index& index);
 
   /// Get elevation at position. Returns NaN if outside or unmeasured.
-  float elevationAt(const grid_map::Position& position) const;
+  float elevationAt(const nanogrid::Position& position) const;
 
   /// Get elevation at index. Returns NaN if invalid or unmeasured.
-  float elevationAt(const grid_map::Index& index) const;
+  float elevationAt(const nanogrid::Index& index) const;
 
   /// Check if elevation exists at position.
-  bool hasElevationAt(const grid_map::Position& position) const;
+  bool hasElevationAt(const nanogrid::Position& position) const;
 
   /// Check if elevation exists at index.
-  bool hasElevationAt(const grid_map::Index& index) const;
+  bool hasElevationAt(const nanogrid::Index& index) const;
 
-  /// Create a MapIndexer for efficient grid iteration.
-  MapIndexer indexer() const;
+  /// Returns a mask where finite cells are 1.0 and NaN cells are 0.0.
+  Eigen::MatrixXf isFinite(const std::string& layer) const;
 
   /// Create a lightweight copy with only the specified layers.
   ElevationMap snapshot(std::initializer_list<std::string> layers) const;
 };
 
 inline ElevationMap::ElevationMap()
-    : grid_map::GridMap(
+    : nanogrid::GridMap(
           {layer::elevation, layer::elevation_min, layer::elevation_max}) {}
 
 inline ElevationMap::ElevationMap(float width, float height, float resolution,
@@ -162,7 +111,7 @@ inline ElevationMap::ElevationMap(float width, float height, float resolution,
 
 inline void ElevationMap::setGeometry(float width, float height,
                                       float resolution) {
-  grid_map::GridMap::setGeometry(grid_map::Length(width, height), resolution);
+  nanogrid::GridMap::setGeometry(nanogrid::Length(width, height), resolution);
   clearAll();
 }
 
@@ -175,33 +124,38 @@ inline bool ElevationMap::isEmpty() const {
   return get(layer::elevation).array().isNaN().all();
 }
 
-inline bool ElevationMap::isEmptyAt(const grid_map::Index& index) const {
+inline bool ElevationMap::isEmptyAt(const nanogrid::Index& index) const {
   return std::isnan(at(layer::elevation, index));
 }
 
-inline void ElevationMap::clearAt(const grid_map::Index& index) {
+inline void ElevationMap::clearAt(const nanogrid::Index& index) {
   for (const auto& layer : getLayers()) {
     at(layer, index) = NAN;
   }
 }
 
 inline float ElevationMap::elevationAt(
-    const grid_map::Position& position) const {
+    const nanogrid::Position& position) const {
   if (!isInside(position)) return NAN;
   return atPosition(layer::elevation, position);
 }
 
-inline float ElevationMap::elevationAt(const grid_map::Index& index) const {
+inline float ElevationMap::elevationAt(const nanogrid::Index& index) const {
   return at(layer::elevation, index);
 }
 
 inline bool ElevationMap::hasElevationAt(
-    const grid_map::Position& position) const {
+    const nanogrid::Position& position) const {
   return std::isfinite(elevationAt(position));
 }
 
-inline bool ElevationMap::hasElevationAt(const grid_map::Index& index) const {
+inline bool ElevationMap::hasElevationAt(const nanogrid::Index& index) const {
   return std::isfinite(elevationAt(index));
+}
+
+inline Eigen::MatrixXf ElevationMap::isFinite(const std::string& layer) const {
+  const auto& data = get(layer).array();
+  return (1.0f - (data != data).cast<float>()).matrix();
 }
 
 inline ElevationMap ElevationMap::snapshot(
@@ -221,17 +175,6 @@ inline ElevationMap ElevationMap::snapshot(
   }
   return snap;
 }
-
-// ─── MapIndexer inline definitions ──────────────────────────────────────────
-
-inline MapIndexer::MapIndexer(const ElevationMap& map)
-    : rows(map.getSize()(0)),
-      cols(map.getSize()(1)),
-      resolution(map.getResolution()),
-      sr_(map.getStartIndex()(0)),
-      sc_(map.getStartIndex()(1)) {}
-
-inline MapIndexer ElevationMap::indexer() const { return MapIndexer(*this); }
 
 }  // namespace fastdem
 

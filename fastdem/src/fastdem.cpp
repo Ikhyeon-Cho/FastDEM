@@ -10,7 +10,6 @@
 #include <nanopcl/filters/crop.hpp>
 #include <nanopcl/filters/downsample.hpp>
 
-#include "fastdem/mapping/grid_index_hash.hpp"
 #include "fastdem/postprocess/raycasting.hpp"
 
 namespace fastdem {
@@ -206,7 +205,7 @@ PointCloud FastDEM::toPointCloud(
 
   size_t i = 0;
   for (const auto& [index, cell] : observations) {
-    grid_map::Position pos;
+    nanogrid::Position pos;
     map_.getPosition(index, pos);
     cloud.point(i) = Eigen::Vector3f(pos.x(), pos.y(), cell.min_z);
     ++i;

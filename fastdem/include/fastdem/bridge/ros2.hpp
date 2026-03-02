@@ -34,11 +34,11 @@ inline sensor_msgs::msg::PointCloud2 toPointCloud2(
 
 /// Convert a submap region to PointCloud2 (zero-copy from parent map).
 inline sensor_msgs::msg::PointCloud2 toPointCloud2(
-    const ElevationMap& map, const grid_map::Position& center,
-    const grid_map::Length& length,
+    const ElevationMap& map, const nanogrid::Position& center,
+    const nanogrid::Length& length,
     const char* elevation_layer = layer::elevation) {
   bool ok = false;
-  grid_map::SubmapGeometry geom(map, center, length, ok);
+  nanogrid::SubmapGeometry geom(map, center, length, ok);
   if (!ok) return {};
   return fastdem::detail::toPointCloud2Impl<sensor_msgs::msg::PointCloud2,
                                    sensor_msgs::msg::PointField>(

@@ -108,7 +108,7 @@ TEST_F(OnlineModeTest, IntegrateWithTransformProvider) {
   auto cloud = makeCloud(1.0f);
   EXPECT_TRUE(mapper.integrate(cloud));
 
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   EXPECT_NEAR(map.elevationAt(center), 1.0f, 0.1f);
 }
@@ -189,7 +189,7 @@ TEST_F(OnlineModeTest, MultipleIntegrationsOnline) {
   auto cloud2 = makeCloud(1.5f);
   EXPECT_TRUE(mapper.integrate(cloud2));
 
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   float elev = map.elevationAt(center);
   EXPECT_GT(elev, 0.9f);
@@ -213,7 +213,7 @@ TEST_F(OnlineModeTest, WithNonIdentityExtrinsic) {
   auto cloud = makeCloud(0.0f);
   EXPECT_TRUE(mapper.integrate(cloud));
 
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   EXPECT_NEAR(map.elevationAt(center), 1.0f, 0.1f);
 }
@@ -235,7 +235,7 @@ TEST_F(OnlineModeTest, WithRobotPose) {
   EXPECT_TRUE(mapper.integrate(cloud));
 
   // Points centered around sensor → shifted to (2, 0) in world
-  grid_map::Position robot_pos(2.0, 0.0);
+  nanogrid::Position robot_pos(2.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(robot_pos));
   EXPECT_NEAR(map.elevationAt(robot_pos), 1.0f, 0.1f);
 }

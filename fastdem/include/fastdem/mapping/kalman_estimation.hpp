@@ -95,7 +95,7 @@ class Kalman {
   }
 
   /// Update elevation estimate at a single cell.
-  void update(const grid_map::Index& index, float measurement,
+  void update(const nanogrid::Index& index, float measurement,
               float measurement_variance) {
     assert(bound_ && "Kalman::bind() must be called before update()");
     const int i = index(0);
@@ -142,7 +142,7 @@ class Kalman {
   }
 
   /// Compute confidence bounds at a single cell.
-  void computeBounds(const grid_map::Index& index) {
+  void computeBounds(const nanogrid::Index& index) {
     assert(bound_ && "Kalman::bind() must be called before computeBounds()");
     const int i = index(0);
     const int j = index(1);
@@ -158,18 +158,18 @@ class Kalman {
   float process_noise_ = 0.0f;
 
   // Common output layer matrices
-  grid_map::Matrix* elevation_mat_ = nullptr;
-  grid_map::Matrix* variance_mat_ = nullptr;
-  grid_map::Matrix* count_mat_ = nullptr;
+  nanogrid::Matrix* elevation_mat_ = nullptr;
+  nanogrid::Matrix* variance_mat_ = nullptr;
+  nanogrid::Matrix* count_mat_ = nullptr;
 
   // Kalman-internal layer matrices
-  grid_map::Matrix* kalman_p_mat_ = nullptr;
-  grid_map::Matrix* sample_mean_mat_ = nullptr;
-  grid_map::Matrix* sample_m2_mat_ = nullptr;
+  nanogrid::Matrix* kalman_p_mat_ = nullptr;
+  nanogrid::Matrix* sample_mean_mat_ = nullptr;
+  nanogrid::Matrix* sample_m2_mat_ = nullptr;
 
   // Derived layer matrices
-  grid_map::Matrix* upper_mat_ = nullptr;
-  grid_map::Matrix* lower_mat_ = nullptr;
+  nanogrid::Matrix* upper_mat_ = nullptr;
+  nanogrid::Matrix* lower_mat_ = nullptr;
 
   bool bound_ = false;
 };

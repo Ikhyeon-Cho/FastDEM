@@ -560,8 +560,8 @@ bool loadNpz(const std::string& filename, ElevationMap& map) {
   float length_y = resolution * size_cols;
   map.setFrameId(frame_id);
   map.setGeometry(length_x, length_y, resolution);
-  map.setPosition(grid_map::Position(pos_x, pos_y));
-  map.setStartIndex(grid_map::Index(start_x, start_y));
+  map.setPosition(nanogrid::Position(pos_x, pos_y));
+  map.setStartIndex(nanogrid::Index(start_x, start_y));
 
   // Load layer data
   size_t expected_bytes =

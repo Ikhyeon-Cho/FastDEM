@@ -75,7 +75,7 @@
 //   ./benchmark_height_update [path/to/kitti.bin]
 
 #include <cmath>
-#include <grid_map_core/grid_map_core.hpp>
+#include <nanogrid/nanogrid.hpp>
 #include <nanopcl/io.hpp>
 #include <unordered_map>
 
@@ -105,14 +105,14 @@ using fastdem::IndexEqual;
 // Method 1: Point-wise Update (Current Implementation)
 // -----------------------------------------------------------------------------
 
-void updatePointWise(grid_map::GridMap& map, const PointCloud& cloud) {
+void updatePointWise(nanogrid::GridMap& map, const PointCloud& cloud) {
   auto& elevation = map.get("elevation");
   auto& variance = map.get("variance");
   auto& count = map.get("count");
 
   for (const auto& point : cloud) {
-    grid_map::Index idx;
-    if (!map.getIndex(grid_map::Position(point.x(), point.y()), idx)) {
+    nanogrid::Index idx;
+    if (!map.getIndex(nanogrid::Position(point.x(), point.y()), idx)) {
       continue;
     }
 
@@ -146,19 +146,19 @@ void updatePointWise(grid_map::GridMap& map, const PointCloud& cloud) {
 // Method 2: Cell-First Grouping
 // -----------------------------------------------------------------------------
 
-void updateCellFirstGrouping(grid_map::GridMap& map, const PointCloud& cloud) {
+void updateCellFirstGrouping(nanogrid::GridMap& map, const PointCloud& cloud) {
   auto& elevation = map.get("elevation");
   auto& variance = map.get("variance");
   auto& count = map.get("count");
 
   // Phase 1: Group points by cell
-  std::unordered_map<grid_map::Index, std::vector<float>, IndexHash, IndexEqual>
+  std::unordered_map<nanogrid::Index, std::vector<float>, IndexHash, IndexEqual>
       cell_points;
   cell_points.reserve(cloud.size() / 4);  // Estimate ~4 points per cell
 
   for (const auto& point : cloud) {
-    grid_map::Index idx;
-    if (!map.getIndex(grid_map::Position(point.x(), point.y()), idx)) {
+    nanogrid::Index idx;
+    if (!map.getIndex(nanogrid::Position(point.x(), point.y()), idx)) {
       continue;
     }
     cell_points[idx].push_back(point.z());
@@ -198,7 +198,7 @@ void updateCellFirstGrouping(grid_map::GridMap& map, const PointCloud& cloud) {
 // - Good for simple averaging use cases
 // -----------------------------------------------------------------------------
 
-void updateBatchMean(grid_map::GridMap& map, const PointCloud& cloud) {
+void updateBatchMean(nanogrid::GridMap& map, const PointCloud& cloud) {
   const auto size = map.getSize();
   const int rows = size(0);
   const int cols = size(1);
@@ -209,8 +209,8 @@ void updateBatchMean(grid_map::GridMap& map, const PointCloud& cloud) {
 
   // Scatter-add phase
   for (const auto& point : cloud) {
-    grid_map::Index idx;
-    if (!map.getIndex(grid_map::Position(point.x(), point.y()), idx)) {
+    nanogrid::Index idx;
+    if (!map.getIndex(nanogrid::Position(point.x(), point.y()), idx)) {
       continue;
     }
     sum(idx(0), idx(1)) += point.z();
@@ -248,7 +248,7 @@ void updateBatchMean(grid_map::GridMap& map, const PointCloud& cloud) {
 // - Simplest case: just compute mean from current scan
 // -----------------------------------------------------------------------------
 
-void updateBatchMeanPure(grid_map::GridMap& map, const PointCloud& cloud) {
+void updateBatchMeanPure(nanogrid::GridMap& map, const PointCloud& cloud) {
   const auto size = map.getSize();
   const int rows = size(0);
   const int cols = size(1);
@@ -258,8 +258,8 @@ void updateBatchMeanPure(grid_map::GridMap& map, const PointCloud& cloud) {
 
   // Scatter-add
   for (const auto& point : cloud) {
-    grid_map::Index idx;
-    if (!map.getIndex(grid_map::Position(point.x(), point.y()), idx)) {
+    nanogrid::Index idx;
+    if (!map.getIndex(nanogrid::Position(point.x(), point.y()), idx)) {
       continue;
     }
     sum(idx(0), idx(1)) += point.z();
@@ -281,7 +281,7 @@ void updateBatchMeanPure(grid_map::GridMap& map, const PointCloud& cloud) {
 // - Computes mean and variance using: var = (sum_sq - sum^2/n) / (n-1)
 // -----------------------------------------------------------------------------
 
-void updateBatchWithVariance(grid_map::GridMap& map, const PointCloud& cloud) {
+void updateBatchWithVariance(nanogrid::GridMap& map, const PointCloud& cloud) {
   const auto size = map.getSize();
   const int rows = size(0);
   const int cols = size(1);
@@ -293,8 +293,8 @@ void updateBatchWithVariance(grid_map::GridMap& map, const PointCloud& cloud) {
 
   // Single pass: collect sum, sum_sq, count
   for (const auto& point : cloud) {
-    grid_map::Index idx;
-    if (!map.getIndex(grid_map::Position(point.x(), point.y()), idx)) {
+    nanogrid::Index idx;
+    if (!map.getIndex(nanogrid::Position(point.x(), point.y()), idx)) {
       continue;
     }
     float z = point.z();
@@ -359,7 +359,7 @@ void updateBatchWithVariance(grid_map::GridMap& map, const PointCloud& cloud) {
 // - Same as Method 5 but uses Eigen operations for merge step
 // -----------------------------------------------------------------------------
 
-void updateBatchVarianceEigen(grid_map::GridMap& map, const PointCloud& cloud) {
+void updateBatchVarianceEigen(nanogrid::GridMap& map, const PointCloud& cloud) {
   const auto size = map.getSize();
   const int rows = size(0);
   const int cols = size(1);
@@ -371,8 +371,8 @@ void updateBatchVarianceEigen(grid_map::GridMap& map, const PointCloud& cloud) {
 
   // Scatter phase
   for (const auto& point : cloud) {
-    grid_map::Index idx;
-    if (!map.getIndex(grid_map::Position(point.x(), point.y()), idx)) {
+    nanogrid::Index idx;
+    if (!map.getIndex(nanogrid::Position(point.x(), point.y()), idx)) {
       continue;
     }
     float z = point.z();
@@ -434,9 +434,9 @@ void updateBatchVarianceEigen(grid_map::GridMap& map, const PointCloud& cloud) {
 // Map Setup Helper
 // -----------------------------------------------------------------------------
 
-grid_map::GridMap createMap(const MapConfig& config) {
-  grid_map::GridMap map({"elevation", "variance", "count"});
-  map.setGeometry(grid_map::Length(config.width, config.height),
+nanogrid::GridMap createMap(const MapConfig& config) {
+  nanogrid::GridMap map({"elevation", "variance", "count"});
+  map.setGeometry(nanogrid::Length(config.width, config.height),
                   config.resolution);
   map.get("elevation").setConstant(NAN);
   map.get("variance").setConstant(0.0f);
@@ -444,7 +444,7 @@ grid_map::GridMap createMap(const MapConfig& config) {
   return map;
 }
 
-void resetMap(grid_map::GridMap& map) {
+void resetMap(nanogrid::GridMap& map) {
   map.get("elevation").setConstant(NAN);
   map.get("variance").setConstant(0.0f);
   map.get("count").setConstant(0.0f);
@@ -473,7 +473,7 @@ void runBenchmark(const PointCloud& cloud, const MapConfig& config) {
   std::cout << std::string(70, '-') << "\n";
 
   // 1. Point-wise (baseline)
-  grid_map::GridMap map1 = createMap(config);
+  nanogrid::GridMap map1 = createMap(config);
   auto stats_pointwise = benchmark::runVoid(
       [&]() {
         resetMap(map1);
@@ -490,7 +490,7 @@ void runBenchmark(const PointCloud& cloud, const MapConfig& config) {
             << "\n";
 
   // 2. Cell-first grouping
-  grid_map::GridMap map2 = createMap(config);
+  nanogrid::GridMap map2 = createMap(config);
   auto stats_grouping = benchmark::runVoid(
       [&]() {
         resetMap(map2);
@@ -508,7 +508,7 @@ void runBenchmark(const PointCloud& cloud, const MapConfig& config) {
             << "\n";
 
   // 3. Batch mean (with accumulation)
-  grid_map::GridMap map3 = createMap(config);
+  nanogrid::GridMap map3 = createMap(config);
   auto stats_batch = benchmark::runVoid(
       [&]() {
         resetMap(map3);
@@ -526,7 +526,7 @@ void runBenchmark(const PointCloud& cloud, const MapConfig& config) {
             << "\n";
 
   // 4. Batch mean pure (no accumulation, simplest)
-  grid_map::GridMap map4 = createMap(config);
+  nanogrid::GridMap map4 = createMap(config);
   auto stats_pure = benchmark::runVoid(
       [&]() {
         resetMap(map4);
@@ -544,7 +544,7 @@ void runBenchmark(const PointCloud& cloud, const MapConfig& config) {
             << "\n";
 
   // 5. Batch with variance (one-pass sum of squares)
-  grid_map::GridMap map5 = createMap(config);
+  nanogrid::GridMap map5 = createMap(config);
   auto stats_batch_var = benchmark::runVoid(
       [&]() {
         resetMap(map5);
@@ -562,7 +562,7 @@ void runBenchmark(const PointCloud& cloud, const MapConfig& config) {
             << "\n";
 
   // 6. Batch variance Eigen (vectorized merge)
-  grid_map::GridMap map6 = createMap(config);
+  nanogrid::GridMap map6 = createMap(config);
   auto stats_eigen_var = benchmark::runVoid(
       [&]() {
         resetMap(map6);
@@ -580,14 +580,14 @@ void runBenchmark(const PointCloud& cloud, const MapConfig& config) {
             << "\n";
 
   // Reference: getIndex overhead
-  grid_map::GridMap map_ref = createMap(config);
+  nanogrid::GridMap map_ref = createMap(config);
   size_t valid_count = 0;
   auto stats_getindex = benchmark::runVoid(
       [&]() {
         valid_count = 0;
         for (const auto& point : cloud) {
-          grid_map::Index idx;
-          if (map_ref.getIndex(grid_map::Position(point.x(), point.y()), idx)) {
+          nanogrid::Index idx;
+          if (map_ref.getIndex(nanogrid::Position(point.x(), point.y()), idx)) {
             ++valid_count;
           }
         }

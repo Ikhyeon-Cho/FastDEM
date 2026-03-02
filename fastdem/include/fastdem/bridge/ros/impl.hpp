@@ -6,7 +6,7 @@
 
 #include <fastdem/elevation_map.hpp>
 
-#include <grid_map_core/SubmapGeometry.hpp>
+#include <nanogrid/SubmapGeometry.hpp>
 
 #include <cstring>
 #include <string>
@@ -28,8 +28,8 @@ namespace fastdem::detail {
 template <typename PointCloud2T, typename PointFieldT, typename TimeT>
 PointCloud2T toPointCloud2Impl(const ElevationMap& map, const TimeT& stamp,
                                const char* elevation_layer,
-                               const grid_map::Index& sub_start,
-                               const grid_map::Size& sub_size) {
+                               const nanogrid::Index& sub_start,
+                               const nanogrid::Size& sub_size) {
   const auto& elev = map.get(elevation_layer);
   const auto size = map.getSize();
   const Eigen::Index rows = size(0);
@@ -196,7 +196,7 @@ void fillGridMapMsg(GridMapMsgT& msg, const ElevationMap& map) {
   for (const auto& l : map.getLayers()) {
     if (!layer::isInternal(l)) msg.layers.push_back(l);
   }
-  msg.basic_layers = map.getBasicLayers();
+  msg.basic_layers = {layer::elevation};
 
   // Data
   for (const auto& layer_name : msg.layers) {

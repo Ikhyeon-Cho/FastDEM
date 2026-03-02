@@ -54,7 +54,7 @@ TEST_F(FastDEMIntegrationTest, IntegrateUpdatesElevation) {
   mapper.integrate(cloud, T_base_sensor, T_world_base);
 
   // Center cell (0,0) should have elevation close to 1.0
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   EXPECT_NEAR(map.elevationAt(center), 1.0f, 0.1f);
 }
@@ -95,7 +95,7 @@ TEST_F(FastDEMIntegrationTest, MultipleIntegrations) {
   mapper.integrate(cloud2, T_base_sensor, T_world_base);
 
   // Kalman filter should blend: elevation between 1.0 and 1.5
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   float elev = map.elevationAt(center);
   EXPECT_GT(elev, 0.9f);
@@ -135,7 +135,7 @@ TEST_F(FastDEMIntegrationTest, LiDARSensorModelPipeline) {
   auto cloud = makeGroundCloud(1.0f);
   EXPECT_TRUE(mapper.integrate(cloud, T_base_sensor, T_world_base));
 
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   EXPECT_NEAR(map.elevationAt(center), 1.0f, 0.2f);
 }
@@ -149,7 +149,7 @@ TEST_F(FastDEMIntegrationTest, RGBDSensorModelPipeline) {
   auto cloud = makeGroundCloud(1.0f);
   EXPECT_TRUE(mapper.integrate(cloud, T_base_sensor, T_world_base));
 
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   EXPECT_NEAR(map.elevationAt(center), 1.0f, 0.2f);
 }
@@ -169,7 +169,7 @@ TEST_F(FastDEMIntegrationTest, P2QuantileEstimator) {
     mapper.integrate(cloud, T_base_sensor, T_world_base);
   }
 
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   EXPECT_NEAR(map.elevationAt(center), 1.0f, 0.2f);
 }
@@ -191,7 +191,7 @@ TEST_F(FastDEMIntegrationTest, GlobalModeFixedOrigin) {
   mapper.integrate(cloud2, T_base_sensor, T_world_base);
 
   // Original position should still have data
-  grid_map::Position origin(0.0, 0.0);
+  nanogrid::Position origin(0.0, 0.0);
   EXPECT_TRUE(map.hasElevationAt(origin));
 }
 
@@ -210,7 +210,7 @@ TEST_F(FastDEMIntegrationTest, LocalModeFollowsRobot) {
   mapper.integrate(cloud2, T_base_sensor, T_world_base);
 
   // Original origin should be outside the map now
-  grid_map::Position origin(0.0, 0.0);
+  nanogrid::Position origin(0.0, 0.0);
   EXPECT_FALSE(map.isInside(origin));
 }
 
@@ -229,7 +229,7 @@ TEST_F(FastDEMIntegrationTest, ConstructFromConfig) {
   auto cloud = makeGroundCloud(1.0f);
   EXPECT_TRUE(mapper.integrate(cloud, T_base_sensor, T_world_base));
 
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   EXPECT_NEAR(map.elevationAt(center), 1.0f, 0.1f);
 }
@@ -262,7 +262,7 @@ TEST_F(FastDEMIntegrationTest, SensorOffsetApplied) {
   auto cloud = makeGroundCloud(0.0f);
   mapper.integrate(cloud, T_base_sensor, T_world_base);
 
-  grid_map::Position center(0.0, 0.0);
+  nanogrid::Position center(0.0, 0.0);
   ASSERT_TRUE(map.hasElevationAt(center));
   EXPECT_NEAR(map.elevationAt(center), 1.0f, 0.2f);
 }

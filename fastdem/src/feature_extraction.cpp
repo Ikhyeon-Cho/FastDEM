@@ -49,76 +49,71 @@ void applyFeatureExtraction(ElevationMap& map, float analysis_radius,
   auto& ny_mat = map.get(layer::normal_y);
   auto& nz_mat = map.get(layer::normal_z);
 
-  const auto idx = map.indexer();
-  const auto neighbors = idx.circleNeighbors(analysis_radius);
+  const auto reg = map.region(analysis_radius);
+  const double res = map.getResolution();
 
   // Reusable buffer for percentile-based step computation
   std::vector<float> z_vals;
-  z_vals.reserve(neighbors.size());
+  z_vals.reserve(reg.entries.size());
 
-  for (int row = 0; row < idx.rows; ++row) {
-    for (int col = 0; col < idx.cols; ++col) {
-      auto [r, c] = idx(row, col);
+  for (auto cell : map.cells()) {
+    const float center_z = elev(cell.index);
+    if (!std::isfinite(center_z)) continue;
 
-      const float center_z = elev(r, c);
-      if (!std::isfinite(center_z)) continue;
+    // Accumulate neighbors (single pass: covariance + z values)
+    Eigen::Vector3f sum = Eigen::Vector3f::Zero();
+    Eigen::Matrix3f sum_sq = Eigen::Matrix3f::Zero();
+    z_vals.clear();
+    int count = 0;
 
-      // Accumulate neighbors (single pass: covariance + z values)
-      Eigen::Vector3f sum = Eigen::Vector3f::Zero();
-      Eigen::Matrix3f sum_sq = Eigen::Matrix3f::Zero();
-      z_vals.clear();
-      int count = 0;
+    for (auto n : map.neighbors(cell, reg)) {
+      const float nz = elev(n.index);
+      if (!std::isfinite(nz)) continue;
 
-      for (const auto& [dr, dc, dist_sq] : neighbors) {
-        if (!idx.contains(row + dr, col + dc)) continue;
-        auto [nr, nc] = idx(row + dr, col + dc);
+      // World-frame displacement (grid_map: row→-x, col→-y)
+      const int dr = n.row - cell.row;
+      const int dc = n.col - cell.col;
+      const Eigen::Vector3f d(-dr * static_cast<float>(res),
+                              -dc * static_cast<float>(res), nz - center_z);
 
-        const float nz = elev(nr, nc);
-        if (!std::isfinite(nz)) continue;
-
-        // World-frame displacement (grid_map: row→-x, col→-y)
-        const Eigen::Vector3f d(-dr * idx.resolution, -dc * idx.resolution,
-                                nz - center_z);
-
-        sum += d;
-        sum_sq.noalias() += d * d.transpose();
-        z_vals.push_back(nz);
-        ++count;
-      }
-
-      if (count < min_valid_neighbors) continue;
-
-      // Covariance matrix
-      const float inv_n = 1.0f / static_cast<float>(count);
-      const Eigen::Vector3f mean = sum * inv_n;
-      const Eigen::Matrix3f cov = sum_sq * inv_n - mean * mean.transpose();
-
-      // PCA — skip degenerate patches (collinear or insufficient spread)
-      constexpr float kMinEigenvalue = 1e-8f;
-      const auto pca = nanopcl::geometry::computePCA(cov);
-      if (!pca.valid) continue;
-      if (pca.eigenvalues(1) < kMinEigenvalue) continue;
-
-      // Normal vector (smallest eigenvector, flipped upward)
-      Eigen::Vector3f normal = pca.eigenvectors.col(0);
-      if (normal.z() < 0.0f) normal = -normal;
-
-      // Step: percentile-based range (robust to outliers)
-      std::sort(z_vals.begin(), z_vals.end());
-      const int lo = static_cast<int>(step_lower_percentile * (count - 1));
-      const int hi = static_cast<int>(step_upper_percentile * (count - 1));
-      step_mat(r, c) = z_vals[hi] - z_vals[lo];
-
-      slope_mat(r, c) =
-          std::acos(std::abs(normal.z())) * 180.0f / static_cast<float>(M_PI);
-      roughness_mat(r, c) = std::sqrt(pca.eigenvalues(0));
-      const float trace = cov.trace();
-      curvature_mat(r, c) =
-          (trace > 0.0f) ? std::abs(pca.eigenvalues(0) / trace) : 0.0f;
-      nx_mat(r, c) = normal.x();
-      ny_mat(r, c) = normal.y();
-      nz_mat(r, c) = normal.z();
+      sum += d;
+      sum_sq.noalias() += d * d.transpose();
+      z_vals.push_back(nz);
+      ++count;
     }
+
+    if (count < min_valid_neighbors) continue;
+
+    // Covariance matrix
+    const float inv_n = 1.0f / static_cast<float>(count);
+    const Eigen::Vector3f mean = sum * inv_n;
+    const Eigen::Matrix3f cov = sum_sq * inv_n - mean * mean.transpose();
+
+    // PCA — skip degenerate patches (collinear or insufficient spread)
+    constexpr float kMinEigenvalue = 1e-8f;
+    const auto pca = nanopcl::geometry::computePCA(cov);
+    if (!pca.valid) continue;
+    if (pca.eigenvalues(1) < kMinEigenvalue) continue;
+
+    // Normal vector (smallest eigenvector, flipped upward)
+    Eigen::Vector3f normal = pca.eigenvectors.col(0);
+    if (normal.z() < 0.0f) normal = -normal;
+
+    // Step: percentile-based range (robust to outliers)
+    std::sort(z_vals.begin(), z_vals.end());
+    const int lo = static_cast<int>(step_lower_percentile * (count - 1));
+    const int hi = static_cast<int>(step_upper_percentile * (count - 1));
+    step_mat(cell.index) = z_vals[hi] - z_vals[lo];
+
+    slope_mat(cell.index) =
+        std::acos(std::abs(normal.z())) * 180.0f / static_cast<float>(M_PI);
+    roughness_mat(cell.index) = std::sqrt(pca.eigenvalues(0));
+    const float trace = cov.trace();
+    curvature_mat(cell.index) =
+        (trace > 0.0f) ? std::abs(pca.eigenvalues(0) / trace) : 0.0f;
+    nx_mat(cell.index) = normal.x();
+    ny_mat(cell.index) = normal.y();
+    nz_mat(cell.index) = normal.z();
   }
 }
 

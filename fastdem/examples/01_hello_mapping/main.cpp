@@ -52,7 +52,7 @@ int main() {
   examples::saveMapImage(map, std::string(EXAMPLE_OUTPUT_DIR) + "/output.png");
 
   // 5. Direct access
-  grid_map::Position origin(0.0, 0.0);
+  nanogrid::Position origin(0.0, 0.0);
   if (map.hasElevationAt(origin)) {
     std::cout << "Elevation at origin: " << map.elevationAt(origin) << " m"
               << std::endl;

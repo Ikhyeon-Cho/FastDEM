@@ -10,7 +10,6 @@
 
 #include "fastdem/config/mapping.hpp"
 #include "fastdem/elevation_map.hpp"
-#include "fastdem/mapping/grid_index_hash.hpp"
 #include "fastdem/mapping/kalman_estimation.hpp"
 #include "fastdem/mapping/quantile_estimation.hpp"
 #include "fastdem/point_types.hpp"

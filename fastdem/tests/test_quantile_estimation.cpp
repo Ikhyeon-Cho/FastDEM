@@ -13,7 +13,7 @@ class P2QuantileTest : public ::testing::Test {
  protected:
   ElevationMap map;
   P2Quantile estimator;
-  grid_map::Index idx{0, 0};
+  nanogrid::Index idx{0, 0};
 
   void SetUp() override {
     map.setGeometry(10.0f, 10.0f, 0.5f);

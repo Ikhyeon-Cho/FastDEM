@@ -31,38 +31,33 @@ void applyInpainting(ElevationMap& map, int max_iterations,
   auto& inpainted = map.get(output);
   if (!inplace) inpainted = map.get(layer::elevation);
 
-  // 8-connected neighbor offsets
-  constexpr int dr[] = {-1, -1, -1, 0, 0, 1, 1, 1};
-  constexpr int dc[] = {-1, 0, 1, -1, 1, -1, 0, 1};
+  // 8-connected neighborhood (3x3 excluding center)
+  const auto reg8 = map.region(nanogrid::Size(3, 3));
 
-  const auto idx = map.indexer();
-  Eigen::MatrixXf buffer(idx.rows, idx.cols);
+  const auto size = map.getSize();
+  Eigen::MatrixXf buffer(size(0), size(1));
 
   for (int iter = 0; iter < max_iterations; ++iter) {
     bool changed = false;
     buffer = inpainted;
 
-    for (int row = 0; row < idx.rows; ++row) {
-      for (int col = 0; col < idx.cols; ++col) {
-        auto [r, c] = idx(row, col);
-        if (!std::isnan(inpainted(r, c))) continue;
+    for (auto cell : map.cells()) {
+      if (!std::isnan(inpainted(cell.index))) continue;
 
-        float sum = 0.0f;
-        int count = 0;
-        for (int i = 0; i < 8; ++i) {
-          if (!idx.contains(row + dr[i], col + dc[i])) continue;
-          auto [nr, nc] = idx(row + dr[i], col + dc[i]);
-          float val = inpainted(nr, nc);
-          if (std::isfinite(val)) {
-            sum += val;
-            ++count;
-          }
+      float sum = 0.0f;
+      int count = 0;
+      for (auto n : map.neighbors(cell, reg8)) {
+        if (n.row == cell.row && n.col == cell.col) continue;
+        float val = inpainted(n.index);
+        if (std::isfinite(val)) {
+          sum += val;
+          ++count;
         }
+      }
 
-        if (count >= min_valid_neighbors) {
-          buffer(r, c) = sum / static_cast<float>(count);
-          changed = true;
-        }
+      if (count >= min_valid_neighbors) {
+        buffer(cell.index) = sum / static_cast<float>(count);
+        changed = true;
       }
     }
 

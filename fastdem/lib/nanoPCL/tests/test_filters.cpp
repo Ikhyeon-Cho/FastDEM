@@ -693,6 +693,83 @@ void test_deskew_no_motion() {
   ASSERT_NEAR(corrected[99].x(), cloud[99].x(), 0.01f);
 }
 
+void test_deskew_combined_translation_rotation() {
+  // Realistic high-speed scenario:
+  //   VLP-16 scan duration = 100ms
+  //   Robot moves 2m forward + rotates 60° during one scan
+  //   (equivalent to ~20m/s linear + ~10.5rad/s angular — aggressive motion)
+  //
+  // Ground truth: 100 points on a circle (radius 10m) at z=0 in world frame.
+  // Each point is "distorted" by the inverse of the sensor pose at its capture time.
+  // After deskew, all points should recover to the original circle in T_end frame.
+
+  const int N = 100;
+  const double radius = 10.0;
+  const double tx = 2.0;                // 2m forward
+  const double rz = M_PI / 3.0;         // 60 degrees
+
+  Eigen::Isometry3d T_start = Eigen::Isometry3d::Identity();
+  Eigen::Isometry3d T_end = Eigen::Isometry3d::Identity();
+  T_end.translation() = Eigen::Vector3d(tx, 0, 0);
+  T_end.rotate(Eigen::AngleAxisd(rz, Eigen::Vector3d::UnitZ()));
+
+  // Generate distorted cloud: simulate what the sensor would actually measure
+  PointCloud cloud;
+  cloud.useTime();
+
+  // Store ground truth positions in T_end frame for verification
+  std::vector<Eigen::Vector3d> gt_in_end(N);
+
+  for (int i = 0; i < N; ++i) {
+    double alpha = static_cast<double>(i) / (N - 1);
+    double angle = 2.0 * M_PI * i / N;
+
+    // World-frame point on circle
+    Eigen::Vector3d p_world(radius * std::cos(angle),
+                            radius * std::sin(angle), 0.0);
+
+    // Sensor pose at this point's capture time (slerp)
+    Eigen::Isometry3d T_sensor = Eigen::Isometry3d::Identity();
+    Eigen::Quaterniond q_start(T_start.rotation());
+    Eigen::Quaterniond q_end(T_end.rotation());
+    Eigen::Quaterniond q_interp = q_start.slerp(alpha, q_end);
+    T_sensor.rotate(q_interp);
+    T_sensor.translation() =
+        (1.0 - alpha) * T_start.translation() + alpha * T_end.translation();
+
+    // What the sensor measures: transform world point to sensor frame
+    Eigen::Vector3d p_sensor = T_sensor.inverse() * p_world;
+
+    cloud.add(static_cast<float>(p_sensor.x()),
+              static_cast<float>(p_sensor.y()),
+              static_cast<float>(p_sensor.z()));
+    cloud.time(i) = static_cast<float>(alpha);
+
+    // Ground truth in T_end frame
+    gt_in_end[i] = T_end.inverse() * p_world;
+  }
+
+  // Deskew
+  auto corrected = filters::deskew(cloud, T_start, T_end);
+  ASSERT_EQ(corrected.size(), N);
+
+  // Verify every point matches ground truth
+  double max_error = 0.0;
+  for (int i = 0; i < N; ++i) {
+    double ex = std::abs(corrected[i].x() - static_cast<float>(gt_in_end[i].x()));
+    double ey = std::abs(corrected[i].y() - static_cast<float>(gt_in_end[i].y()));
+    double ez = std::abs(corrected[i].z() - static_cast<float>(gt_in_end[i].z()));
+    double err = std::sqrt(ex * ex + ey * ey + ez * ez);
+    max_error = std::max(max_error, err);
+
+    ASSERT_NEAR(corrected[i].x(), static_cast<float>(gt_in_end[i].x()), 0.02f);
+    ASSERT_NEAR(corrected[i].y(), static_cast<float>(gt_in_end[i].y()), 0.02f);
+    ASSERT_NEAR(corrected[i].z(), static_cast<float>(gt_in_end[i].z()), 0.02f);
+  }
+
+  std::cout << "(max_error=" << max_error << "m) ";
+}
+
 // =============================================================================
 // 7. Boundary Condition Tests
 // =============================================================================
@@ -788,6 +865,7 @@ int main() {
   TEST(deskew_with_normals);
   TEST(deskew_empty_cloud);
   TEST(deskew_no_motion);
+  TEST(deskew_combined_translation_rotation);
 
   std::cout << "\n[Boundary Conditions]\n";
   TEST(empty_cloud);

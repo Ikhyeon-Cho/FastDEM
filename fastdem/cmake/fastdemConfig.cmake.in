@@ -7,7 +7,7 @@ find_package(Eigen3 REQUIRED)
 
 # Provide variables for legacy compatibility
 set(fastdem_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@/include")
-set(fastdem_LIBRARIES fastdem grid_map_core)
+set(fastdem_LIBRARIES fastdem nanoGrid)
 
 # Include the targets file if it exists
 if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/fastdemTargets.cmake")

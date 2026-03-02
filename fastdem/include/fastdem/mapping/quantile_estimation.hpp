@@ -138,7 +138,7 @@ class P2Quantile {
   }
 
   /// Update P² quantile estimate at a single cell.
-  void update(const grid_map::Index& index, float measurement,
+  void update(const nanogrid::Index& index, float measurement,
               [[maybe_unused]] float measurement_variance) {
     assert(bound_ && "P2Quantile::bind() must be called before update()");
     const int i = index(0);
@@ -163,7 +163,7 @@ class P2Quantile {
   }
 
   /// Compute bounds and variance at a single cell.
-  void computeBounds(const grid_map::Index& index) {
+  void computeBounds(const nanogrid::Index& index) {
     assert(bound_ &&
            "P2Quantile::bind() must be called before computeBounds()");
     const int i = index(0);
@@ -262,17 +262,17 @@ class P2Quantile {
   float max_sample_count_ = 0;  // Max count for fading memory (0 = disabled)
 
   // Common output layer matrices
-  grid_map::Matrix* elevation_mat_ = nullptr;
-  grid_map::Matrix* variance_mat_ = nullptr;
-  grid_map::Matrix* count_mat_ = nullptr;
+  nanogrid::Matrix* elevation_mat_ = nullptr;
+  nanogrid::Matrix* variance_mat_ = nullptr;
+  nanogrid::Matrix* count_mat_ = nullptr;
 
   // P² marker matrices
-  grid_map::Matrix* q_mat_[5] = {nullptr};
-  grid_map::Matrix* n_mat_[5] = {nullptr};
+  nanogrid::Matrix* q_mat_[5] = {nullptr};
+  nanogrid::Matrix* n_mat_[5] = {nullptr};
 
   // Derived layer matrices
-  grid_map::Matrix* upper_mat_ = nullptr;
-  grid_map::Matrix* lower_mat_ = nullptr;
+  nanogrid::Matrix* upper_mat_ = nullptr;
+  nanogrid::Matrix* lower_mat_ = nullptr;
 
   bool bound_ = false;
 };

@@ -29,7 +29,7 @@ namespace io {
 
 namespace detail {
 
-std::pair<float, float> computeRange(const grid_map::Matrix& matrix,
+std::pair<float, float> computeRange(const nanogrid::Matrix& matrix,
                                      PngExportConfig::Normalize mode,
                                      float fixed_min, float fixed_max) {
   if (mode == PngExportConfig::Normalize::FIXED_RANGE) {

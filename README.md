@@ -39,7 +39,7 @@ FastDEM is a lightweight C++17 library that builds dense elevation maps from LiD
 ## Features
 
 * ***Fast*** — 100+ Hz on Jetson Orin. ~10ms per scan, on CPU alone.
-* ***Lightweight*** — Only three system dependencies. No PCL, OpenCV, or GPU required.
+* ***Lightweight*** — Just Eigen at core. No PCL, OpenCV, or CUDA required.
 * ***ROS-agnostic*** — Clean C++ API, with optional ROS support.
 * ***Sensor-Aware*** — Physics-based sensor models for LiDAR and RGB-D range measurements.
 * ***Multiple Estimators*** — Kalman Filter (parametric), P² Quantile estimator (non-parametric).
@@ -62,9 +62,8 @@ The mapping pipeline runs at **~10 ms** on embedded CPUs — fast enough to leav
 
 ## Dependencies
 
-- **Eigen3** — Linear algebra
-- **yaml-cpp** — Configuration parsing
-- **spdlog** — Logging
+- **Eigen3**, **yaml-cpp**, **spdlog**
+- **[nanoGrid](https://github.com/Ikhyeon-Cho/nanoGrid)**, **nanoPCL** — bundled automatically
 
 ---
 
@@ -75,7 +74,7 @@ The mapping pipeline runs at **~10 ms** on embedded CPUs — fast enough to leav
 ```bash
 # Dependencies
 sudo apt install libeigen3-dev libyaml-cpp-dev libspdlog-dev
-sudo apt install ros-noetic-grid-map-msgs ros-noetic-tf2-eigen
+sudo apt install ros-noetic-tf2-eigen ros-noetic-grid-map-msgs
 
 # Clone and build
 cd ~/catkin_ws/src
@@ -99,7 +98,7 @@ Configuration: [`ros1/config/local_mapping.yaml`](ros1/config/local_mapping.yaml
 ```bash
 # Dependencies
 sudo apt install libeigen3-dev libyaml-cpp-dev libspdlog-dev
-sudo apt install ros-humble-grid-map-msgs ros-humble-tf2-eigen
+sudo apt install ros-humble-tf2-eigen ros-humble-grid-map-msgs
 
 # Clone and build
 cd ~/ros2_ws/src
