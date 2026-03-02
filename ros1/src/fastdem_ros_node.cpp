@@ -211,7 +211,7 @@ class MappingNode {
                              pp.feature_extraction.step_upper_percentile);
 
     // Compute derived layer for visualization
-    grid_map::Matrix range_mat =
+    nanogrid::Matrix range_mat =
         map_copy.get(layer::upper_bound) - map_copy.get(layer::lower_bound);
     map_copy.add("uncertainty_range", range_mat);
 
