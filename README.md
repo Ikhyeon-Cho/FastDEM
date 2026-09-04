@@ -22,7 +22,7 @@
 **FastDEM** is a **lightweight elevation mapping engine** for mobile robots that need dense terrain maps at control-loop rates. It incrementally fuses LiDAR or RGB-D point clouds into local or global elevation maps. The library runs entirely on CPU, and supports terrain post-processing for downstream navigation and traversability analysis.
 
 **Related projects:**
-- **EviGround** — (in preparation)
+- **Terrablox** — (in preparation)
 - **[LeSTA](https://github.com/Ikhyeon-Cho/LeSTA)** — Self-supervised traversability learning for mobile robots (*RA-L 2024*)
 
 ---
